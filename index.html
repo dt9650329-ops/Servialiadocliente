@@ -1,0 +1,2892 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Plataforma de Domicilios - Cliente</title>
+  
+  <!-- Leaflet CSS para el mapa -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  
+  <style>
+    /* ------------------- COLORES BASE (Inspirados en Servi Aliados Logo) ------------------- */
+    :root {
+        --color-primary: #FFD700; /* Dorado/Amarillo */
+        --color-secondary: #000000; /* Negro */
+        --color-background: #1a1a1a; /* Gris oscuro para el fondo del body */
+        --color-card: #333333; /* Gris oscuro para cards/contenedores */
+        --color-text-light: #f0f0f0;
+        --color-text-dark: #cccccc;
+        --color-chat-user: #555555; /* Gris Oscuro para mensajes del usuario */
+        --color-chat-user-text: #f0f0f0; /* Texto Gris Claro para mensajes del usuario */
+        --color-success: #28a745; /* Verde para soporte */
+        --color-date-separator: #666; 
+        --color-link: #4A9EFF; /* Azul para enlaces detectados */
+    }
+    
+    /* ------------------- ESTILOS GENERALES ------------------- */
+       * {box-sizing: border-box; 
+        font-family: Arial, sans-serif; 
+        margin: 0;
+        padding: 0;
+    }
+    
+    html, body { 
+        width: 100%;
+        height: 100%;
+        overflow-x: hidden;
+    }
+    
+    body { 
+        background: linear-gradient(135deg, var(--color-background), var(--color-secondary)); 
+        display: flex; 
+        align-items: flex-start; 
+        justify-content: center; 
+        min-height: 100vh; 
+        margin: 0; 
+        padding: 0;
+    }
+    
+    .container { 
+        background: var(--color-card); 
+        border-radius: 0; /* Sin bordes redondeados para usar toda la pantalla */
+        box-shadow: none; /* Sin sombra para apariencia más limpia */
+        padding: 20px; 
+        width: 90%; 
+        max-width: 90%; /* Usar todo el ancho */
+        min-height: 90vh; /* Usar toda la altura */
+        text-align: center; 
+        color: var(--color-text-light); 
+    }
+    h2, h3 { color: var(--color-primary); }
+    
+    button { 
+        width: 100%; 
+        padding: 12px; 
+        margin-top: 10px; 
+        border: none; 
+        border-radius: 8px; 
+        background-color: var(--color-primary); 
+        color: var(--color-secondary); 
+        font-weight: bold;
+        font-size: 16px; 
+        cursor: pointer; 
+        transition: background 0.3s; 
+    }
+    button:hover:not(:disabled) { background-color: #ffaa00; }
+    button:disabled { background-color: #555; cursor: not-allowed; color: #999; }
+    
+    form { margin-top: 20px; text-align: left; }
+    label { display: block; margin-top: 10px; font-weight: bold; color: var(--color-text-light);}
+    input[type="text"], input[type="tel"], input[type="file"], input[type="email"], input[type="password"], select { 
+        width: 100%; 
+        padding: 10px; 
+        border: 1px solid #555; 
+        border-radius: 6px; 
+        margin-top: 5px; 
+        background-color: #444; 
+        color: #FFFFFF; 
+    }
+    .back-btn { background-color: #444; color: var(--color-text-light); margin-top: 20px; }
+    .back-btn:hover { background-color: #666; }
+
+    #auth-status { 
+        margin-top: 10px; 
+        font-size: 14px; 
+        color: var(--color-primary); 
+        text-align: left; 
+    }
+    .auth-group { margin-bottom: 15px; }
+    #vista-inicio button:nth-child(5) { 
+        background-color: #555555; 
+        color: var(--color-text-light);
+    }
+    #vista-inicio button:nth-child(5):hover { 
+        background-color: #777777; 
+    }
+    
+    /* ------------------- PERFIL Y CHAT ------------------- */
+    .dato { text-align: left; margin: 8px 0; font-size: 14px; display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 5px; border-bottom: 1px dashed #555; }
+    .dato strong { flex-shrink: 0; margin-right: 10px; color: var(--color-text-dark); }
+    .dato span, .dato a { text-align: right; flex-grow: 1; color: var(--color-text-light); }
+    .dato a { color: var(--color-primary); text-decoration: none; }
+    .dato a:hover { text-decoration: underline; }
+
+    .tabs-container { display: flex; margin-bottom: 20px; border-radius: 8px; overflow: hidden; gap: 2px; }
+    .tab-button { flex: 1; padding: 10px; border: none; cursor: pointer; font-weight: bold; transition: background-color 0.2s; color: var(--color-secondary); font-size: 14px; white-space: nowrap;}
+    .tab-button.active-tab { background-color: var(--color-primary); color: var(--color-secondary); }
+    .tab-button:not(.active-tab) { background-color: #555; color: var(--color-text-light); }
+    .tab-content { display: none; padding-top: 15px; }
+    .tab-content.active-content { display: block; }
+    
+    /* Estilos del Chat */
+    #chat-box { height: 300px; overflow-y: auto; border: 1px solid #555; border-radius: 10px; padding: 10px; background: #222; margin-top: 10px; display: flex; flex-direction: column; }
+    .mensaje { padding: 8px 12px; border-radius: 12px; margin: 8px 0; max-width: 80%; word-wrap: break-word; position: relative; display: flex; flex-direction: column;}
+    
+    .usuario { 
+        background-color: var(--color-chat-user); 
+        color: var(--color-chat-user-text); 
+        align-self: flex-end; 
+        margin-left: auto; 
+        border-radius: 12px 12px 0 12px; 
+    } 
+    
+    .repartidor { 
+        background-color: var(--color-primary); 
+        color: var(--color-secondary); 
+        align-self: flex-start; 
+        margin-right: auto; 
+        border-radius: 12px 12px 12px 0; 
+    }
+    
+    .chat-info { font-size: 10px; margin-top: 4px; display: block; text-align: right; color: rgba(255, 255, 255, 0.7); }
+    .repartidor .chat-info { color: var(--color-secondary); text-align: left; }
+    
+    .chat-date-separator {
+        text-align: center;
+        margin: 15px 0 10px 0;
+        font-size: 12px;
+        color: var(--color-text-dark);
+        position: relative;
+    }
+    .chat-date-separator::before,
+    .chat-date-separator::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        width: 35%;
+        height: 1px;
+        background-color: var(--color-date-separator);
+    }
+    .chat-date-separator::before { left: 0; }
+    .chat-date-separator::after { right: 0; }
+
+    .chat-input-area {
+        display: flex;
+        flex-wrap: wrap; 
+        gap: 5px;
+        margin-top: 10px;
+    }
+    
+    #inputChat { 
+        flex-grow: 1;
+        background-color: #444; 
+        border: 1px solid #555;
+        color: #FFFFFF !important; 
+        min-width: 60%; 
+    }
+    
+    #btnEnviarMensaje, .chat-action-btn {
+        width: auto;
+        padding: 10px 15px;
+        margin: 0;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .chat-action-btn {
+        background-color: #555;
+        color: var(--color-text-light);
+    }
+    .chat-action-btn:hover:not(:disabled) {
+        background-color: #777;
+    }
+    .chat-action-btn.active-tab {
+        background-color: var(--color-primary); 
+        color: var(--color-secondary);
+    }
+
+    /* OCULTAR INPUT DE ARCHIVO - SE ACTIVA POR JS */
+    #file-input-chat {
+        display: none;
+    }
+
+    .chat-media-container {
+        margin-top: 5px;
+        max-width: 100%;
+    }
+    
+    .chat-media-container img {
+        max-width: 100%;
+        max-height: 250px;
+        width: auto;
+        height: auto;
+        border-radius: 8px;
+        cursor: pointer;
+        display: block;
+        object-fit: cover;
+    }
+    
+    .chat-media-container audio {
+        width: 100%;
+        max-width: 280px;
+        margin-top: 5px;
+        border-radius: 20px;
+    }
+    
+    .media-caption {
+        font-size: 11px;
+        margin-top: 5px;
+        opacity: 0.9;
+        word-wrap: break-word;
+    }
+    
+    .mensaje a.detected-link {
+        color: var(--color-link);
+        text-decoration: underline;
+        word-break: break-all;
+    }
+    
+    .usuario a.detected-link {
+        color: #87CEEB;
+    }
+
+    .chat-solicitud { color: var(--color-text-dark); }
+    #aviso-chat { padding: 15px; background-color: #383838; border: 1px solid #555; border-radius: 8px; text-align: left; margin-top: 15px; display: none; color: var(--color-text-light); }
+    #aviso-chat ul { padding-left: 20px; margin: 10px 0; }
+    #aviso-chat p { font-weight: bold; color: var(--color-primary);}
+    #aviso-chat button { background-color: #28a745; margin-top: 15px; }
+    #aviso-chat button:hover { background-color: #218838; }
+
+    #bloqueo-aprobacion {
+        padding: 20px;
+        background-color: #4d0000;
+        border: 1px solid #800000;
+        border-radius: 8px;
+        color: #ffcccc;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 15px;
+        display: none; 
+    }
+
+    
+    #splash-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--color-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease-out;
+    }
+    #splash-logo {
+        max-width: 80%;
+        height: auto;
+    }
+    
+    #btn-activar-notif {
+        width: 100%;
+        padding: 10px;
+        margin-top: 15px;
+        background-color: #6a1b9a;
+        color: var(--color-text-light);
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    #btn-activar-notif:hover {
+        background-color: #8e24aa;
+    }
+
+    .support-btn {
+        background-color: var(--color-success);
+        color: white;
+        margin-top: 10px;
+    }
+    .support-btn:hover {
+        background-color: #218838;
+    }
+    
+    #file-upload-status {
+        width: 100%;
+        text-align: center;
+        margin-top: 10px;
+        color: var(--color-primary);
+        font-weight: bold;
+        display: none;
+    }
+
+    /* Estilos para la grabación de audio */
+    #audio-recording-status {
+        text-align: center;
+        margin-top: 10px;
+        color: #ff4444;
+        font-weight: bold;
+        display: none;
+        animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    .recording-active {
+        background-color: #ff4444 !important;
+        animation: pulse 1.5s infinite;
+    }
+
+    /* ------------------- ESTILOS PARA SEGUIMIENTO DE PEDIDO ------------------- */
+    .tracking-btn {
+        background-color: #2196F3;
+        color: white;
+        margin-top: 10px;
+    }
+    .tracking-btn:hover {
+        background-color: #1976D2;
+    }
+
+    #tracking-result {
+        background-color: #2C2C2C;
+        border: 1px solid #555;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+        display: none;
+    }
+
+    .estado-badge {
+        display: inline-block;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+        margin: 10px 0;
+        font-size: 14px;
+    }
+
+    .estado-pendiente { background-color: #FFD700; color: #000; }
+    .estado-aceptado { background-color: #007bff; color: #fff; }
+    .estado-esperando-pedido { background-color: #E67E22; color: #fff; }
+    .estado-en-camino { background-color: #2980B9; color: #fff; }
+    .estado-entregado { background-color: #28a745; color: #fff; }
+    .estado-completado { background-color: #28a745; color: #fff; }
+    .estado-cancelado { background-color: #dc3545; color: #fff; }
+
+    .pedido-detalle {
+        text-align: left;
+        margin: 10px 0;
+        padding: 8px;
+        background-color: #444;
+        border-radius: 6px;
+        border-left: 3px solid var(--color-primary);
+    }
+
+    .pedido-detalle strong {
+        color: var(--color-primary);
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .pedido-detalle p {
+        margin: 3px 0;
+        color: var(--color-text-light);
+        font-size: 14px;
+    }
+
+    #tracking-status-message {
+        text-align: center;
+        color: var(--color-primary);
+        margin-top: 10px;
+        font-weight: bold;
+    }
+
+    /* 🆕 ESTILOS PARA BOTÓN DE UBICACIÓN */
+    .ubicacion-btn {
+        background-color: #2980B9;
+        color: white;
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .ubicacion-btn:hover {
+        background-color: #3498db;
+    }
+    .ubicacion-btn:disabled {
+        background-color: #555;
+        color: #999;
+        cursor: not-allowed;
+    }
+
+    /* 🗺️ ESTILOS PARA EL MAPA */
+    #map-container {
+        width: 100%;
+        height: 400px;
+        margin: 15px 0;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid var(--color-primary);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        display: none;
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+    }
+
+    .map-info-box {
+        background: var(--color-card);
+        border: 1px solid #555;
+        border-radius: 8px;
+        padding: 10px;
+        margin: 10px 0;
+        color: var(--color-text-light);
+    }
+
+    .map-info-box strong {
+        color: var(--color-primary);
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .map-legend {
+        display: flex;
+        justify-content: space-around;
+        margin: 10px 0;
+        padding: 10px;
+        background: #2a2a2a;
+        border-radius: 8px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+    }
+
+    .legend-icon {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+    }
+
+    .legend-cliente { background-color: #4CAF50; }
+    .legend-repartidor { background-color: #2196F3; }
+
+    /* ================= MENÚ HAMBURGUESA ================= */
+
+    /* Contenedor del botón hamburguesa */
+    .menu-ham-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+    }
+
+    /* Botón hamburguesa */
+    .menu-ham-btn {
+        width: 50px;
+        height: 50px;
+        background: var(--color-primary);
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px;
+        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .menu-ham-btn:hover {
+        background: #ffaa00;
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(255, 215, 0, 0.5);
+    }
+
+    .menu-ham-btn:active {
+        transform: scale(0.95);
+    }
+
+    /* Líneas del hamburguesa */
+    .menu-ham-line {
+        width: 25px;
+        height: 3px;
+        background: var(--color-secondary);
+        border-radius: 3px;
+        transition: all 0.3s ease;
+    }
+
+    /* Animación cuando está abierto */
+    .menu-ham-btn.active .menu-ham-line:nth-child(1) {
+        transform: rotate(45deg) translate(8px, 8px);
+    }
+
+    .menu-ham-btn.active .menu-ham-line:nth-child(2) {
+        opacity: 0;
+    }
+
+    .menu-ham-btn.active .menu-ham-line:nth-child(3) {
+        transform: rotate(-45deg) translate(8px, -8px);
+    }
+
+    /* Overlay oscuro */
+    .menu-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        z-index: 9998;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .menu-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+    /* Panel lateral del menú */
+    .menu-lateral {
+        position: fixed;
+        top: 0;
+        right: -350px;
+        width: 320px;
+        max-width: 90vw;
+        height: 100vh;
+        background: var(--color-card);
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        transition: right 0.3s ease;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .menu-lateral.active {
+        right: 0;
+    }
+
+    /* Header del menú */
+    .menu-header {
+        background: linear-gradient(135deg, var(--color-primary), #ffaa00);
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .menu-header h3 {
+        margin: 0;
+        color: var(--color-secondary);
+        font-size: 20px;
+    }
+
+    .menu-close-btn {
+        background: rgba(0, 0, 0, 0.2);
+        border: none;
+        color: var(--color-secondary);
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        font-size: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .menu-close-btn:hover {
+        background: rgba(0, 0, 0, 0.4);
+        transform: rotate(90deg);
+    }
+
+    /* Contenido del menú */
+    .menu-content {
+        padding: 20px;
+        flex: 1;
+    }
+
+    /* Secciones del menú */
+    .menu-section {
+        margin-bottom: 25px;
+    }
+
+    .menu-section-title {
+        color: var(--color-primary);
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 15px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #555;
+    }
+
+    /* Items del menú */
+    .menu-item {
+        background: #2a2a2a;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s;
+        border: 1px solid #444;
+    }
+
+    .menu-item:hover {
+        background: #333;
+        border-color: var(--color-primary);
+        transform: translateX(-3px);
+    }
+
+    .menu-item-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
+
+    .menu-item-icon {
+        font-size: 24px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 215, 0, 0.1);
+        border-radius: 8px;
+    }
+
+    .menu-item-text {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .menu-item-text strong {
+        color: var(--color-text-light);
+        font-size: 14px;
+    }
+
+    .menu-item-text small {
+        color: var(--color-text-dark);
+        font-size: 12px;
+    }
+
+    /* Botón de acción en items */
+    .menu-item-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        background: var(--color-primary);
+        color: var(--color-secondary);
+        font-weight: bold;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .menu-item-btn:hover {
+        background: #ffaa00;
+        transform: scale(1.05);
+    }
+
+    .menu-item-btn:disabled {
+        background: #555;
+        color: #999;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .menu-item-btn.granted {
+        background: var(--color-success);
+        color: white;
+    }
+
+    .menu-item-btn.denied {
+        background: #dc3545;
+        color: white;
+    }
+
+    /* Estados de permisos */
+    .status-granted {
+        color: var(--color-success) !important;
+    }
+
+    .status-denied {
+        color: #dc3545 !important;
+    }
+
+    .status-prompt {
+        color: #ffa500 !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .menu-lateral {
+            width: 100%;
+            max-width: 100%;
+            right: -100%;
+        }
+        
+        .menu-ham-container {
+            top: 15px;
+            right: 15px;
+        }
+        
+        .menu-ham-btn {
+            width: 45px;
+            height: 45px;
+        }
+
+        #map-container {
+            height: 300px;
+        }
+    }
+
+    /* Scrollbar personalizado para el menú */
+    .menu-lateral::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .menu-lateral::-webkit-scrollbar-track {
+        background: #1a1a1a;
+    }
+
+    .menu-lateral::-webkit-scrollbar-thumb {
+        background: var(--color-primary);
+        border-radius: 4px;
+    }
+
+    .menu-lateral::-webkit-scrollbar-thumb:hover {
+        background: #ffaa00;
+    }
+
+    /* Estilos personalizados para los marcadores del mapa */
+    .custom-marker-cliente {
+        background-color: #4CAF50;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    .custom-marker-repartidor {
+        background-color: #2196F3;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    /* Estilos para popups del mapa */
+    .leaflet-popup-content-wrapper {
+        background: var(--color-card);
+        color: var(--color-text-light);
+        border-radius: 8px;
+    }
+
+    .leaflet-popup-content {
+        margin: 10px;
+        font-size: 14px;
+    }
+
+    .leaflet-popup-tip {
+        background: var(--color-card);
+    }
+  </style>
+</head>
+<body>
+  <!-- MENÚ HAMBURGUESA -->
+  <div id="menu-hamburguesa" class="menu-ham-container">
+      <button id="btn-menu" class="menu-ham-btn" onclick="toggleMenu()">
+          <span class="menu-ham-line"></span>
+          <span class="menu-ham-line"></span>
+          <span class="menu-ham-line"></span>
+      </button>
+  </div>
+
+  <div id="menu-lateral" class="menu-lateral">
+      <div class="menu-header">
+          <h3>⚙️ Ajustes</h3>
+          <button class="menu-close-btn" onclick="toggleMenu()">✕</button>
+      </div>
+      
+      <div class="menu-content">
+          <!-- SECCIÓN: Permisos -->
+          <div class="menu-section">
+              <h4 class="menu-section-title">🔒 Permisos</h4>
+              
+              <!-- Notificaciones -->
+              <div class="menu-item">
+                  <div class="menu-item-info">
+                      <span class="menu-item-icon">🔔</span>
+                      <div class="menu-item-text">
+                          <strong>Notificaciones</strong>
+                          <small id="notif-status">Verificando...</small>
+                      </div>
+                  </div>
+                  <button id="btn-permiso-notif" class="menu-item-btn" onclick="solicitarPermisoNotificaciones()">
+                      Activar
+                  </button>
+              </div>
+              
+              <!-- Cámara -->
+              <div class="menu-item">
+                  <div class="menu-item-info">
+                      <span class="menu-item-icon">📷</span>
+                      <div class="menu-item-text">
+                          <strong>Cámara</strong>
+                          <small id="camera-status">Verificando...</small>
+                      </div>
+                  </div>
+                  <button id="btn-permiso-camera" class="menu-item-btn" onclick="solicitarPermisoCamara()">
+                      Activar
+                  </button>
+              </div>
+              
+              <!-- Micrófono -->
+              <div class="menu-item">
+                  <div class="menu-item-info">
+                      <span class="menu-item-icon">🎙️</span>
+                      <div class="menu-item-text">
+                          <strong>Micrófono</strong>
+                          <small id="mic-status">Verificando...</small>
+                      </div>
+                  </div>
+                  <button id="btn-permiso-mic" class="menu-item-btn" onclick="solicitarPermisoMicrofono()">
+                      Activar
+                  </button>
+              </div>
+
+              <!-- Ubicación -->
+              <div class="menu-item">
+                  <div class="menu-item-info">
+                      <span class="menu-item-icon">📍</span>
+                      <div class="menu-item-text">
+                          <strong>Ubicación</strong>
+                          <small id="location-status">Verificando...</small>
+                      </div>
+                  </div>
+                  <button id="btn-permiso-location" class="menu-item-btn" onclick="solicitarPermisoUbicacion()">
+                      Activar
+                  </button>
+              </div>
+          </div>
+          
+          <!-- SECCIÓN: Más Ajustes -->
+          <div class="menu-section">
+              <h4 class="menu-section-title">🔧 Más Ajustes</h4>
+              <div class="menu-item">
+                  <div class="menu-item-info">
+                      <span class="menu-item-icon">ℹ️</span>
+                      <div class="menu-item-text">
+                          <strong>Versión</strong>
+                          <small>Cliente v2.0.0 - Mapa Integrado</small>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <div id="menu-overlay" class="menu-overlay" onclick="toggleMenu()"></div>
+
+  <div id="splash-screen">
+      <img id="splash-logo" src="https://i.ibb.co/hJCtmHsf/1761849436845.png" alt="Servi Aliados Logo">
+  </div>
+  
+  <div class="container" id="main-container" style="display:none;">
+
+    <div id="vista-inicio">
+      <h2>Bienvenido</h2>
+      <p style="color:var(--color-text-dark);">Inicia sesión o regístrate con tu correo y contraseña:</p>
+      
+      <div class="auth-group">
+          <label for="email-input">Correo Electrónico:</label>
+          <input type="email" id="email-input" placeholder="tu.correo@ejemplo.com" required>
+      </div>
+      <div class="auth-group">
+          <label for="password-input">Contraseña:</label>
+          <input type="password" id="password-input" required>
+      </div>
+      
+      <div id="auth-status"></div>
+      
+      <button onclick="registrarConCorreo()">Registrarse (Crear Cuenta)</button>
+      <button onclick="iniciarSesionConCorreo()">Iniciar Sesión</button>
+    </div>
+
+    <form id="vista-registro-complemento" style="display:none;">
+      <h3>Completa tu Registro</h3>
+      <p style="font-size: 14px; color: var(--color-text-dark);">Falta información esencial para solicitar domicilios.</p>
+      
+      <label>Nombre completo: <span style="color:var(--color-primary);">*</span></label>
+      <input type="text" id="nombreUsuario" required> 
+      <label>Correo Electrónico:</label>
+      <input type="email" id="correoUsuario" required readonly> 
+      <label>Teléfono principal: <span style="color:var(--color-primary);">*</span></label>
+      <input type="tel" id="telefono1Usuario" required>
+      <label>Teléfono secundario (opcional):</label>
+      <input type="tel" id="telefono2Usuario">
+      <label>Dirección de residencia: <span style="color:var(--color-primary);">*</span></label>
+      <input type="text" id="direccionUsuario" required>
+
+      <button type="button" onclick="registrarUsuarioComplemento()">Guardar y Continuar</button>
+      <button type="button" class="back-btn" onclick="signOutUser()">Cerrar Sesión</button>
+    </form>
+
+   <div id="vista-cliente" style="display:none;">
+      
+      <div class="tabs-container">
+          <button id="tab-perfil" class="tab-button active-tab" onclick="changeTab('perfil')">👤 Perfil</button>
+          <button id="tab-servicio" class="tab-button" onclick="changeTab('servicio')">📦 Servicio</button>
+          <button id="tab-tracking" class="tab-button tracking-btn" onclick="changeTab('tracking')">🔍 Seguir</button>
+      </div>
+
+      <div id="content-perfil" class="tab-content active-content">
+          <h3 style="color:var(--color-text-light);">Información del Cliente</h3>
+          <div class="dato">
+            <strong>Nombre:</strong> <span id="nombrePerfil"></span>
+          </div>
+          <div class="dato">
+            <strong>Correo:</strong> <span id="correoPerfil"></span>
+          </div>
+          <div class="dato">
+            <strong>Teléfono 1:</strong> <span id="tel1Perfil"></span>
+          </div>
+          <div class="dato">
+            <strong>Teléfono 2:</strong> <span id="tel2Perfil">No registrado</span>
+          </div>
+          <div class="dato">
+            <strong>Dirección:</strong> <span id="dirPerfil"></span>
+          </div>
+          <button type="button" class="support-btn" onclick="window.open('https://wa.me/3137065977', '_blank')">
+             📞 Soporte WhatsApp
+          </button>
+
+          <button type="button" class="back-btn" onclick="signOutUser()">Cerrar Sesión</button>
+      </div>
+      
+      <div id="content-servicio" class="tab-content">
+          <div id="bloqueo-aprobacion">
+              Tu cuenta está **Bloqueada**. Contacta al administrador si crees que es un error.
+          </div>
+          
+          <div id="chat-container">
+              <div class="terminos-box">
+                  <input type="checkbox" id="terminos-check" onchange="habilitarChat()">
+                  <label for="terminos-check" style="display:inline; font-weight: normal; color: var(--color-text-dark);">Acepto los términos y condiciones.</label>
+              </div>
+              
+              <button id="btnSolicitarChat" onclick="mostrarAviso()" disabled>Solicitar Servicio (Chat con Central)</button>
+              <div class="chat-solicitud">Presiona para solicitar un nuevo servicio.</div>
+
+              <button id="btn-activar-notif" onclick="requestNotificationPermission()" style="display:none;">🔔 Activar Notificaciones de Chat</button>
+
+              <div id="aviso-chat">
+                  <p>¡Hola! Soy el asistente de la central. Tu dirección de recogida es: **<span id="dirSeleccionadaChat"></span>**</p>
+                  <ul>
+                      <li>**Paquete y Dirección de Entrega (Punto B):** Por favor, adjunta una foto si el paquete es delicado. Envía la dirección de **entrega (Punto B)** completa y clara.</li>
+                      <li>**Vueltos (Cambio):** Si necesitas un vuelto específico para el pago, ¡hazlo saber!</li>
+                  </ul>
+                  <button onclick="iniciarChatFinal()" style="background-color: #28a745;">Entendido. Iniciar Chat</button> 
+              </div>
+
+              <div id="chat-box">Selecciona "Entendido. Iniciar Chat" para conectar con la Central.</div>
+              
+              <!-- Área de entrada de chat -->
+              <div class="chat-input-area">
+                <button type="button" class="chat-action-btn" id="btn-foto" onclick="activarSelectorFoto()">📷 Foto</button>
+                <button type="button" class="chat-action-btn" id="btn-audio" onclick="toggleGrabarAudio()">🎙️ Grabar</button>
+
+                <input id="inputChat" placeholder="Escribe un mensaje..." style="display:none;" onkeypress="if(event.key === 'Enter') enviarMensajeFirebase()">
+                <button id="btnEnviarMensaje" style="display:none; width: auto;" onclick="enviarMensajeFirebase()">Enviar</button>
+              </div>
+              
+              <!-- Input oculto para archivos -->
+              <input type="file" id="file-input-chat" accept="image/*" style="display:none;" onchange="manejarArchivoSeleccionado()">
+              
+              <div id="audio-recording-status"></div>
+              <div id="file-upload-status"></div>
+          </div>
+      </div>
+      <!-- SECCIÓN: Contenido de Seguimiento -->
+      <div id="content-tracking" class="tab-content">
+          <h3>🗺️ Seguimiento de Pedido en Tiempo Real</h3>
+          <p style="font-size: 14px; color: var(--color-text-dark);">Ingresa el correo con el que te registraste:</p>
+          <input type="email" id="tracking-email-input" placeholder="tu.correo@ejemplo.com">
+          <button onclick="buscarPedidoPorCorreo()">Buscar Pedido</button>
+          <div id="tracking-status-message"></div>
+          
+          <!-- CONTENEDOR DEL MAPA -->
+          <div id="map-container">
+              <div id="map"></div>
+          </div>
+          
+          <!-- LEYENDA DEL MAPA -->
+          <div id="map-legend" class="map-legend" style="display:none;">
+              <div class="legend-item">
+                  <div class="legend-icon legend-cliente"></div>
+                  <span>📍 Tu Ubicación</span>
+              </div>
+              <div class="legend-item">
+                  <div class="legend-icon legend-repartidor"></div>
+                  <span>🏍️ Repartidor</span>
+              </div>
+          </div>
+
+          <!-- INFO DEL MAPA -->
+          <div id="map-info" class="map-info-box" style="display:none;">
+              <strong>📊 Información del Seguimiento</strong>
+              <p id="map-distance">Calculando distancia...</p>
+              <p id="map-duration">Calculando tiempo estimado...</p>
+          </div>
+          
+          <div id="tracking-result"></div>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- Leaflet JS para el mapa -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+ <script>
+    // ======================================================================
+    // === JS Estándar (Variables Globales y Funciones de Utilidad/UI) ===
+    // ======================================================================
+    
+    let currentUserID = null; 
+    let currentAuthUser = null; 
+    let activePedidoID = null; 
+    let activePedidoListener = null; 
+    let USER_NAME = null; 
+    let notificationPermission = 'default';
+    let lastMessageDate = null; 
+    let currentMediaType = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isRecording = false;
+    let permisosMultimediaSolicitados = false;
+    let notificationPermissionRequested = false;
+    let menuAbierto = false;
+    
+    // 🗺️ VARIABLES PARA EL MAPA Y SEGUIMIENTO
+    let map = null;
+    let clienteMarker = null;
+    let repartidorMarker = null;
+    let routingControl = null;
+    let repartidorUbicacionListener = null;
+    let currentRepartidorUID = null;
+    let clienteCoords = null;
+    let watchPositionId = null;
+    let locationPermissionGranted = false;
+    
+    // 🔊 AUDIO DE NOTIFICACIÓN
+    const notificationSound = new Audio('https://github.com/dt9650329-ops/Chat-administrador-/raw/f67a159f93aed6be1d6f7f02709384111cd84b7e/%E2%9C%A8Monedas%20Cayendo%20__%20Efectos%20De%20Sonidos(MP3_160K).mp3');
+    notificationSound.volume = 0.8;
+    notificationSound.preload = 'auto';
+    notificationSound.load();
+    
+    const MESSAGE_EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24 horas
+    
+    function getClientID(uid) {
+        return `cliente_auth_${uid}`;
+    }
+    
+    function mostrarVista(vistaId) {
+        const mainContainer = document.getElementById("main-container");
+        
+        mainContainer.querySelectorAll(':scope > div, :scope > form').forEach(child => {
+            child.style.display = 'none';
+        });
+
+        mainContainer.style.display = 'block'; 
+        
+        document.getElementById(vistaId).style.display = 'block';
+    }
+
+    function changeTab(tabName) {
+        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active-tab'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active-content'));
+
+        document.getElementById(`tab-${tabName}`).classList.add('active-tab');
+        document.getElementById(`content-${tabName}`).classList.add('active-content');
+        
+        if (tabName === 'servicio') {
+            habilitarChat(); 
+            checkNotificationPermission();
+        }
+        
+        if (tabName === 'tracking') {
+            document.getElementById('tracking-status-message').textContent = '';
+            document.getElementById('tracking-result').style.display = 'none';
+            document.getElementById('map-container').style.display = 'none';
+            document.getElementById('map-legend').style.display = 'none';
+            document.getElementById('map-info').style.display = 'none';
+        }
+    }
+
+    function habilitarChat() {
+        const checked = document.getElementById("terminos-check").checked;
+        const btnChat = document.getElementById("btnSolicitarChat");
+        
+        const servicioBloqueado = document.getElementById("tab-servicio").disabled;
+
+        btnChat.disabled = servicioBloqueado || !checked;
+    }
+
+    function registrarUsuarioComplemento() {
+      const nombre = document.getElementById("nombreUsuario").value.trim();
+      const tel1 = document.getElementById("telefono1Usuario").value.trim();
+      const direccion = document.getElementById("direccionUsuario").value.trim();
+
+      if (!tel1 || !direccion || !nombre) {
+        alert("Por favor completa los campos obligatorios (Nombre, Teléfono principal y Dirección).");
+        return;
+      }
+      
+      guardarUsuarioEnFirebase(); 
+    }
+
+    window.mostrarPerfil = function(usuario) {
+      document.getElementById("nombrePerfil").textContent = usuario.nombre;
+      document.getElementById("correoPerfil").textContent = usuario.correo || "No disponible";
+      document.getElementById("tel1Perfil").textContent = usuario.tel1;
+      document.getElementById("tel2Perfil").textContent = usuario.tel2 || "No registrado";
+      document.getElementById("dirPerfil").textContent = usuario.direccion; 
+      
+      window.USER_NAME = usuario.nombre; 
+
+      currentUserID = getClientID(usuario.uid); 
+      verificarAprobacion(); 
+      mostrarVista('vista-cliente'); 
+    }
+
+    function formatTimestamp(timestamp) {
+        if (!timestamp) return "";
+        let date;
+        try {
+            date = new Date(timestamp);
+            if (isNaN(date.getTime()) || date.getTime() > Date.now() + 3600000) { 
+                date = new Date(Date.now());
+            }
+        } catch (e) {
+            date = new Date(Date.now());
+        }
+
+        const options = { 
+            hour: '2-digit', minute: '2-digit',
+            hour12: true
+        };
+        return date.toLocaleString('es-ES', options);
+    }
+    
+    function formatDate(timestamp) {
+        if (!timestamp) return "";
+        
+        let date;
+        try {
+            date = new Date(timestamp);
+            if (isNaN(date.getTime()) || date.getTime() > Date.now() + 3600000) {
+                 date = new Date(Date.now()); 
+            }
+        } catch (e) {
+            date = new Date(Date.now());
+        }
+
+        const today = new Date();
+        
+        const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        
+        const isToday = todayOnly.getTime() === dateOnly.getTime();
+        const yesterday = new Date(todayOnly);
+        yesterday.setDate(todayOnly.getDate() - 1);
+        const isYesterday = yesterday.getTime() === dateOnly.getTime();
+
+        if (isToday) return "Hoy";
+        if (isYesterday) return "Ayer";
+
+        const options = { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        };
+        return date.toLocaleDateString('es-ES', options);
+    }
+    window.formatDate = formatDate; 
+
+    function hideSplashScreen() {
+        const splash = document.getElementById('splash-screen');
+        splash.style.opacity = '0';
+        setTimeout(() => {
+            splash.style.display = 'none';
+        }, 500); 
+    }
+    
+    function checkNotificationPermission() {
+        const btnNotif = document.getElementById('btn-activar-notif');
+        if (!('Notification' in window) || !btnNotif) {
+            if (btnNotif) btnNotif.style.display = 'none';
+            return;
+        }
+        
+        notificationPermission = Notification.permission;
+        
+        if (document.getElementById('content-servicio').classList.contains('active-content')) {
+            if (notificationPermission === 'granted') {
+                btnNotif.style.display = 'none';
+            } else if (notificationPermission === 'denied') {
+                btnNotif.style.display = 'block';
+                btnNotif.textContent = '❌ Permiso Denegado. Activar en ajustes del navegador.';
+                btnNotif.disabled = true;
+            } else {
+                btnNotif.style.display = 'block';
+                btnNotif.textContent = '🔔 Activar Notificaciones de Chat';
+                btnNotif.disabled = false;
+            }
+        }
+    }
+    
+    window.requestNotificationPermission = function() {
+        if (!('Notification' in window)) {
+             alert("Tu navegador no soporta notificaciones.");
+             return;
+        }
+        
+        const btnNotif = document.getElementById('btn-activar-notif');
+        
+        Notification.requestPermission().then(permission => {
+            notificationPermission = permission;
+            notificationPermissionRequested = true;
+            
+            if (permission === 'granted') {
+                try {
+                    notificationSound.currentTime = 0;
+                    notificationSound.play().catch(e => console.log("Error al reproducir sonido:", e));
+                } catch (e) {
+                    console.log("Error en reproducción:", e);
+                }
+                
+                alert("¡Notificaciones activadas! 🔔\n\nRecibirás alertas sonoras y notificaciones cuando la Central te escriba.");
+                if (btnNotif) btnNotif.style.display = 'none';
+                
+                try {
+                    new Notification('🔔 Notificaciones Activadas', {
+                        body: 'Así sonarán tus alertas cuando recibas mensajes. ¡Estás listo!',
+                        icon: 'https://i.ibb.co/hJCtmHsf/1761849436845.png',
+                        badge: 'https://i.ibb.co/hJCtmHsf/1761849436845.png',
+                        requireInteraction: false
+                    });
+                } catch (e) {
+                    console.log("Error al enviar notificación de prueba:", e);
+                }
+            } else if (permission === 'denied') {
+                alert("Permiso denegado. No podremos enviarte notificaciones.\n\nPuedes activarlas desde la configuración de tu navegador.");
+                if (btnNotif) {
+                    btnNotif.textContent = '❌ Permiso Denegado. Activar en ajustes del navegador.';
+                    btnNotif.disabled = true;
+                }
+            }
+        });
+    }
+    
+    function solicitarPermisosNotificacionInicial() {
+        if (!('Notification' in window)) {
+            console.log('Notificaciones no soportadas');
+            return;
+        }
+        
+        if (Notification.permission === 'default' && !notificationPermissionRequested) {
+            setTimeout(() => {
+                if (confirm('¿Deseas activar las notificaciones para recibir alertas de nuevos mensajes?')) {
+                    window.requestNotificationPermission();
+                } else {
+                    notificationPermissionRequested = true;
+                }
+            }, 2000);
+        } else if (Notification.permission === 'granted') {
+            notificationPermission = 'granted';
+            notificationPermissionRequested = true;
+        }
+    }
+
+    function linkifyText(text) {
+        const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/gi;
+        
+        return text.replace(urlRegex, function(url) {
+            let href = url;
+            
+            if (!url.match(/^https?:\/\//i)) {
+                href = 'https://' + url;
+            }
+            
+            let displayUrl = url;
+            if (url.length > 50) {
+                displayUrl = url.substring(0, 47) + '...';
+            }
+            
+            return `<a href="${href}" class="detected-link" target="_blank" rel="noopener noreferrer">${displayUrl}</a>`;
+        });
+    }
+
+    async function solicitarPermisosMultimedia() {
+        if (permisosMultimediaSolicitados) {
+            return true;
+        }
+        
+        try {
+            // Solicitar permiso de cámara
+            try {
+                const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoStream.getTracks().forEach(track => track.stop());
+                console.log('✅ Permiso de cámara concedido');
+            } catch (cameraError) {
+                console.warn('⚠️ Permiso de cámara denegado o no disponible');
+            }
+            
+            // Solicitar permiso de micrófono
+            try {
+                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioStream.getTracks().forEach(track => track.stop());
+                console.log('✅ Permiso de micrófono concedido');
+            } catch (audioError) {
+                console.warn('⚠️ Permiso de micrófono denegado o no disponible');
+            }
+            
+            permisosMultimediaSolicitados = true;
+            return true;
+            
+        } catch (error) {
+            console.error('Error al solicitar permisos:', error);
+            return false;
+        }
+    }
+    
+    async function limpiarMensajesAntiguos() {
+        if (!window.currentUserID || !window.db || !window.ref || !window.get) {
+            return;
+        }
+        
+        try {
+            const chatRef = window.ref(window.db, `chats/${window.currentUserID}`);
+            const snapshot = await window.get(chatRef);
+            
+            if (!snapshot.exists()) {
+                return;
+            }
+            
+            const ahora = Date.now();
+            const mensajesParaBorrar = [];
+            const mensajesParaHistorial = [];
+            
+            snapshot.forEach((childSnapshot) => {
+                const mensaje = childSnapshot.val();
+                const timestampMensaje = mensaje.timestamp || 0;
+                const edad = ahora - timestampMensaje;
+                
+                if (edad > MESSAGE_EXPIRATION_TIME) {
+                    mensajesParaBorrar.push(childSnapshot.key);
+                    mensajesParaHistorial.push({
+                        ...mensaje,
+                        messageID: childSnapshot.key,
+                        fechaArchivado: ahora
+                    });
+                }
+            });
+            
+            if (mensajesParaBorrar.length > 0) {
+                console.log(`🗑️ Limpiando ${mensajesParaBorrar.length} mensajes antiguos...`);
+                
+                for (const mensaje of mensajesParaHistorial) {
+                    const historialRef = window.push(
+                        window.ref(window.db, `chats_historial/${window.currentUserID}`)
+                    );
+                    await window.set(historialRef, mensaje);
+                }
+                
+                for (const messageKey of mensajesParaBorrar) {
+                    await window.remove(
+                        window.ref(window.db, `chats/${window.currentUserID}/${messageKey}`)
+                    );
+                }
+                
+                console.log(`✅ ${mensajesParaBorrar.length} mensajes archivados.`);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error al limpiar mensajes:', error);
+        }
+    }
+
+    window.activarSelectorFoto = function() {
+        const fileInput = document.getElementById('file-input-chat');
+        const btnFoto = document.getElementById('btn-foto');
+        const btnAudio = document.getElementById('btn-audio');
+        
+        fileInput.accept = 'image/*';
+        currentMediaType = 'image';
+        
+        btnFoto.classList.add('active-tab');
+        btnAudio.classList.remove('active-tab');
+        
+        fileInput.click();
+    }
+    
+    window.toggleGrabarAudio = async function() {
+        const btnAudio = document.getElementById('btn-audio');
+        const btnFoto = document.getElementById('btn-foto');
+        const statusDiv = document.getElementById('audio-recording-status');
+        
+        if (!isRecording) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
+                    
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    statusDiv.style.display = 'none';
+                    btnAudio.classList.remove('recording-active');
+                    btnAudio.textContent = '🎙️ Grabar';
+                    btnFoto.disabled = false;
+                    
+                    await enviarArchivoAFirebase(audioFile, 'audio');
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                btnAudio.classList.add('recording-active');
+                btnAudio.textContent = '⏹️ Detener';
+                btnFoto.disabled = true;
+                statusDiv.style.display = 'block';
+                statusDiv.textContent = '🔴 Grabando audio...';
+                
+            } catch (error) {
+                alert('Error al acceder al micrófono: ' + error.message);
+                console.error('Error de micrófono:', error);
+            }
+        } else {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                isRecording = false;
+            }
+        }
+    }
+    
+    window.manejarArchivoSeleccionado = async function() {
+        const fileInput = document.getElementById('file-input-chat');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            return;
+        }
+        
+        const fileStatusDiv = document.getElementById('file-upload-status');
+        fileStatusDiv.style.display = 'block';
+        fileStatusDiv.textContent = 'Preparando archivo...';
+        
+        document.getElementById('btn-foto').disabled = true;
+        document.getElementById('btn-audio').disabled = true;
+        
+        try {
+            await enviarArchivoAFirebase(file, 'image');
+        } catch (error) {
+            console.error("Error al enviar archivo:", error);
+            fileStatusDiv.textContent = `❌ Error: ${error.message}`;
+        }
+        
+        setTimeout(() => {
+            fileStatusDiv.style.display = 'none';
+            fileStatusDiv.textContent = '';
+            fileInput.value = '';
+            document.getElementById('btn-foto').disabled = false;
+            document.getElementById('btn-audio').disabled = false;
+            document.getElementById('btn-foto').classList.remove('active-tab');
+            currentMediaType = null;
+        }, 1500);
+    }
+    
+    async function enviarArchivoAFirebase(file, tipoArchivo) {
+        if (!window.currentUserID || !window.storage || !window.push || !window.ref || !window.db) {
+            throw new Error("Sistema no inicializado");
+        }
+        
+        const fileStatusDiv = document.getElementById('file-upload-status');
+        fileStatusDiv.style.display = 'block';
+        fileStatusDiv.textContent = 'Subiendo archivo...';
+        
+        const storagePath = `chats/${window.currentUserID}/${Date.now()}_${file.name}`;
+        const fileRef = window.storageRef(window.storage, storagePath);
+        
+        const uploadTask = window.uploadBytesResumable(fileRef, file);
+
+        return new Promise((resolve, reject) => {
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    fileStatusDiv.textContent = `Subiendo... ${progress.toFixed(0)}%`;
+                }, 
+                (error) => {
+                    reject(new Error(`Error al subir: ${error.message}`));
+                }, 
+                async () => {
+                    try {
+                        const downloadURL = await window.getDownloadURL(uploadTask.snapshot.ref);
+                        
+                        let messageText = '';
+                        if (tipoArchivo === 'image') {
+                            messageText = `📷 Imagen`;
+                        } else if (tipoArchivo === 'audio') {
+                            messageText = `🎙️ Audio`;
+                        }
+                        
+                        await window.push(window.ref(window.db, `chats/${window.currentUserID}`), {
+                            remitente: window.currentUserID, 
+                            nombre_remitente: window.USER_NAME || window.currentUserID, 
+                            texto: messageText,
+                            timestamp: Date.now(), 
+                            rol_remitente: window.USER_ROLE, 
+                            pedidoID: window.activePedidoID || 'N/A',
+                            tipo_adjunto: tipoArchivo,
+                            referencia_adjunto: downloadURL 
+                        });
+                        
+                        fileStatusDiv.textContent = '✅ Archivo enviado';
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                }
+            );
+        });
+    }
+
+    // ================= FUNCIONES DEL MENÚ HAMBURGUESA =================
+
+    window.toggleMenu = function() {
+        menuAbierto = !menuAbierto;
+        
+        const menuLateral = document.getElementById('menu-lateral');
+        const menuOverlay = document.getElementById('menu-overlay');
+        const btnMenu = document.getElementById('btn-menu');
+        
+        if (menuAbierto) {
+            menuLateral.classList.add('active');
+            menuOverlay.classList.add('active');
+            btnMenu.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            
+            verificarEstadosPermisos();
+        } else {
+            menuLateral.classList.remove('active');
+            menuOverlay.classList.remove('active');
+            btnMenu.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && menuAbierto) {
+            toggleMenu();
+        }
+    });
+
+    // ================= GESTIÓN DE PERMISOS =================
+
+    window.verificarEstadosPermisos = async function() {
+        // Verificar Notificaciones
+        if ('Notification' in window) {
+            const notifStatus = document.getElementById('notif-status');
+            const btnNotif = document.getElementById('btn-permiso-notif');
+            
+            if (Notification.permission === 'granted') {
+                notifStatus.textContent = '✅ Concedido';
+                notifStatus.classList.add('status-granted');
+                btnNotif.textContent = '✓ Activo';
+                btnNotif.classList.add('granted');
+                btnNotif.disabled = true;
+            } else if (Notification.permission === 'denied') {
+                notifStatus.textContent = '❌ Denegado';
+                notifStatus.classList.add('status-denied');
+                btnNotif.textContent = 'Denegado';
+                btnNotif.classList.add('denied');
+                btnNotif.disabled = true;
+            } else {
+                notifStatus.textContent = '⚠️ No concedido';
+                notifStatus.classList.add('status-prompt');
+                btnNotif.textContent = 'Activar';
+                btnNotif.disabled = false;
+            }
+        }
+        
+        // Verificar Cámara
+        try {
+            const permissions = await navigator.permissions.query({ name: 'camera' });
+            actualizarEstadoPermiso('camera', permissions.state);
+            
+            permissions.addEventListener('change', () => {
+                actualizarEstadoPermiso('camera', permissions.state);
+            });
+        } catch (e) {
+            document.getElementById('camera-status').textContent = '⚠️ No disponible';
+        }
+        
+        // Verificar Micrófono
+        try {
+            const permissions = await navigator.permissions.query({ name: 'microphone' });
+            actualizarEstadoPermiso('mic', permissions.state);
+            
+            permissions.addEventListener('change', () => {
+                actualizarEstadoPermiso('mic', permissions.state);
+            });
+        } catch (e) {
+            document.getElementById('mic-status').textContent = '⚠️ No disponible';
+        }
+
+        // Verificar Ubicación
+        try {
+            const permissions = await navigator.permissions.query({ name: 'geolocation' });
+            actualizarEstadoPermiso('location', permissions.state);
+            
+            permissions.addEventListener('change', () => {
+                actualizarEstadoPermiso('location', permissions.state);
+            });
+        } catch (e) {
+            document.getElementById('location-status').textContent = '⚠️ No disponible';
+        }
+    }
+
+    function actualizarEstadoPermiso(tipo, estado) {
+        const statusElement = document.getElementById(`${tipo}-status`);
+        const btnElement = document.getElementById(`btn-permiso-${tipo}`);
+        
+        statusElement.classList.remove('status-granted', 'status-denied', 'status-prompt');
+        btnElement.classList.remove('granted', 'denied');
+        
+        if (estado === 'granted') {
+            statusElement.textContent = '✅ Concedido';
+            statusElement.classList.add('status-granted');
+            btnElement.textContent = '✓ Activo';
+            btnElement.classList.add('granted');
+            btnElement.disabled = true;
+            
+            if (tipo === 'location') {
+                locationPermissionGranted = true;
+            }
+        } else if (estado === 'denied') {
+            statusElement.textContent = '❌ Denegado';
+            statusElement.classList.add('status-denied');
+            btnElement.textContent = 'Denegado';
+            btnElement.classList.add('denied');
+            btnElement.disabled = true;
+            
+            if (tipo === 'location') {
+                locationPermissionGranted = false;
+            }
+        } else {
+            statusElement.textContent = '⚠️ No concedido';
+            statusElement.classList.add('status-prompt');
+            btnElement.textContent = 'Activar';
+            btnElement.disabled = false;
+        }
+    }
+
+    window.solicitarPermisoNotificaciones = function() {
+        if ('Notification' in window) {
+            Notification.requestPermission().then(permission => {
+                verificarEstadosPermisos();
+                
+                if (permission === 'granted') {
+                    alert('✅ Notificaciones activadas correctamente');
+                    try {
+                        notificationSound.currentTime = 0;
+                        notificationSound.play().catch(e => console.log("Error:", e));
+                        
+                        new Notification('🔔 ¡Notificaciones Activas!', {
+                            body: 'Recibirás alertas de nuevos mensajes',
+                            icon: 'https://i.ibb.co/hJCtmHsf/1761849436845.png'
+                        });
+                    } catch (e) {
+                        console.log("Error:", e);
+                    }
+                } else {
+                    alert('❌ Permiso denegado. Actívalo desde la configuración del navegador.');
+                }
+            });
+        }
+    }
+
+    window.solicitarPermisoCamara = async function() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            stream.getTracks().forEach(track => track.stop());
+            alert('✅ Permiso de cámara concedido');
+            verificarEstadosPermisos();
+        } catch (error) {
+            if (error.name === 'NotAllowedError') {
+                alert('❌ Permiso denegado. Actívalo desde la configuración del navegador.');
+            } else {
+                alert('⚠️ Error al acceder a la cámara: ' + error.message);
+            }
+            verificarEstadosPermisos();
+        }
+    }
+
+    window.solicitarPermisoMicrofono = async function() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(track => track.stop());
+            alert('✅ Permiso de micrófono concedido');
+            verificarEstadosPermisos();
+        } catch (error) {
+            if (error.name === 'NotAllowedError') {
+                alert('❌ Permiso denegado. Actívalo desde la configuración del navegador.');
+            } else {
+                alert('⚠️ Error al acceder al micrófono: ' + error.message);
+            }
+            verificarEstadosPermisos();
+        }
+    }
+
+    window.solicitarPermisoUbicacion = function() {
+        if (!navigator.geolocation) {
+            alert('⚠️ Tu navegador no soporta geolocalización');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                locationPermissionGranted = true;
+                alert('✅ Permiso de ubicación concedido');
+                verificarEstadosPermisos();
+            },
+            (error) => {
+                if (error.code === error.PERMISSION_DENIED) {
+                    alert('❌ Permiso denegado. Actívalo desde la configuración del navegador.');
+                } else {
+                    alert('⚠️ Error al obtener ubicación: ' + error.message);
+                }
+                verificarEstadosPermisos();
+            }
+        );
+    }
+
+    window.addEventListener('load', () => {
+        setTimeout(verificarEstadosPermisos, 1000);
+    });
+
+    // 🗺️ ================= FUNCIONES DEL MAPA =================
+
+    function initMap() {
+        if (map) {
+            map.remove();
+            map = null;
+        }
+
+        // Coordenadas por defecto (Colombia - Bogotá)
+        const defaultCoords = [4.710989, -74.072092];
+        
+        map = L.map('map').setView(defaultCoords, 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Invalidar tamaño después de un momento para asegurar renderizado correcto
+        setTimeout(() => {
+            if (map) {
+                map.invalidateSize();
+            }
+        }, 100);
+    }
+
+    function obtenerUbicacionCliente() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('Geolocalización no soportada'));
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const coords = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    clienteCoords = coords;
+                    resolve(coords);
+                },
+                (error) => {
+                    reject(error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        });
+    }
+
+    function agregarMarcadorCliente(coords) {
+        if (clienteMarker) {
+            map.removeLayer(clienteMarker);
+        }
+
+        const iconCliente = L.divIcon({
+            className: 'custom-marker-cliente',
+            html: '<div style="background-color: #4CAF50; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        clienteMarker = L.marker([coords.lat, coords.lng], { icon: iconCliente })
+            .addTo(map)
+            .bindPopup('<b>📍 Tu Ubicación</b>')
+            .openPopup();
+
+        map.setView([coords.lat, coords.lng], 15);
+    }
+
+    function agregarMarcadorRepartidor(coords) {
+        if (repartidorMarker) {
+            map.removeLayer(repartidorMarker);
+        }
+
+        const iconRepartidor = L.divIcon({
+            className: 'custom-marker-repartidor',
+            html: '<div style="background-color: #2196F3; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        repartidorMarker = L.marker([coords.lat, coords.lng], { icon: iconRepartidor })
+            .addTo(map)
+            .bindPopup('<b>🏍️ Repartidor</b>');
+    }
+
+    function trazarRuta(clienteCoords, repartidorCoords) {
+        if (routingControl) {
+            map.removeControl(routingControl);
+        }
+
+        routingControl = L.Routing.control({
+            waypoints: [
+                L.latLng(repartidorCoords.lat, repartidorCoords.lng),
+                L.latLng(clienteCoords.lat, clienteCoords.lng)
+            ],
+            routeWhileDragging: false,
+            showAlternatives: false,
+            lineOptions: {
+                styles: [{ color: '#FFD700', opacity: 0.8, weight: 5 }]
+            },
+            createMarker: function() { return null; }, // No crear marcadores adicionales
+            addWaypoints: false,
+            draggableWaypoints: false,
+            fitSelectedRoutes: true
+        }).addTo(map);
+
+        // Escuchar cuando se encuentra la ruta
+        routingControl.on('routesfound', function(e) {
+            const routes = e.routes;
+            const summary = routes[0].summary;
+            
+            // Actualizar información de distancia y tiempo
+            const distanceKm = (summary.totalDistance / 1000).toFixed(2);
+            const timeMin = Math.round(summary.totalTime / 60);
+            
+            document.getElementById('map-distance').textContent = `📏 Distancia: ${distanceKm} km`;
+            document.getElementById('map-duration').textContent = `⏱️ Tiempo estimado: ${timeMin} min`;
+        });
+    }
+
+    function iniciarSeguimientoUbicacion(repartidorUID) {
+        detenerSeguimientoUbicacion();
+        
+        if (!repartidorUID || !window.db || !window.ref || !window.onValue) {
+            console.error('❌ No se puede iniciar seguimiento: datos incompletos');
+            return;
+        }
+        
+        currentRepartidorUID = repartidorUID;
+        
+        const repartidorRef = window.ref(window.db, `repartidores_info/${repartidorUID}`);
+        
+        repartidorUbicacionListener = window.onValue(repartidorRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const repData = snapshot.val();
+                
+                // Verificar si tiene coordenadas de ubicación
+                if (repData.ubicacion && repData.ubicacion.lat && repData.ubicacion.lon) {
+                    const repartidorCoords = {
+                        lat: parseFloat(repData.ubicacion.lat),
+                        lng: parseFloat(repData.ubicacion.lon)
+                    };
+                    
+                    // Actualizar marcador del repartidor
+                    if (map && clienteCoords) {
+                        agregarMarcadorRepartidor(repartidorCoords);
+                        trazarRuta(clienteCoords, repartidorCoords);
+                    }
+                }
+            }
+        });
+        
+        console.log('✅ Seguimiento de ubicación iniciado para:', repartidorUID);
+    }
+
+    function detenerSeguimientoUbicacion() {
+        if (repartidorUbicacionListener && currentRepartidorUID && window.off && window.ref && window.db) {
+            const repartidorRef = window.ref(window.db, `repartidores_info/${currentRepartidorUID}`);
+            window.off(repartidorRef, 'value', repartidorUbicacionListener);
+            repartidorUbicacionListener = null;
+            currentRepartidorUID = null;
+            console.log('🛑 Seguimiento de ubicación detenido');
+        }
+
+        // Detener seguimiento de ubicación del cliente
+        if (watchPositionId !== null) {
+            navigator.geolocation.clearWatch(watchPositionId);
+            watchPositionId = null;
+        }
+
+        // Limpiar mapa
+        if (map) {
+            if (clienteMarker) {
+                map.removeLayer(clienteMarker);
+                clienteMarker = null;
+            }
+            if (repartidorMarker) {
+                map.removeLayer(repartidorMarker);
+                repartidorMarker = null;
+            }
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+            }
+        }
+
+        clienteCoords = null;
+    }
+
+    function iniciarSeguimientoContinuoCliente() {
+        if (!navigator.geolocation) {
+            console.error('Geolocalización no soportada');
+            return;
+        }
+
+        // Detener seguimiento previo si existe
+        if (watchPositionId !== null) {
+            navigator.geolocation.clearWatch(watchPositionId);
+        }
+
+        watchPositionId = navigator.geolocation.watchPosition(
+            (position) => {
+                const coords = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                
+                clienteCoords = coords;
+                
+                if (map) {
+                    agregarMarcadorCliente(coords);
+                    
+                    // Si hay un repartidor en seguimiento, actualizar la ruta
+                    if (repartidorMarker) {
+                        const repartidorPos = repartidorMarker.getLatLng();
+                        trazarRuta(coords, { lat: repartidorPos.lat, lng: repartidorPos.lng });
+                    }
+                }
+            },
+            (error) => {
+                console.error('Error al obtener ubicación:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 5000
+            }
+        );
+    }
+
+    window.buscarPedidoPorCorreo = async function() {
+        const email = document.getElementById('tracking-email-input').value.trim();
+        const statusDiv = document.getElementById('tracking-status-message');
+        const resultDiv = document.getElementById('tracking-result');
+        const mapContainer = document.getElementById('map-container');
+        const mapLegend = document.getElementById('map-legend');
+        const mapInfo = document.getElementById('map-info');
+        
+        if (!email) {
+            statusDiv.textContent = '⚠️ Por favor, ingresa un correo electrónico.';
+            statusDiv.style.color = '#FFD700';
+            return;
+        }
+
+        if (!window.db || !window.ref || !window.get) {
+            statusDiv.textContent = '❌ Error: Firebase no está inicializado.';
+            statusDiv.style.color = '#dc3545';
+            return;
+        }
+
+        statusDiv.textContent = '🔍 Buscando tu pedido...';
+        statusDiv.style.color = '#FFD700';
+        resultDiv.style.display = 'none';
+        resultDiv.innerHTML = '';
+        mapContainer.style.display = 'none';
+        mapLegend.style.display = 'none';
+        mapInfo.style.display = 'none';
+        
+        detenerSeguimientoUbicacion();
+
+        try {
+            const usuariosRef = window.ref(window.db, 'usuarios');
+            const usuariosSnapshot = await window.get(usuariosRef);
+            
+            let userUID = null;
+            let userName = 'Cliente';
+            
+            if (usuariosSnapshot.exists()) {
+                usuariosSnapshot.forEach((childSnapshot) => {
+                    const userData = childSnapshot.val();
+                    if (userData.correo && userData.correo.toLowerCase() === email.toLowerCase()) {
+                        userUID = userData.uid;
+                        userName = userData.nombre || 'Cliente';
+                    }
+                });
+            }
+
+            if (!userUID) {
+                statusDiv.textContent = '❌ No se encontró ningún usuario con ese correo.';
+                statusDiv.style.color = '#dc3545';
+                return;
+            }
+
+            const clienteID = `cliente_auth_${userUID}`;
+
+            const pedidosHistorialRef = window.ref(window.db, 'pedidos_historial');
+            const historialSnapshot = await window.get(pedidosHistorialRef);
+            
+            let pedidosEncontrados = [];
+            
+            if (historialSnapshot.exists()) {
+                historialSnapshot.forEach((childSnapshot) => {
+                    const pedido = childSnapshot.val();
+                    if (pedido.clienteIdAsignado === clienteID) {
+                        pedidosEncontrados.push({
+                            id: childSnapshot.key,
+                            ...pedido
+                        });
+                    }
+                });
+            }
+
+            pedidosEncontrados.sort((a, b) => {
+                const timeA = a.timestampAsignacion || a.timestampCreacion || 0;
+                const timeB = b.timestampAsignacion || b.timestampCreacion || 0;
+                return timeB - timeA;
+            });
+
+            if (pedidosEncontrados.length === 0) {
+                statusDiv.textContent = '📭 No se encontraron pedidos asociados a este correo.';
+                statusDiv.style.color = '#FFD700';
+                return;
+            }
+
+            const pedidoReciente = pedidosEncontrados[0];
+            await mostrarDetallePedido(pedidoReciente, userName, pedidosEncontrados.length);
+            
+            statusDiv.textContent = '';
+
+        } catch (error) {
+            console.error('Error al buscar pedido:', error);
+            statusDiv.textContent = `❌ Error al buscar: ${error.message}`;
+            statusDiv.style.color = '#dc3545';
+        }
+    }
+
+    async function mostrarDetallePedido(pedido, userName, totalPedidos) {
+        const resultDiv = document.getElementById('tracking-result');
+        const mapContainer = document.getElementById('map-container');
+        const mapLegend = document.getElementById('map-legend');
+        const mapInfo = document.getElementById('map-info');
+        
+        const estado = pedido.estado || pedido.estadoHistorial || 'Desconocido';
+        const estadoClass = `estado-${estado.toLowerCase().replace(/ /g, '-')}`;
+        
+        const timestamp = pedido.timestampAsignacion || pedido.timestampCreacion || Date.now();
+        const fechaCreacion = new Date(timestamp).toLocaleString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        let estadoDescripcion = '';
+        switch(estado.toLowerCase()) {
+            case 'pendiente':
+                estadoDescripcion = '⏳ Tu pedido está pendiente de ser aceptado.';
+                break;
+            case 'aceptado':
+                estadoDescripcion = '✅ El repartidor ha aceptado tu pedido.';
+                break;
+            case 'esperando pedido':
+                estadoDescripcion = '🏪 El repartidor está esperando en el punto de recogida.';
+                break;
+            case 'en camino':
+                estadoDescripcion = '🚚 Tu pedido está en camino.';
+                break;
+            case 'completado':
+            case 'entregado':
+                estadoDescripcion = '🎉 ¡Tu pedido ha sido entregado!';
+                break;
+            case 'cancelado':
+                estadoDescripcion = '❌ Este pedido fue cancelado.';
+                break;
+            default:
+                estadoDescripcion = '⏱️ Estado actualizado.';
+        }
+
+        resultDiv.innerHTML = `
+            <h3 style="color: var(--color-primary); margin-top: 0;">📦 Tu Pedido</h3>
+            
+            <div style="text-align: center; margin-bottom: 15px;">
+                <span class="estado-badge ${estadoClass}">${estado}</span>
+            </div>
+            
+            <p style="text-align: center; color: var(--color-text-dark); margin-bottom: 20px;">${estadoDescripcion}</p>
+            
+            <div class="pedido-detalle">
+                <strong>ID del Pedido:</strong>
+                <p>#${pedido.id ? pedido.id.substring(0, 8) : 'N/A'}...</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Cliente:</strong>
+                <p>${userName}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Descripción:</strong>
+                <p>${pedido.descripcion || 'Sin descripción'}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Dirección de Entrega:</strong>
+                <p>${pedido.direccionCliente || 'No especificada'}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Teléfono:</strong>
+                <p>${pedido.telefonoCliente || 'No especificado'}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Monto Total:</strong>
+                <p style="font-size: 18px; color: var(--color-primary);">$${(pedido.montoTotal || 0).toLocaleString('es-ES')}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Repartidor:</strong>
+                <p>${pedido.repartidorNombre || 'Pendiente'}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Fecha:</strong>
+                <p>${fechaCreacion}</p>
+            </div>
+            
+            ${totalPedidos > 1 ? `<p style="text-align: center; color: var(--color-text-dark); margin-top: 15px; font-size: 12px;">Tienes ${totalPedidos} pedidos en total.</p>` : ''}
+        `;
+        
+        resultDiv.style.display = 'block';
+        
+        // Verificar si el pedido está activo y tiene repartidor asignado
+        const estadosActivos = ['pendiente', 'aceptado', 'esperando pedido', 'en camino'];
+        if (estadosActivos.includes(estado.toLowerCase()) && pedido.repartidorIdAsignado) {
+            // Mostrar mapa
+            mapContainer.style.display = 'block';
+            mapLegend.style.display = 'flex';
+            mapInfo.style.display = 'block';
+            
+            // Inicializar mapa
+            initMap();
+            
+            // Obtener ubicación del cliente
+            try {
+                const coords = await obtenerUbicacionCliente();
+                agregarMarcadorCliente(coords);
+                
+                // Iniciar seguimiento continuo del cliente
+                iniciarSeguimientoContinuoCliente();
+                
+                // Iniciar seguimiento del repartidor
+                iniciarSeguimientoUbicacion(pedido.repartidorIdAsignado);
+                
+            } catch (error) {
+                console.error('Error al obtener ubicación:', error);
+                
+                if (error.code === 1) {
+                    alert('⚠️ Necesitamos tu permiso de ubicación para mostrar el mapa.\n\nActívalo en Ajustes (menú hamburguesa) o en la configuración de tu navegador.');
+                } else {
+                    alert('⚠️ No se pudo obtener tu ubicación. Verifica tu conexión y permisos.');
+                }
+                
+                mapContainer.style.display = 'none';
+                mapLegend.style.display = 'none';
+                mapInfo.style.display = 'none';
+            }
+        } else {
+            // Pedido completado o cancelado - no mostrar mapa
+            detenerSeguimientoUbicacion();
+            mapContainer.style.display = 'none';
+            mapLegend.style.display = 'none';
+            mapInfo.style.display = 'none';
+        }
+    }
+  </script>
+  <script type="module">
+    import { 
+        initializeApp 
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    
+    import { 
+        getDatabase, 
+        ref, 
+        onChildAdded, 
+        push, 
+        set, 
+        onValue, 
+        get, 
+        query, 
+        orderByChild, 
+        equalTo,
+        off,
+        remove
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    
+    import { 
+        getAuth, 
+        createUserWithEmailAndPassword, 
+        signInWithEmailAndPassword, 
+        signOut, 
+        onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"; 
+    
+    import { 
+        getStorage, 
+        ref as storageRef, 
+        uploadBytesResumable, 
+        getDownloadURL 
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAZX7Q5B29Xti4YtV9wXuiREVdkgcclv9U",
+      authDomain: "domicilios-1cd74.firebaseapp.com",
+      databaseURL: "https://domicilios-1cd74-default-rtdb.firebaseio.com", 
+      projectId: "domicilios-1cd74",
+      storageBucket: "domicilios-1cd74.firebasestorage.app",
+      messagingSenderId: "771819437001", 
+      appId: "1:771819437001:web:b9c8f5e4d3a2c1b0a1b2c3"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app); 
+    const storage = getStorage(app); 
+
+    window.db = db;
+    window.push = push;
+    window.ref = ref;
+    window.set = set;
+    window.remove = remove;
+    window.storage = storage;
+    window.storageRef = storageRef;
+    window.uploadBytesResumable = uploadBytesResumable;
+    window.getDownloadURL = getDownloadURL;
+    window.get = get;
+    window.query = query;
+    window.orderByChild = orderByChild;
+    window.equalTo = equalTo;
+    window.onValue = onValue;
+    window.off = off;
+
+    const chatBox = document.getElementById("chat-box");
+    const tabServicio = document.getElementById("tab-servicio");
+    const bloqueoAprobacion = document.getElementById("bloqueo-aprobacion");
+    const emailInput = document.getElementById("email-input");
+    const passwordInput = document.getElementById("password-input");
+    const statusDiv = document.getElementById("auth-status");
+    const inputChat = document.getElementById("inputChat");
+    const btnEnviarMensaje = document.getElementById("btnEnviarMensaje");
+
+    window.USER_ROLE = "Cliente";
+    
+    function limpiarInputs() {
+        emailInput.value = '';
+        passwordInput.value = '';
+        statusDiv.textContent = '';
+    }
+
+    window.registrarConCorreo = function() {
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        if (!email || password.length < 6) {
+            statusDiv.textContent = "Correo inválido o Contraseña debe tener al menos 6 caracteres.";
+            return;
+        }
+        
+        statusDiv.textContent = "Registrando usuario...";
+
+        createUserWithEmailAndPassword(auth, email, password)
+            .then((userCredential) => {
+                statusDiv.textContent = "✅ Registro exitoso. Completa tus datos.";
+            })
+            .catch((error) => {
+                let errorMessage;
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = "El correo ya está registrado. Intenta Iniciar Sesión.";
+                } else {
+                    errorMessage = "Error al registrar: " + error.message;
+                }
+                statusDiv.textContent = errorMessage;
+                console.error("Error de Registro:", error);
+            });
+    }
+
+    window.iniciarSesionConCorreo = function() {
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        if (!email || !password) {
+            statusDiv.textContent = "Por favor, ingresa correo y contraseña.";
+            return;
+        }
+        
+        statusDiv.textContent = "Iniciando sesión...";
+
+        signInWithEmailAndPassword(auth, email, password)
+            .then((userCredential) => {
+                statusDiv.textContent = "✅ Sesión iniciada.";
+            })
+            .catch((error) => {
+                let errorMessage;
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                    errorMessage = "Correo o contraseña incorrectos.";
+                } else {
+                    errorMessage = "Error al iniciar sesión: " + error.message;
+                }
+                statusDiv.textContent = errorMessage;
+                console.error("Error de Inicio de Sesión:", error);
+            });
+    }
+
+    window.signOutUser = function() {
+        if (window.activePedidoListener) {
+            off(ref(db, `pedidos_pendientes/${window.activePedidoID}`), 'value', window.activePedidoListener);
+            window.activePedidoListener = null;
+            window.activePedidoID = null;
+        }
+        
+        detenerSeguimientoUbicacion();
+        
+        off(ref(db, `chats/${window.currentUserID}`));
+        
+        signOut(auth).then(() => {
+            window.currentUserID = null;
+            window.currentAuthUser = null;
+            window.USER_NAME = null; 
+            localStorage.removeItem("usuarioDomicilios"); 
+            limpiarInputs();
+            window.mostrarVista('vista-inicio');
+        }).catch((error) => {
+            console.error("Error al cerrar sesión:", error);
+        });
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      setTimeout(() => {
+          hideSplashScreen();
+      }, 2000);
+      
+      if (user) {
+        window.currentAuthUser = user;
+        window.currentUserID = window.getClientID(user.uid);
+        
+        get(ref(db, `usuarios/${window.currentUserID}`)) 
+          .then(async (snapshot) => {
+            if (snapshot.exists() && snapshot.val().direccion && snapshot.val().tel1) {
+              const userData = snapshot.val();
+              userData.uid = user.uid;
+              
+              await solicitarPermisosMultimedia();
+              await limpiarMensajesAntiguos();
+              
+              solicitarPermisosNotificacionInicial();
+              
+              window.mostrarPerfil(userData); 
+              
+            } else {
+              const existingData = snapshot.exists() ? snapshot.val() : {};
+              document.getElementById("nombreUsuario").value = existingData.nombre || "";
+              document.getElementById("correoUsuario").value = user.email || ""; 
+              document.getElementById("telefono1Usuario").value = existingData.tel1 || ""; 
+              document.getElementById("telefono2Usuario").value = existingData.tel2 || "";
+              document.getElementById("direccionUsuario").value = existingData.direccion || "";
+
+              window.mostrarVista('vista-registro-complemento');
+            }
+            hideSplashScreen();
+          })
+          .catch((error) => {
+            console.error("Error al leer datos de Firebase DB:", error);
+            alert("Error al intentar cargar su perfil.");
+            hideSplashScreen();
+          });
+      } else {
+        window.mostrarVista('vista-inicio');
+        hideSplashScreen();
+      }
+    });
+
+    window.guardarUsuarioEnFirebase = function() {
+        const authUser = window.currentAuthUser; 
+
+        if (!authUser) {
+             alert("Error: No se encontró la sesión de autenticación.");
+             return;
+        }
+
+        const usuarioID = window.getClientID(authUser.uid);
+        
+        const nombre = document.getElementById("nombreUsuario").value.trim();
+        const correo = document.getElementById("correoUsuario").value.trim();
+        const tel1 = document.getElementById("telefono1Usuario").value.trim(); 
+        const tel2 = document.getElementById("telefono2Usuario").value.trim();
+        const direccion = document.getElementById("direccionUsuario").value.trim();
+        
+        if (!tel1 || !direccion) {
+            alert("El teléfono principal y la dirección son obligatorios para completar el registro.");
+            return;
+        }
+
+        const infoFijaUsuario = { 
+            uid: authUser.uid, 
+            nombre: nombre,
+            correo: correo, 
+            tel1: tel1, 
+            tel2: tel2 || 'N/A', 
+            direccion: direccion, 
+            foto: 'N/A', 
+            ubicacion: {lat: 'N/A', lon: 'N/A'}, 
+            estado: "Activo",
+            rol: window.USER_ROLE, 
+            registro: Date.now()
+        };
+        
+        const promesasEscritura = [];
+
+        promesasEscritura.push(set(ref(db, `users/${usuarioID}`), infoFijaUsuario));
+        promesasEscritura.push(set(ref(db, `usuarios/${usuarioID}`), infoFijaUsuario));
+
+        Promise.all(promesasEscritura)
+            .then(() => {
+                localStorage.setItem("usuarioDomicilios", JSON.stringify({...infoFijaUsuario, uid: authUser.uid})); 
+                
+                solicitarPermisosNotificacionInicial();
+                
+                window.mostrarPerfil(infoFijaUsuario);
+            })
+            .catch((error) => {
+                alert("Error al guardar en Firebase: " + error.message);
+                console.error("Error de Firebase:", error); 
+            });
+    }
+
+    window.verificarAprobacion = function() {
+        if (!window.currentUserID) return;
+
+        onValue(ref(db, `usuarios/${window.currentUserID}`), (snapshot) => {
+            if (snapshot.exists()) {
+                const userData = snapshot.val();
+                const estado = userData.estado || "Activo"; 
+
+                if (window.currentAuthUser) {
+                    localStorage.setItem("usuarioDomicilios", JSON.stringify({...userData, uid: window.currentAuthUser.uid}));
+                }
+
+                if (estado === "Bloqueado") {
+                    tabServicio.disabled = true;
+                    document.getElementById("terminos-check").checked = false; 
+                    document.getElementById("btnSolicitarChat").disabled = true; 
+                    
+                    let mensaje = "Tu cuenta está **Bloqueada**. No puedes usar el servicio de chat. Contacta al administrador si crees que es un error.";
+                    
+                    bloqueoAprobacion.innerHTML = mensaje;
+                    bloqueoAprobacion.style.display = 'block';
+                    
+                } else {
+                    tabServicio.disabled = false;
+                    bloqueoAprobacion.style.display = 'none';
+                    
+                    habilitarChat(); 
+                }
+            }
+        });
+    }
+
+    window.mostrarAviso = function() {
+        if (tabServicio.disabled) return; 
+
+        const userData = localStorage.getItem("usuarioDomicilios");
+        if (!userData) return; 
+
+        const usuario = JSON.parse(userData);
+        
+        if (!usuario || !usuario.direccion) {
+             alert("Debes tener una dirección registrada para iniciar el chat.");
+             return;
+        }
+        
+        if (window.notificationPermission !== 'granted' && window.notificationPermission !== 'denied') {
+            solicitarPermisosNotificacionInicial();
+        }
+
+        document.getElementById("dirSeleccionadaChat").textContent = usuario.direccion; 
+        
+        document.getElementById("btnSolicitarChat").style.display = 'none';
+        document.getElementById("aviso-chat").style.display = 'block';
+        document.querySelector('.chat-solicitud').style.display = 'none';
+        
+        chatBox.innerHTML = 'Selecciona "Entendido. Iniciar Chat" para conectar con la Central.';
+        inputChat.style.display = 'none';
+        btnEnviarMensaje.style.display = 'none'; 
+        document.getElementById('btn-foto').style.display = 'block';
+        document.getElementById('btn-audio').style.display = 'block';
+    }
+
+    function setupActivePedidoListener(pedidoID, userUID) {
+        if (window.activePedidoListener) {
+            off(ref(db, `pedidos_pendientes/${window.activePedidoID}`), 'value', window.activePedidoListener);
+            window.activePedidoListener = null;
+        }
+
+        window.activePedidoID = pedidoID;
+
+        const pedidoRef = ref(db, `pedidos_pendientes/${pedidoID}`);
+        
+        window.activePedidoListener = onValue(pedidoRef, (snapshot) => {
+            const pedidoActualizado = snapshot.val();
+            
+            if (pedidoActualizado) {
+                const estadoActual = pedidoActualizado.estado;
+                const repartidorNombre = pedidoActualizado.repartidorAsignado || 'Pendiente de asignación';
+                
+                let estadoMostrar = estadoActual;
+                let estadoEmoji = '📦';
+                
+                switch(estadoActual) {
+                    case 'Pendiente':
+                        estadoEmoji = '⏳';
+                        break;
+                    case 'Aceptado':
+                        estadoEmoji = '✅';
+                        break;
+                    case 'Esperando Pedido':
+                        estadoEmoji = '🏪';
+                        break;
+                    case 'En Camino':
+                        estadoEmoji = '🚚';
+                        break;
+                    case 'Completado':
+                        estadoEmoji = '🎉';
+                        break;
+                    case 'Cancelado':
+                        estadoEmoji = '❌';
+                        break;
+                }
+                    
+                const estadoMessage = `${estadoEmoji} Pedido: **#${pedidoID.substring(0, 8)}...** | Estado: **${estadoMostrar}** | Repartidor: ${repartidorNombre}`;
+                
+                const firstConnectMessage = 'Conectado con la Central. Puedes enviar tu solicitud ahora.';
+                
+                if (!chatBox.innerHTML.includes(estadoMessage)) {
+                    if (chatBox.innerHTML.includes(firstConnectMessage) || chatBox.innerHTML.includes('Conectado.')) {
+                         if (!chatBox.querySelector('.pedido-status-message')) {
+                            const statusDiv = document.createElement("div");
+                            statusDiv.className = "chat-info pedido-status-message";
+                            statusDiv.style.color = "var(--color-primary)";
+                            statusDiv.style.textAlign = "center";
+                            statusDiv.style.padding = "10px";
+                            statusDiv.style.background = "#444";
+                            statusDiv.style.borderRadius = "8px";
+                            statusDiv.style.margin = "10px 0";
+                            statusDiv.innerHTML = `${estadoMessage}`;
+                            chatBox.prepend(statusDiv);
+                         } else {
+                            chatBox.querySelector('.pedido-status-message').innerHTML = `${estadoMessage}`;
+                         }
+                    } else {
+                         const statusDiv = document.createElement("div");
+                         statusDiv.className = "chat-info pedido-status-message";
+                         statusDiv.style.color = "var(--color-primary)";
+                         statusDiv.style.textAlign = "center";
+                         statusDiv.style.padding = "10px";
+                         statusDiv.style.background = "#444";
+                         statusDiv.style.borderRadius = "8px";
+                         statusDiv.style.margin = "10px 0";
+                         statusDiv.innerHTML = `${estadoMessage}`;
+                         chatBox.prepend(statusDiv);
+                    }
+                }
+                    
+                if (estadoActual === 'Completado' || estadoActual === 'Cancelado') {
+                    inputChat.disabled = true;
+                    btnEnviarMensaje.disabled = true;
+                    document.getElementById('btn-foto').disabled = true;
+                    document.getElementById('btn-audio').disabled = true;
+                    if (!chatBox.innerHTML.includes("PEDIDO FINALIZADO")) {
+                       const div = document.createElement("div");
+                       div.className = "mensaje repartidor";
+                       div.innerHTML = `<div>✅ **PEDIDO FINALIZADO (${estadoActual}).** Inicia un nuevo servicio para chatear.</div><div class="chat-info">${window.formatTimestamp(Date.now())}</div>`;
+                       chatBox.appendChild(div);
+                    }
+                } else {
+                    inputChat.disabled = false;
+                    btnEnviarMensaje.disabled = false;
+                    document.getElementById('btn-foto').disabled = false;
+                    document.getElementById('btn-audio').disabled = false;
+                }
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } else {
+                 console.log(`Pedido ${pedidoID} no encontrado. Deteniendo listener.`);
+                 off(pedidoRef, 'value', window.activePedidoListener);
+                 window.activePedidoListener = null;
+                 window.activePedidoID = null;
+                 
+                 chatBox.innerHTML += '<div class="chat-info" style="color:#FFD700; margin-top: 10px;">💡 Chat desvinculado del pedido. Inicia un nuevo servicio.</div>';
+                 inputChat.disabled = true;
+                 btnEnviarMensaje.disabled = true;
+                 chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        });
+    }
+
+    window.iniciarChatFinal = async function() {
+        if (tabServicio.disabled) return; 
+
+        const userData = localStorage.getItem("usuarioDomicilios");
+        if (!userData) return; 
+
+        const usuario = JSON.parse(userData);
+        window.currentUserID = window.getClientID(usuario.uid); 
+        const userUID = window.currentAuthUser.uid; 
+        
+        document.getElementById("aviso-chat").style.display = 'none'; 
+        inputChat.style.display = "block";
+        btnEnviarMensaje.style.display = "block"; 
+        
+        window.lastMessageDate = null;
+        chatBox.innerHTML = '';
+        
+        await limpiarMensajesAntiguos();
+        
+        const chatListenerRef = query(ref(db, `chats/${window.currentUserID}`), orderByChild('timestamp'));
+        off(chatListenerRef); 
+        onChildAdded(chatListenerRef, s => {
+            const data = s.val();
+            const tipo = (data.rol_remitente === window.USER_ROLE) ? "usuario" : "repartidor"; 
+            
+            const messageTimestamp = data.timestamp ? Number(data.timestamp) : Date.now();
+            
+            const formattedTime = window.formatTimestamp(messageTimestamp);
+            const messageDate = window.formatDate(messageTimestamp);
+            
+            if (messageDate !== window.lastMessageDate) {
+                const dateSeparator = document.createElement('div');
+                dateSeparator.className = 'chat-date-separator';
+                dateSeparator.textContent = messageDate;
+                chatBox.appendChild(dateSeparator);
+                window.lastMessageDate = messageDate;
+            }
+
+            const div = document.createElement("div");
+            div.className = `mensaje ${tipo}`;
+            
+            let contentHTML = '';
+            
+            if (data.tipo_adjunto && data.referencia_adjunto) {
+                const mediaURL = data.referencia_adjunto;
+                
+                if (data.tipo_adjunto === 'image') {
+                    contentHTML = `
+                        <div class="chat-media-container">
+                            <img src="${mediaURL}" onclick="window.open('${mediaURL}', '_blank')" alt="Imagen" loading="lazy">
+                        </div>
+                    `;
+                } else if (data.tipo_adjunto === 'audio') {
+                     contentHTML = `
+                        <div class="chat-media-container">
+                            <audio controls preload="metadata">
+                                <source src="${mediaURL}" type="audio/mpeg">
+                                <source src="${mediaURL}" type="audio/ogg">
+                                <source src="${mediaURL}" type="audio/wav">
+                                Tu navegador no soporta el elemento de audio.
+                            </audio>
+                        </div>
+                    `;
+                }
+            } else {
+                const linkedText = linkifyText(data.texto || '');
+                contentHTML = `<div>${linkedText}</div>`;
+            }
+            
+            div.innerHTML = `
+                ${contentHTML}
+                <div class="chat-info">${formattedTime}</div>
+            `;
+            
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            if (data.rol_remitente !== window.USER_ROLE) {
+                try {
+                    window.notificationSound.currentTime = 0;
+                    window.notificationSound.play().catch(e => {
+                        console.log("Error al reproducir sonido:", e);
+                        document.addEventListener('click', function playOnClick() {
+                            window.notificationSound.play();
+                            document.removeEventListener('click', playOnClick);
+                        }, { once: true });
+                    });
+                } catch (e) {
+                    console.log("Error en reproducción de audio:", e);
+                }
+                
+                if (window.notificationPermission === 'granted' && document.visibilityState !== 'visible') {
+                    const notificationBody = data.tipo_adjunto ? 
+                        (data.tipo_adjunto === 'image' ? '📷 Te han enviado una imagen' : '🎙️ Te han enviado un audio') :
+                        (data.texto.length > 50 ? data.texto.substring(0, 50) + '...' : data.texto);
+                    
+                    try {
+                        const notification = new Notification('💬 Nuevo Mensaje de Central', {
+                            body: notificationBody,
+                            icon: 'https://i.ibb.co/hJCtmHsf/1761849436845.png',
+                            badge: 'https://i.ibb.co/hJCtmHsf/1761849436845.png',
+                            vibrate: [200, 100, 200],
+                            tag: 'chat-message-' + Date.now(),
+                            requireInteraction: true,
+                            silent: false
+                        });
+                        
+                        notification.onclick = function() {
+                            window.focus();
+                            parent.focus();
+                            
+                            if (typeof changeTab === 'function') {
+                                changeTab('servicio');
+                            }
+                            
+                            notification.close();
+                        };
+                    } catch (e) {
+                        console.log("Error al enviar notificación:", e);
+                    }
+                }
+            }
+        });
+        
+        const clienteIDPrefijado = window.getClientID(userUID); 
+        
+        get(query(ref(db, 'pedidos_pendientes'), orderByChild('clienteID'), equalTo(clienteIDPrefijado))).then(snapshot => {
+            let activePedido = null;
+            
+            const pedidosActivos = [];
+            snapshot.forEach(childSnapshot => {
+                const pedido = childSnapshot.val();
+                if (pedido.estado === 'Pendiente' || pedido.estado === 'Aceptado' || pedido.estado === 'Esperando Pedido' || pedido.estado === 'En Camino') {
+                    pedidosActivos.push({ key: childSnapshot.key, ...pedido });
+                }
+            });
+            
+            if (pedidosActivos.length > 0) {
+                activePedido = pedidosActivos.sort((a, b) => (b.lastUpdate || b.timestamp || 0) - (a.lastUpdate || a.timestamp || 0))[0];
+            }
+            
+            if (activePedido) {
+                setupActivePedidoListener(activePedido.key, userUID);
+                chatBox.innerHTML += `<div class="chat-info" style="color:var(--color-primary); text-align: center; padding: 10px;">Conectado. Chat vinculado al pedido.</div>`;
+
+            } else {
+                if(window.activePedidoListener) {
+                   off(ref(db, `pedidos_pendientes/${window.activePedidoID}`), 'value', window.activePedidoListener);
+                   window.activePedidoListener = null;
+                   window.activePedidoID = null;
+                }
+                chatBox.innerHTML += '<div class="chat-info" style="color:var(--color-primary); text-align: center; padding: 10px;">Conectado con la Central. Puedes enviar tu solicitud ahora. **El pedido se creará cuando la Central lo asigne.**</div>';
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }).catch(error => {
+            chatBox.innerHTML += `<div class="chat-info" style="color:#ff5555;">❌ Error al verificar pedidos activos: ${error.message}</div>`;
+            console.error("Error al verificar pedidos:", error);
+        });
+    }
+
+    window.enviarMensajeFirebase = function(e) {
+      if (tabServicio.disabled || inputChat.disabled) return; 
+      
+      const messageText = inputChat.value.trim();
+
+      if (messageText !== "" && window.currentUserID) {
+        push(ref(db, `chats/${window.currentUserID}`), {
+          remitente: window.currentUserID, 
+          nombre_remitente: window.USER_NAME || window.currentUserID, 
+          texto: messageText,
+          timestamp: Date.now(), 
+          rol_remitente: window.USER_ROLE, 
+          pedidoID: window.activePedidoID || 'N/A'
+        });
+        inputChat.value = "";
+      }
+      if (e && e.key === "Enter") {
+          e.preventDefault(); 
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1860,24 +1860,29 @@
     }
 
     function agregarMarcadorCliente(coords) {
-        if (clienteMarker) {
-            map.removeLayer(clienteMarker);
-        }
-
-        const iconCliente = L.divIcon({
-            className: 'custom-marker-cliente',
-            html: '<div style="background-color: #4CAF50; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
-            iconSize: [30, 30],
-            iconAnchor: [15, 15]
-        });
-
-        clienteMarker = L.marker([coords.lat, coords.lng], { icon: iconCliente })
-            .addTo(map)
-            .bindPopup('<b>📍 Tu Ubicación</b>')
-            .openPopup();
-
-        map.setView([coords.lat, coords.lng], 15);
+    // GUARDAR COORDENADAS GLOBALMENTE
+    clienteCoords = coords;
+    
+    if (clienteMarker) {
+        map.removeLayer(clienteMarker);
     }
+
+    const iconCliente = L.divIcon({
+        className: 'custom-marker-cliente',
+        html: '<div style="background-color: #4CAF50; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+    });
+
+    clienteMarker = L.marker([coords.lat, coords.lng], { icon: iconCliente })
+        .addTo(map)
+        .bindPopup('<b>📍 Tu Ubicación</b>')
+        .openPopup();
+
+    map.setView([coords.lat, coords.lng], 15);
+    
+    console.log('✅ Coordenadas del cliente guardadas:', clienteCoords);
+}
 
     function agregarMarcadorRepartidor(coords) {
         if (repartidorMarker) {
@@ -1963,20 +1968,29 @@
                     
                     console.log('📍 Ubicación del repartidor:', repartidorCoords);
                     
-                    // Actualizar marcador del repartidor
-                    if (map && clienteCoords) {
-                        agregarMarcadorRepartidor(repartidorCoords);
-                        trazarRuta(clienteCoords, repartidorCoords);
-                        console.log('✅ Mapa actualizado con ubicación del repartidor');
-                    } else {
-                        console.warn('⚠️ Mapa o coordenadas del cliente no disponibles');
+                    // VERIFICAR QUE TENGAMOS MAPA Y COORDENADAS DEL CLIENTE
+                    if (!map) {
+                        console.error('❌ El mapa no está inicializado');
+                        return;
                     }
+                    
+                    if (!clienteCoords || !clienteCoords.lat || !clienteCoords.lng) {
+                        console.error('❌ Coordenadas del cliente no disponibles:', clienteCoords);
+                        console.warn('⚠️ Esperando ubicación del cliente...');
+                        return;
+                    }
+                    
+                    // TODO OK - Actualizar mapa
+                    agregarMarcadorRepartidor(repartidorCoords);
+                    trazarRuta(clienteCoords, repartidorCoords);
+                    console.log('✅ Mapa actualizado con ubicación del repartidor');
+                    console.log('📊 Cliente:', clienteCoords, '| Repartidor:', repartidorCoords);
                 } else {
                     console.warn('⚠️ El repartidor no tiene ubicación disponible aún');
                 }
             } else {
                 console.warn('⚠️ No se encontraron datos del repartidor');
-            }
+            }    
         }, (error) => {
             console.error('❌ Error al escuchar ubicación del repartidor:', error);
         });

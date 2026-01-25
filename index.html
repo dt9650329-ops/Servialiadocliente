@@ -899,7 +899,7 @@
                       <span class="menu-item-icon">ℹ️</span>
                       <div class="menu-item-text">
                           <strong>Versión</strong>
-                          <small>Cliente v2.0.0 - Mapa Integrado</small>
+                          <small>Cliente v2.1.0 - Seguimiento en Tiempo Real</small>
                       </div>
                   </div>
               </div>
@@ -1100,6 +1100,7 @@
     let clienteCoords = null;
     let watchPositionId = null;
     let locationPermissionGranted = false;
+    let currentPedidoId = null; // 🆕 Para guardar el ID del pedido actual
     
     // 🔊 AUDIO DE NOTIFICACIÓN
     const notificationSound = new Audio('https://github.com/dt9650329-ops/Chat-administrador-/raw/f67a159f93aed6be1d6f7f02709384111cd84b7e/%E2%9C%A8Monedas%20Cayendo%20__%20Efectos%20De%20Sonidos(MP3_160K).mp3');
@@ -1932,7 +1933,8 @@
         });
     }
 
-    function iniciarSeguimientoUbicacion(repartidorUID) {
+    // 🆕 FUNCIÓN CRÍTICA: INICIAR SEGUIMIENTO DE UBICACIÓN DEL REPARTIDOR
+    function iniciarSeguimientoUbicacion(repartidorUID, pedidoId) {
         detenerSeguimientoUbicacion();
         
         if (!repartidorUID || !window.db || !window.ref || !window.onValue) {
@@ -1941,30 +1943,47 @@
         }
         
         currentRepartidorUID = repartidorUID;
+        currentPedidoId = pedidoId;
         
+        console.log('🔍 Iniciando seguimiento del repartidor:', repartidorUID);
+        
+        // 🆕 ESCUCHAR LA UBICACIÓN DEL REPARTIDOR DESDE repartidores_info
         const repartidorRef = window.ref(window.db, `repartidores_info/${repartidorUID}`);
         
         repartidorUbicacionListener = window.onValue(repartidorRef, (snapshot) => {
             if (snapshot.exists()) {
                 const repData = snapshot.val();
                 
-                // Verificar si tiene coordenadas de ubicación
+                console.log('📡 Datos del repartidor recibidos:', repData);
+                
+                // 🆕 LEER LA UBICACIÓN DEL REPARTIDOR (formato: lat, lon)
                 if (repData.ubicacion && repData.ubicacion.lat && repData.ubicacion.lon) {
                     const repartidorCoords = {
                         lat: parseFloat(repData.ubicacion.lat),
                         lng: parseFloat(repData.ubicacion.lon)
                     };
                     
+                    console.log('📍 Ubicación del repartidor:', repartidorCoords);
+                    
                     // Actualizar marcador del repartidor
                     if (map && clienteCoords) {
                         agregarMarcadorRepartidor(repartidorCoords);
                         trazarRuta(clienteCoords, repartidorCoords);
+                        console.log('✅ Mapa actualizado con ubicación del repartidor');
+                    } else {
+                        console.warn('⚠️ Mapa o coordenadas del cliente no disponibles');
                     }
+                } else {
+                    console.warn('⚠️ El repartidor no tiene ubicación disponible aún');
                 }
+            } else {
+                console.warn('⚠️ No se encontraron datos del repartidor');
             }
+        }, (error) => {
+            console.error('❌ Error al escuchar ubicación del repartidor:', error);
         });
         
-        console.log('✅ Seguimiento de ubicación iniciado para:', repartidorUID);
+        console.log('✅ Listener de ubicación del repartidor activado');
     }
 
     function detenerSeguimientoUbicacion() {
@@ -1973,6 +1992,7 @@
             window.off(repartidorRef, 'value', repartidorUbicacionListener);
             repartidorUbicacionListener = null;
             currentRepartidorUID = null;
+            currentPedidoId = null;
             console.log('🛑 Seguimiento de ubicación detenido');
         }
 
@@ -2235,9 +2255,12 @@
         
         resultDiv.style.display = 'block';
         
-        // Verificar si el pedido está activo y tiene repartidor asignado
+        // 🆕 VERIFICAR SI EL PEDIDO ESTÁ ACTIVO Y TIENE REPARTIDOR ASIGNADO
         const estadosActivos = ['pendiente', 'aceptado', 'esperando pedido', 'en camino'];
         if (estadosActivos.includes(estado.toLowerCase()) && pedido.repartidorIdAsignado) {
+            console.log('✅ Pedido activo detectado. Mostrando mapa...');
+            console.log('🏍️ Repartidor asignado:', pedido.repartidorIdAsignado);
+            
             // Mostrar mapa
             mapContainer.style.display = 'block';
             mapLegend.style.display = 'flex';
@@ -2250,12 +2273,15 @@
             try {
                 const coords = await obtenerUbicacionCliente();
                 agregarMarcadorCliente(coords);
+                console.log('📍 Ubicación del cliente obtenida:', coords);
                 
                 // Iniciar seguimiento continuo del cliente
                 iniciarSeguimientoContinuoCliente();
                 
-                // Iniciar seguimiento del repartidor
-                iniciarSeguimientoUbicacion(pedido.repartidorIdAsignado);
+                // 🆕 INICIAR SEGUIMIENTO DEL REPARTIDOR (LEE DESDE repartidores_info)
+                iniciarSeguimientoUbicacion(pedido.repartidorIdAsignado, pedido.id);
+                
+                console.log('✅ Seguimiento en tiempo real iniciado');
                 
             } catch (error) {
                 console.error('Error al obtener ubicación:', error);
@@ -2271,6 +2297,7 @@
                 mapInfo.style.display = 'none';
             }
         } else {
+            console.log('ℹ️ Pedido completado o sin repartidor asignado. No se muestra mapa.');
             // Pedido completado o cancelado - no mostrar mapa
             detenerSeguimientoUbicacion();
             mapContainer.style.display = 'none';
@@ -2887,6 +2914,9 @@
           e.preventDefault(); 
       }
     }
+    
+    console.log('✅ Sistema de seguimiento en tiempo real activado');
+    console.log('🗺️ El mapa mostrará la ubicación del repartidor cuando esté disponible');
   </script>
 </body>
 </html>

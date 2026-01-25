@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>Plataforma de Domicilios - Cliente</title>
-  
   <!-- Leaflet CSS para el mapa -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
@@ -120,7 +119,6 @@
     .tab-button:not(.active-tab) { background-color: #555; color: var(--color-text-light); }
     .tab-content { display: none; padding-top: 15px; }
     .tab-content.active-content { display: block; }
-    
     /* Estilos del Chat */
     #chat-box { height: 300px; overflow-y: auto; border: 1px solid #555; border-radius: 10px; padding: 10px; background: #222; margin-top: 10px; display: flex; flex-direction: column; }
     .mensaje { padding: 8px 12px; border-radius: 12px; margin: 8px 0; max-width: 80%; word-wrap: break-word; position: relative; display: flex; flex-direction: column;}
@@ -280,7 +278,6 @@
         max-width: 80%;
         height: auto;
     }
-    
     #btn-activar-notif {
         width: 100%;
         padding: 10px;
@@ -399,7 +396,7 @@
         font-weight: bold;
     }
 
-    /* 🆕 ESTILOS PARA BOTÓN DE UBICACIÓN */
+    /* ESTILOS PARA BOTÓN DE UBICACIÓN */
     .ubicacion-btn {
         background-color: #2980B9;
         color: white;
@@ -418,7 +415,7 @@
         cursor: not-allowed;
     }
 
-    /* 🗺️ ESTILOS PARA EL MAPA */
+    /* ESTILOS PARA EL MAPA */
     #map-container {
         width: 100%;
         height: 400px;
@@ -474,7 +471,6 @@
 
     .legend-cliente { background-color: #4CAF50; }
     .legend-repartidor { background-color: #2196F3; }
-
     /* ================= MENÚ HAMBURGUESA ================= */
 
     /* Contenedor del botón hamburguesa */
@@ -870,7 +866,7 @@
                           <strong>Micrófono</strong>
                           <small id="mic-status">Verificando...</small>
                       </div>
-                  </div>
+                      </div>
                   <button id="btn-permiso-mic" class="menu-item-btn" onclick="solicitarPermisoMicrofono()">
                       Activar
                   </button>
@@ -912,7 +908,6 @@
   <div id="splash-screen">
       <img id="splash-logo" src="https://i.ibb.co/hJCtmHsf/1761849436845.png" alt="Servi Aliados Logo">
   </div>
-  
   <div class="container" id="main-container" style="display:none;">
 
     <div id="vista-inicio">
@@ -958,7 +953,7 @@
       <div class="tabs-container">
           <button id="tab-perfil" class="tab-button active-tab" onclick="changeTab('perfil')">👤 Perfil</button>
           <button id="tab-servicio" class="tab-button" onclick="changeTab('servicio')">📦 Servicio</button>
-          <button id="tab-tracking" class="tab-button tracking-btn" onclick="changeTab('tracking')">🔍 Seguir</button>
+          <button id="tab-tracking" class="tab-button tracking-btn" onclick="changeTab('tracking')">📍 Seguir</button>
       </div>
 
       <div id="content-perfil" class="tab-content active-content">
@@ -1069,7 +1064,14 @@
   <!-- Leaflet JS para el mapa -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-
+  
+  <!-- Eruda - Herramienta de depuración para móviles -->
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>
+    // Inicializar Eruda
+    eruda.init();
+    console.log('✅ Eruda inicializado correctamente');
+  </script>
  <script>
     // ======================================================================
     // === JS Estándar (Variables Globales y Funciones de Utilidad/UI) ===
@@ -1090,7 +1092,7 @@
     let notificationPermissionRequested = false;
     let menuAbierto = false;
     
-    // 🗺️ VARIABLES PARA EL MAPA Y SEGUIMIENTO
+    // VARIABLES PARA EL MAPA Y SEGUIMIENTO
     let map = null;
     let clienteMarker = null;
     let repartidorMarker = null;
@@ -1100,9 +1102,9 @@
     let clienteCoords = null;
     let watchPositionId = null;
     let locationPermissionGranted = false;
-    let currentPedidoId = null; // 🆕 Para guardar el ID del pedido actual
+    let currentPedidoId = null;
     
-    // 🔊 AUDIO DE NOTIFICACIÓN
+    // AUDIO DE NOTIFICACIÓN
     const notificationSound = new Audio('https://github.com/dt9650329-ops/Chat-administrador-/raw/f67a159f93aed6be1d6f7f02709384111cd84b7e/%E2%9C%A8Monedas%20Cayendo%20__%20Efectos%20De%20Sonidos(MP3_160K).mp3');
     notificationSound.volume = 0.8;
     notificationSound.preload = 'auto';
@@ -1201,7 +1203,6 @@
         };
         return date.toLocaleString('es-ES', options);
     }
-    
     function formatDate(timestamp) {
         if (!timestamp) return "";
         
@@ -1383,7 +1384,6 @@
             return false;
         }
     }
-    
     async function limpiarMensajesAntiguos() {
         if (!window.currentUserID || !window.db || !window.ref || !window.get) {
             return;
@@ -1622,7 +1622,6 @@
             toggleMenu();
         }
     });
-
     // ================= GESTIÓN DE PERMISOS =================
 
     window.verificarEstadosPermisos = async function() {
@@ -1806,8 +1805,7 @@
     window.addEventListener('load', () => {
         setTimeout(verificarEstadosPermisos, 1000);
     });
-
-    // 🗺️ ================= FUNCIONES DEL MAPA =================
+    // ================= FUNCIONES DEL MAPA =================
 
     function initMap() {
         if (map) {
@@ -1933,7 +1931,7 @@
         });
     }
 
-    // 🆕 FUNCIÓN CRÍTICA: INICIAR SEGUIMIENTO DE UBICACIÓN DEL REPARTIDOR
+    // FUNCIÓN CRÍTICA: INICIAR SEGUIMIENTO DE UBICACIÓN DEL REPARTIDOR
     function iniciarSeguimientoUbicacion(repartidorUID, pedidoId) {
         detenerSeguimientoUbicacion();
         
@@ -1945,9 +1943,9 @@
         currentRepartidorUID = repartidorUID;
         currentPedidoId = pedidoId;
         
-        console.log('🔍 Iniciando seguimiento del repartidor:', repartidorUID);
+        console.log('📡 Iniciando seguimiento del repartidor:', repartidorUID);
         
-        // 🆕 ESCUCHAR LA UBICACIÓN DEL REPARTIDOR DESDE repartidores_info
+        // ESCUCHAR LA UBICACIÓN DEL REPARTIDOR DESDE repartidores_info
         const repartidorRef = window.ref(window.db, `repartidores_info/${repartidorUID}`);
         
         repartidorUbicacionListener = window.onValue(repartidorRef, (snapshot) => {
@@ -1956,7 +1954,7 @@
                 
                 console.log('📡 Datos del repartidor recibidos:', repData);
                 
-                // 🆕 LEER LA UBICACIÓN DEL REPARTIDOR (formato: lat, lon)
+                // LEER LA UBICACIÓN DEL REPARTIDOR (formato: lat, lon)
                 if (repData.ubicacion && repData.ubicacion.lat && repData.ubicacion.lon) {
                     const repartidorCoords = {
                         lat: parseFloat(repData.ubicacion.lat),
@@ -1985,7 +1983,6 @@
         
         console.log('✅ Listener de ubicación del repartidor activado');
     }
-
     function detenerSeguimientoUbicacion() {
         if (repartidorUbicacionListener && currentRepartidorUID && window.off && window.ref && window.db) {
             const repartidorRef = window.ref(window.db, `repartidores_info/${currentRepartidorUID}`);
@@ -2141,7 +2138,7 @@
             });
 
             if (pedidosEncontrados.length === 0) {
-                statusDiv.textContent = '📭 No se encontraron pedidos asociados a este correo.';
+                statusDiv.textContent = '🔭 No se encontraron pedidos asociados a este correo.';
                 statusDiv.style.color = '#FFD700';
                 return;
             }
@@ -2255,7 +2252,7 @@
         
         resultDiv.style.display = 'block';
         
-        // 🆕 VERIFICAR SI EL PEDIDO ESTÁ ACTIVO Y TIENE REPARTIDOR ASIGNADO
+        // VERIFICAR SI EL PEDIDO ESTÁ ACTIVO Y TIENE REPARTIDOR ASIGNADO
         const estadosActivos = ['pendiente', 'aceptado', 'esperando pedido', 'en camino'];
         if (estadosActivos.includes(estado.toLowerCase()) && pedido.repartidorIdAsignado) {
             console.log('✅ Pedido activo detectado. Mostrando mapa...');
@@ -2278,7 +2275,7 @@
                 // Iniciar seguimiento continuo del cliente
                 iniciarSeguimientoContinuoCliente();
                 
-                // 🆕 INICIAR SEGUIMIENTO DEL REPARTIDOR (LEE DESDE repartidores_info)
+                // INICIAR SEGUIMIENTO DEL REPARTIDOR (LEE DESDE repartidores_info)
                 iniciarSeguimientoUbicacion(pedido.repartidorIdAsignado, pedido.id);
                 
                 console.log('✅ Seguimiento en tiempo real iniciado');
@@ -2510,7 +2507,6 @@
         hideSplashScreen();
       }
     });
-
     window.guardarUsuarioEnFirebase = function() {
         const authUser = window.currentAuthUser; 
 

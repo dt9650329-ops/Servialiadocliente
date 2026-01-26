@@ -12,21 +12,21 @@
   <style>
     /* ------------------- COLORES BASE (Inspirados en Servi Aliados Logo) ------------------- */
     :root {
-        --color-primary: #FFD700; /* Dorado/Amarillo */
-        --color-secondary: #000000; /* Negro */
-        --color-background: #1a1a1a; /* Gris oscuro para el fondo del body */
-        --color-card: #333333; /* Gris oscuro para cards/contenedores */
+        --color-primary: #FFD700;
+        --color-secondary: #000000;
+        --color-background: #1a1a1a;
+        --color-card: #333333;
         --color-text-light: #f0f0f0;
         --color-text-dark: #cccccc;
-        --color-chat-user: #555555; /* Gris Oscuro para mensajes del usuario */
-        --color-chat-user-text: #f0f0f0; /* Texto Gris Claro para mensajes del usuario */
-        --color-success: #28a745; /* Verde para soporte */
+        --color-chat-user: #555555;
+        --color-chat-user-text: #f0f0f0;
+        --color-success: #28a745;
         --color-date-separator: #666; 
-        --color-link: #4A9EFF; /* Azul para enlaces detectados */
+        --color-link: #4A9EFF;
     }
     
     /* ------------------- ESTILOS GENERALES ------------------- */
-       * {box-sizing: border-box; 
+    * {box-sizing: border-box; 
         font-family: Arial, sans-serif; 
         margin: 0;
         padding: 0;
@@ -50,12 +50,12 @@
     
     .container { 
         background: var(--color-card); 
-        border-radius: 0; /* Sin bordes redondeados para usar toda la pantalla */
-        box-shadow: none; /* Sin sombra para apariencia más limpia */
+        border-radius: 0;
+        box-shadow: none;
         padding: 20px; 
         width: 90%; 
-        max-width: 90%; /* Usar todo el ancho */
-        min-height: 90vh; /* Usar toda la altura */
+        max-width: 90%;
+        min-height: 90vh;
         text-align: center; 
         color: var(--color-text-light); 
     }
@@ -196,7 +196,6 @@
         color: var(--color-secondary);
     }
 
-    /* OCULTAR INPUT DE ARCHIVO - SE ACTIVA POR JS */
     #file-input-chat {
         display: none;
     }
@@ -312,7 +311,6 @@
         display: none;
     }
 
-    /* Estilos para la grabación de audio */
     #audio-recording-status {
         text-align: center;
         margin-top: 10px;
@@ -396,7 +394,6 @@
         font-weight: bold;
     }
 
-    /* ESTILOS PARA BOTÓN DE UBICACIÓN */
     .ubicacion-btn {
         background-color: #2980B9;
         color: white;
@@ -415,7 +412,6 @@
         cursor: not-allowed;
     }
 
-    /* ESTILOS PARA EL MAPA */
     #map-container {
         width: 100%;
         height: 400px;
@@ -472,8 +468,6 @@
     .legend-cliente { background-color: #4CAF50; }
     .legend-repartidor { background-color: #2196F3; }
     /* ================= MENÚ HAMBURGUESA ================= */
-
-    /* Contenedor del botón hamburguesa */
     .menu-ham-container {
         position: fixed;
         top: 20px;
@@ -481,7 +475,6 @@
         z-index: 10000;
     }
 
-    /* Botón hamburguesa */
     .menu-ham-btn {
         width: 50px;
         height: 50px;
@@ -509,7 +502,6 @@
         transform: scale(0.95);
     }
 
-    /* Líneas del hamburguesa */
     .menu-ham-line {
         width: 25px;
         height: 3px;
@@ -518,7 +510,6 @@
         transition: all 0.3s ease;
     }
 
-    /* Animación cuando está abierto */
     .menu-ham-btn.active .menu-ham-line:nth-child(1) {
         transform: rotate(45deg) translate(8px, 8px);
     }
@@ -531,7 +522,6 @@
         transform: rotate(-45deg) translate(8px, -8px);
     }
 
-    /* Overlay oscuro */
     .menu-overlay {
         position: fixed;
         top: 0;
@@ -550,7 +540,7 @@
         opacity: 1;
         visibility: visible;
     }
-    /* Panel lateral del menú */
+
     .menu-lateral {
         position: fixed;
         top: 0;
@@ -571,7 +561,6 @@
         right: 0;
     }
 
-    /* Header del menú */
     .menu-header {
         background: linear-gradient(135deg, var(--color-primary), #ffaa00);
         padding: 20px;
@@ -609,13 +598,11 @@
         transform: rotate(90deg);
     }
 
-    /* Contenido del menú */
     .menu-content {
         padding: 20px;
         flex: 1;
     }
 
-    /* Secciones del menú */
     .menu-section {
         margin-bottom: 25px;
     }
@@ -630,7 +617,6 @@
         border-bottom: 2px solid #555;
     }
 
-    /* Items del menú */
     .menu-item {
         background: #2a2a2a;
         border-radius: 10px;
@@ -683,7 +669,6 @@
         font-size: 12px;
     }
 
-    /* Botón de acción en items */
     .menu-item-btn {
         padding: 8px 16px;
         border: none;
@@ -719,7 +704,6 @@
         color: white;
     }
 
-    /* Estados de permisos */
     .status-granted {
         color: var(--color-success) !important;
     }
@@ -732,7 +716,6 @@
         color: #ffa500 !important;
     }
 
-    /* Responsive */
     @media (max-width: 768px) {
         .menu-lateral {
             width: 100%;
@@ -755,7 +738,6 @@
         }
     }
 
-    /* Scrollbar personalizado para el menú */
     .menu-lateral::-webkit-scrollbar {
         width: 8px;
     }
@@ -773,7 +755,6 @@
         background: #ffaa00;
     }
 
-    /* Estilos personalizados para los marcadores del mapa */
     .custom-marker-cliente {
         background-color: #4CAF50;
         width: 30px;
@@ -792,7 +773,6 @@
         box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
 
-    /* Estilos para popups del mapa */
     .leaflet-popup-content-wrapper {
         background: var(--color-card);
         color: var(--color-text-light);
@@ -806,6 +786,47 @@
 
     .leaflet-popup-tip {
         background: var(--color-card);
+    }
+
+    /* 🆕 INDICADOR DE GPS ACTIVO PARA EL CLIENTE */
+    .gps-indicator-cliente {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: #27ae60;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 25px;
+        font-size: 0.85em;
+        font-weight: bold;
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 15px rgba(39, 174, 96, 0.5);
+        animation: pulse-gps-cliente 2s infinite;
+    }
+
+    .gps-indicator-cliente.active {
+        display: flex;
+    }
+
+    @keyframes pulse-gps-cliente {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    .gps-dot-cliente {
+        width: 10px;
+        height: 10px;
+        background: white;
+        border-radius: 50%;
+        animation: blink-cliente 1s infinite;
+    }
+
+    @keyframes blink-cliente {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
     }
   </style>
 </head>
@@ -826,11 +847,9 @@
       </div>
       
       <div class="menu-content">
-          <!-- SECCIÓN: Permisos -->
           <div class="menu-section">
               <h4 class="menu-section-title">🔒 Permisos</h4>
               
-              <!-- Notificaciones -->
               <div class="menu-item">
                   <div class="menu-item-info">
                       <span class="menu-item-icon">🔔</span>
@@ -844,7 +863,6 @@
                   </button>
               </div>
               
-              <!-- Cámara -->
               <div class="menu-item">
                   <div class="menu-item-info">
                       <span class="menu-item-icon">📷</span>
@@ -858,7 +876,6 @@
                   </button>
               </div>
               
-              <!-- Micrófono -->
               <div class="menu-item">
                   <div class="menu-item-info">
                       <span class="menu-item-icon">🎙️</span>
@@ -872,12 +889,11 @@
                   </button>
               </div>
 
-              <!-- Ubicación -->
               <div class="menu-item">
                   <div class="menu-item-info">
                       <span class="menu-item-icon">📍</span>
                       <div class="menu-item-text">
-                          <strong>Ubicación</strong>
+                          <strong>Ubicación GPS</strong>
                           <small id="location-status">Verificando...</small>
                       </div>
                   </div>
@@ -887,7 +903,6 @@
               </div>
           </div>
           
-          <!-- SECCIÓN: Más Ajustes -->
           <div class="menu-section">
               <h4 class="menu-section-title">🔧 Más Ajustes</h4>
               <div class="menu-item">
@@ -895,7 +910,7 @@
                       <span class="menu-item-icon">ℹ️</span>
                       <div class="menu-item-text">
                           <strong>Versión</strong>
-                          <small>Cliente v2.1.0 - Seguimiento en Tiempo Real</small>
+                          <small>Cliente v2.2.0 - GPS Automático</small>
                       </div>
                   </div>
               </div>
@@ -904,6 +919,12 @@
   </div>
 
   <div id="menu-overlay" class="menu-overlay" onclick="toggleMenu()"></div>
+
+  <!-- 🆕 INDICADOR GPS ACTIVO DEL CLIENTE -->
+  <div id="gps-indicator-cliente" class="gps-indicator-cliente">
+      <div class="gps-dot-cliente"></div>
+      <span>📍 GPS Activo</span>
+  </div>
 
   <div id="splash-screen">
       <img id="splash-logo" src="https://i.ibb.co/hJCtmHsf/1761849436845.png" alt="Servi Aliados Logo">
@@ -1007,7 +1028,6 @@
 
               <div id="chat-box">Selecciona "Entendido. Iniciar Chat" para conectar con la Central.</div>
               
-              <!-- Área de entrada de chat -->
               <div class="chat-input-area">
                 <button type="button" class="chat-action-btn" id="btn-foto" onclick="activarSelectorFoto()">📷 Foto</button>
                 <button type="button" class="chat-action-btn" id="btn-audio" onclick="toggleGrabarAudio()">🎙️ Grabar</button>
@@ -1016,14 +1036,13 @@
                 <button id="btnEnviarMensaje" style="display:none; width: auto;" onclick="enviarMensajeFirebase()">Enviar</button>
               </div>
               
-              <!-- Input oculto para archivos -->
               <input type="file" id="file-input-chat" accept="image/*" style="display:none;" onchange="manejarArchivoSeleccionado()">
               
               <div id="audio-recording-status"></div>
               <div id="file-upload-status"></div>
           </div>
       </div>
-      <!-- SECCIÓN: Contenido de Seguimiento -->
+
       <div id="content-tracking" class="tab-content">
           <h3>🗺️ Seguimiento de Pedido en Tiempo Real</h3>
           <p style="font-size: 14px; color: var(--color-text-dark);">Ingresa el correo con el que te registraste:</p>
@@ -1031,12 +1050,10 @@
           <button onclick="buscarPedidoPorCorreo()">Buscar Pedido</button>
           <div id="tracking-status-message"></div>
           
-          <!-- CONTENEDOR DEL MAPA -->
           <div id="map-container">
               <div id="map"></div>
           </div>
           
-          <!-- LEYENDA DEL MAPA -->
           <div id="map-legend" class="map-legend" style="display:none;">
               <div class="legend-item">
                   <div class="legend-icon legend-cliente"></div>
@@ -1048,7 +1065,6 @@
               </div>
           </div>
 
-          <!-- INFO DEL MAPA -->
           <div id="map-info" class="map-info-box" style="display:none;">
               <strong>📊 Información del Seguimiento</strong>
               <p id="map-distance">Calculando distancia...</p>
@@ -1061,20 +1077,17 @@
     </div>
   </div>
 
-  <!-- Leaflet JS para el mapa -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
   
-  <!-- Eruda - Herramienta de depuración para móviles -->
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>
-    // Inicializar Eruda
     eruda.init();
     console.log('✅ Eruda inicializado correctamente');
   </script>
  <script>
     // ======================================================================
-    // === JS Estándar (Variables Globales y Funciones de Utilidad/UI) ===
+    // === VARIABLES GLOBALES ===
     // ======================================================================
     
     let currentUserID = null; 
@@ -1092,6 +1105,12 @@
     let notificationPermissionRequested = false;
     let menuAbierto = false;
     
+    // 🆕 VARIABLES PARA ENVÍO AUTOMÁTICO DE UBICACIÓN DEL CLIENTE
+    let clienteLocationWatchId = null;
+    let isClienteLocationActive = false;
+    let lastClienteLocationUpdate = 0;
+    const CLIENTE_LOCATION_INTERVAL = 5000; // Cada 5 segundos
+    
     // VARIABLES PARA EL MAPA Y SEGUIMIENTO
     let map = null;
     let clienteMarker = null;
@@ -1104,27 +1123,145 @@
     let locationPermissionGranted = false;
     let currentPedidoId = null;
     
-    // AUDIO DE NOTIFICACIÓN
     const notificationSound = new Audio('https://github.com/dt9650329-ops/Chat-administrador-/raw/f67a159f93aed6be1d6f7f02709384111cd84b7e/%E2%9C%A8Monedas%20Cayendo%20__%20Efectos%20De%20Sonidos(MP3_160K).mp3');
     notificationSound.volume = 0.8;
     notificationSound.preload = 'auto';
     notificationSound.load();
     
-    const MESSAGE_EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24 horas
+    const MESSAGE_EXPIRATION_TIME = 24 * 60 * 60 * 1000;
     
     function getClientID(uid) {
         return `cliente_auth_${uid}`;
     }
     
+    // ======================================================================
+    // 🆕 SISTEMA DE ENVÍO AUTOMÁTICO DE UBICACIÓN DEL CLIENTE A FIREBASE
+    // ======================================================================
+    
+    function iniciarEnvioUbicacionCliente() {
+        if (isClienteLocationActive) {
+            console.log('⚠️ Sistema de ubicación del cliente ya está activo');
+            return;
+        }
+        
+        if (!navigator.geolocation) {
+            console.error('❌ Geolocalización no soportada');
+            return;
+        }
+        
+        console.log('📍 Iniciando envío automático de ubicación del cliente...');
+        isClienteLocationActive = true;
+        
+        // Mostrar indicador GPS
+        document.getElementById('gps-indicator-cliente').classList.add('active');
+        
+        clienteLocationWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                const now = Date.now();
+                
+                // Enviar solo cada 5 segundos
+                if (now - lastClienteLocationUpdate < CLIENTE_LOCATION_INTERVAL) {
+                    return;
+                }
+                
+                lastClienteLocationUpdate = now;
+                
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+                
+                console.log(`📍 Ubicación Cliente: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy)}m)`);
+                
+                // 🔥 ENVIAR A FIREBASE
+                enviarUbicacionClienteAFirebase(lat, lng, accuracy);
+            },
+            (error) => {
+                console.error('❌ Error GPS Cliente:', error.message);
+                
+                if (error.code === error.PERMISSION_DENIED) {
+                    console.error('⚠️ Permiso de ubicación denegado');
+                    detenerEnvioUbicacionCliente();
+                    alert('⚠️ IMPORTANTE: Permiso de ubicación denegado.\n\n' +
+                          'Sin este permiso NO podrás usar el seguimiento en tiempo real.\n\n' +
+                          'Para activarlo:\n' +
+                          '1. Ve al menú hamburguesa (arriba derecha)\n' +
+                          '2. Activa el permiso de Ubicación GPS\n' +
+                          '3. O ve a Configuración del navegador');
+                }
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+        
+        console.log('✅ Sistema de ubicación del cliente iniciado (cada 5s)');
+    }
+    
+    async function enviarUbicacionClienteAFirebase(lat, lng, accuracy) {
+        if (!currentUserID || !window.db || !window.ref || !window.update) {
+            console.warn('⚠️ No se puede enviar ubicación: sistema no inicializado');
+            return;
+        }
+        
+        try {
+            const timestamp = Date.now();
+            const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+            
+            // ✅ GUARDAR EN usuarios/{clienteID} con formato lat/lon
+            await window.update(window.ref(window.db, `usuarios/${currentUserID}`), {
+                ubicacion: {
+                    lat: parseFloat(lat.toFixed(6)),
+                    lon: parseFloat(lng.toFixed(6))
+                },
+                ubicacionActual: {
+                    lat: parseFloat(lat.toFixed(6)),
+                    lon: parseFloat(lng.toFixed(6)),
+                    accuracy: Math.round(accuracy),
+                    timestamp: timestamp,
+                    googleMapsUrl: googleMapsUrl
+                },
+                lastSeen: timestamp,
+                gpsActivo: true
+            });
+            
+            console.log(`✅ Ubicación Cliente → Firebase: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+            
+        } catch (error) {
+            console.error('❌ Error al enviar ubicación del cliente:', error);
+        }
+    }
+    
+    function detenerEnvioUbicacionCliente() {
+        if (clienteLocationWatchId !== null) {
+            navigator.geolocation.clearWatch(clienteLocationWatchId);
+            clienteLocationWatchId = null;
+        }
+        
+        isClienteLocationActive = false;
+        console.log('🛑 Envío de ubicación del cliente detenido');
+        
+        // Ocultar indicador GPS
+        document.getElementById('gps-indicator-cliente').classList.remove('active');
+        
+        if (currentUserID && window.db && window.ref && window.update) {
+            window.update(window.ref(window.db, `usuarios/${currentUserID}`), {
+                gpsActivo: false
+            }).catch(err => console.error('Error al actualizar estado GPS:', err));
+        }
+    }
+    
+    // ======================================================================
+    // === FUNCIONES DE UTILIDAD Y UI ===
+    // ======================================================================
+    
     function mostrarVista(vistaId) {
         const mainContainer = document.getElementById("main-container");
-        
         mainContainer.querySelectorAll(':scope > div, :scope > form').forEach(child => {
             child.style.display = 'none';
         });
-
         mainContainer.style.display = 'block'; 
-        
         document.getElementById(vistaId).style.display = 'block';
     }
 
@@ -1152,9 +1289,7 @@
     function habilitarChat() {
         const checked = document.getElementById("terminos-check").checked;
         const btnChat = document.getElementById("btnSolicitarChat");
-        
         const servicioBloqueado = document.getElementById("tab-servicio").disabled;
-
         btnChat.disabled = servicioBloqueado || !checked;
     }
 
@@ -1167,7 +1302,6 @@
         alert("Por favor completa los campos obligatorios (Nombre, Teléfono principal y Dirección).");
         return;
       }
-      
       guardarUsuarioEnFirebase(); 
     }
 
@@ -1179,9 +1313,13 @@
       document.getElementById("dirPerfil").textContent = usuario.direccion; 
       
       window.USER_NAME = usuario.nombre; 
-
       currentUserID = getClientID(usuario.uid); 
       verificarAprobacion(); 
+      
+      // 🆕 INICIAR ENVÍO AUTOMÁTICO DE UBICACIÓN DEL CLIENTE
+      console.log('🚀 Iniciando GPS del cliente automáticamente...');
+      iniciarEnvioUbicacionCliente();
+      
       mostrarVista('vista-cliente'); 
     }
 
@@ -1196,16 +1334,15 @@
         } catch (e) {
             date = new Date(Date.now());
         }
-
         const options = { 
             hour: '2-digit', minute: '2-digit',
             hour12: true
         };
         return date.toLocaleString('es-ES', options);
     }
+
     function formatDate(timestamp) {
         if (!timestamp) return "";
-        
         let date;
         try {
             date = new Date(timestamp);
@@ -1215,20 +1352,15 @@
         } catch (e) {
             date = new Date(Date.now());
         }
-
         const today = new Date();
-        
         const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
         const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        
         const isToday = todayOnly.getTime() === dateOnly.getTime();
         const yesterday = new Date(todayOnly);
         yesterday.setDate(todayOnly.getDate() - 1);
         const isYesterday = yesterday.getTime() === dateOnly.getTime();
-
         if (isToday) return "Hoy";
         if (isYesterday) return "Ayer";
-
         const options = { 
             year: 'numeric', 
             month: 'long', 
@@ -1252,9 +1384,7 @@
             if (btnNotif) btnNotif.style.display = 'none';
             return;
         }
-        
         notificationPermission = Notification.permission;
-        
         if (document.getElementById('content-servicio').classList.contains('active-content')) {
             if (notificationPermission === 'granted') {
                 btnNotif.style.display = 'none';
@@ -1358,7 +1488,6 @@
         }
         
         try {
-            // Solicitar permiso de cámara
             try {
                 const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 videoStream.getTracks().forEach(track => track.stop());
@@ -1367,7 +1496,6 @@
                 console.warn('⚠️ Permiso de cámara denegado o no disponible');
             }
             
-            // Solicitar permiso de micrófono
             try {
                 const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 audioStream.getTracks().forEach(track => track.stop());
@@ -1384,6 +1512,7 @@
             return false;
         }
     }
+
     async function limpiarMensajesAntiguos() {
         if (!window.currentUserID || !window.db || !window.ref || !window.get) {
             return;
@@ -1439,6 +1568,9 @@
             console.error('❌ Error al limpiar mensajes:', error);
         }
     }
+    // ======================================================================
+    // === FUNCIONES DE CHAT Y MULTIMEDIA ===
+    // ======================================================================
 
     window.activarSelectorFoto = function() {
         const fileInput = document.getElementById('file-input-chat');
@@ -1593,7 +1725,9 @@
         });
     }
 
-    // ================= FUNCIONES DEL MENÚ HAMBURGUESA =================
+    // ======================================================================
+    // === FUNCIONES DEL MENÚ HAMBURGUESA ===
+    // ======================================================================
 
     window.toggleMenu = function() {
         menuAbierto = !menuAbierto;
@@ -1622,10 +1756,12 @@
             toggleMenu();
         }
     });
-    // ================= GESTIÓN DE PERMISOS =================
+
+    // ======================================================================
+    // === GESTIÓN DE PERMISOS ===
+    // ======================================================================
 
     window.verificarEstadosPermisos = async function() {
-        // Verificar Notificaciones
         if ('Notification' in window) {
             const notifStatus = document.getElementById('notif-status');
             const btnNotif = document.getElementById('btn-permiso-notif');
@@ -1650,7 +1786,6 @@
             }
         }
         
-        // Verificar Cámara
         try {
             const permissions = await navigator.permissions.query({ name: 'camera' });
             actualizarEstadoPermiso('camera', permissions.state);
@@ -1662,7 +1797,6 @@
             document.getElementById('camera-status').textContent = '⚠️ No disponible';
         }
         
-        // Verificar Micrófono
         try {
             const permissions = await navigator.permissions.query({ name: 'microphone' });
             actualizarEstadoPermiso('mic', permissions.state);
@@ -1674,7 +1808,6 @@
             document.getElementById('mic-status').textContent = '⚠️ No disponible';
         }
 
-        // Verificar Ubicación
         try {
             const permissions = await navigator.permissions.query({ name: 'geolocation' });
             actualizarEstadoPermiso('location', permissions.state);
@@ -1788,8 +1921,15 @@
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 locationPermissionGranted = true;
-                alert('✅ Permiso de ubicación concedido');
+                alert('✅ Permiso de ubicación concedido\n\n' +
+                      'El GPS del cliente se activará automáticamente y enviará tu ubicación a Firebase cada 5 segundos.\n\n' +
+                      'Esto permite que el repartidor vea tu ubicación en tiempo real.');
                 verificarEstadosPermisos();
+                
+                // 🆕 Iniciar GPS automáticamente si aún no está activo
+                if (!isClienteLocationActive) {
+                    iniciarEnvioUbicacionCliente();
+                }
             },
             (error) => {
                 if (error.code === error.PERMISSION_DENIED) {
@@ -1805,7 +1945,10 @@
     window.addEventListener('load', () => {
         setTimeout(verificarEstadosPermisos, 1000);
     });
-    // ================= FUNCIONES DEL MAPA =================
+
+    // ======================================================================
+    // === FUNCIONES DEL MAPA (Para Seguimiento) ===
+    // ======================================================================
 
     function initMap() {
         if (map) {
@@ -1813,7 +1956,6 @@
             map = null;
         }
 
-        // Coordenadas por defecto (Colombia - Bogotá)
         const defaultCoords = [4.710989, -74.072092];
         
         map = L.map('map').setView(defaultCoords, 13);
@@ -1823,7 +1965,6 @@
             maxZoom: 19
         }).addTo(map);
 
-        // Invalidar tamaño después de un momento para asegurar renderizado correcto
         setTimeout(() => {
             if (map) {
                 map.invalidateSize();
@@ -1860,29 +2001,28 @@
     }
 
     function agregarMarcadorCliente(coords) {
-    // GUARDAR COORDENADAS GLOBALMENTE
-    clienteCoords = coords;
-    
-    if (clienteMarker) {
-        map.removeLayer(clienteMarker);
+        clienteCoords = coords;
+        
+        if (clienteMarker) {
+            map.removeLayer(clienteMarker);
+        }
+
+        const iconCliente = L.divIcon({
+            className: 'custom-marker-cliente',
+            html: '<div style="background-color: #4CAF50; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        clienteMarker = L.marker([coords.lat, coords.lng], { icon: iconCliente })
+            .addTo(map)
+            .bindPopup('<b>📍 Tu Ubicación</b>')
+            .openPopup();
+
+        map.setView([coords.lat, coords.lng], 15);
+        
+        console.log('✅ Coordenadas del cliente guardadas:', clienteCoords);
     }
-
-    const iconCliente = L.divIcon({
-        className: 'custom-marker-cliente',
-        html: '<div style="background-color: #4CAF50; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
-        iconSize: [30, 30],
-        iconAnchor: [15, 15]
-    });
-
-    clienteMarker = L.marker([coords.lat, coords.lng], { icon: iconCliente })
-        .addTo(map)
-        .bindPopup('<b>📍 Tu Ubicación</b>')
-        .openPopup();
-
-    map.setView([coords.lat, coords.lng], 15);
-    
-    console.log('✅ Coordenadas del cliente guardadas:', clienteCoords);
-}
 
     function agregarMarcadorRepartidor(coords) {
         if (repartidorMarker) {
@@ -1916,18 +2056,16 @@
             lineOptions: {
                 styles: [{ color: '#FFD700', opacity: 0.8, weight: 5 }]
             },
-            createMarker: function() { return null; }, // No crear marcadores adicionales
+            createMarker: function() { return null; },
             addWaypoints: false,
             draggableWaypoints: false,
             fitSelectedRoutes: true
         }).addTo(map);
 
-        // Escuchar cuando se encuentra la ruta
         routingControl.on('routesfound', function(e) {
             const routes = e.routes;
             const summary = routes[0].summary;
             
-            // Actualizar información de distancia y tiempo
             const distanceKm = (summary.totalDistance / 1000).toFixed(2);
             const timeMin = Math.round(summary.totalTime / 60);
             
@@ -1935,68 +2073,10 @@
             document.getElementById('map-duration').textContent = `⏱️ Tiempo estimado: ${timeMin} min`;
         });
     }
+    // ======================================================================
+    // === SEGUIMIENTO DE UBICACIÓN DEL REPARTIDOR ===
+    // ======================================================================
 
-    // FUNCIÓN CRÍTICA: INICIAR SEGUIMIENTO DE UBICACIÓN DEL REPARTIDOR
-    function iniciarSeguimientoUbicacion(repartidorUID, pedidoId) {
-        detenerSeguimientoUbicacion();
-        
-        if (!repartidorUID || !window.db || !window.ref || !window.onValue) {
-            console.error('❌ No se puede iniciar seguimiento: datos incompletos');
-            return;
-        }
-        
-        currentRepartidorUID = repartidorUID;
-        currentPedidoId = pedidoId;
-        
-        console.log('📡 Iniciando seguimiento del repartidor:', repartidorUID);
-        
-        // ESCUCHAR LA UBICACIÓN DEL REPARTIDOR DESDE repartidores_info
-        const repartidorRef = window.ref(window.db, `repartidores_info/${repartidorUID}`);
-        
-        repartidorUbicacionListener = window.onValue(repartidorRef, (snapshot) => {
-            if (snapshot.exists()) {
-                const repData = snapshot.val();
-                
-                console.log('📡 Datos del repartidor recibidos:', repData);
-                
-                // LEER LA UBICACIÓN DEL REPARTIDOR (formato: lat, lon)
-                if (repData.ubicacion && repData.ubicacion.lat && repData.ubicacion.lon) {
-                    const repartidorCoords = {
-                        lat: parseFloat(repData.ubicacion.lat),
-                        lng: parseFloat(repData.ubicacion.lon)
-                    };
-                    
-                    console.log('📍 Ubicación del repartidor:', repartidorCoords);
-                    
-                    // VERIFICAR QUE TENGAMOS MAPA Y COORDENADAS DEL CLIENTE
-                    if (!map) {
-                        console.error('❌ El mapa no está inicializado');
-                        return;
-                    }
-                    
-                    if (!clienteCoords || !clienteCoords.lat || !clienteCoords.lng) {
-                        console.error('❌ Coordenadas del cliente no disponibles:', clienteCoords);
-                        console.warn('⚠️ Esperando ubicación del cliente...');
-                        return;
-                    }
-                    
-                    // TODO OK - Actualizar mapa
-                    agregarMarcadorRepartidor(repartidorCoords);
-                    trazarRuta(clienteCoords, repartidorCoords);
-                    console.log('✅ Mapa actualizado con ubicación del repartidor');
-                    console.log('📊 Cliente:', clienteCoords, '| Repartidor:', repartidorCoords);
-                } else {
-                    console.warn('⚠️ El repartidor no tiene ubicación disponible aún');
-                }
-            } else {
-                console.warn('⚠️ No se encontraron datos del repartidor');
-            }    
-        }, (error) => {
-            console.error('❌ Error al escuchar ubicación del repartidor:', error);
-        });
-        
-        console.log('✅ Listener de ubicación del repartidor activado');
-    }
     function detenerSeguimientoUbicacion() {
         if (repartidorUbicacionListener && currentRepartidorUID && window.off && window.ref && window.db) {
             const repartidorRef = window.ref(window.db, `repartidores_info/${currentRepartidorUID}`);
@@ -2007,13 +2087,11 @@
             console.log('🛑 Seguimiento de ubicación detenido');
         }
 
-        // Detener seguimiento de ubicación del cliente
         if (watchPositionId !== null) {
             navigator.geolocation.clearWatch(watchPositionId);
             watchPositionId = null;
         }
 
-        // Limpiar mapa
         if (map) {
             if (clienteMarker) {
                 map.removeLayer(clienteMarker);
@@ -2038,7 +2116,6 @@
             return;
         }
 
-        // Detener seguimiento previo si existe
         if (watchPositionId !== null) {
             navigator.geolocation.clearWatch(watchPositionId);
         }
@@ -2055,7 +2132,6 @@
                 if (map) {
                     agregarMarcadorCliente(coords);
                     
-                    // Si hay un repartidor en seguimiento, actualizar la ruta
                     if (repartidorMarker) {
                         const repartidorPos = repartidorMarker.getLatLng();
                         trazarRuta(coords, { lat: repartidorPos.lat, lng: repartidorPos.lng });
@@ -2072,6 +2148,10 @@
             }
         );
     }
+
+    // ======================================================================
+    // === BÚSQUEDA Y SEGUIMIENTO DE PEDIDO ===
+    // ======================================================================
 
     window.buscarPedidoPorCorreo = async function() {
         const email = document.getElementById('tracking-email-input').value.trim();
@@ -2272,33 +2352,46 @@
             console.log('✅ Pedido activo detectado. Mostrando mapa...');
             console.log('🏍️ Repartidor asignado:', pedido.repartidorIdAsignado);
             
-            // Mostrar mapa
             mapContainer.style.display = 'block';
             mapLegend.style.display = 'flex';
             mapInfo.style.display = 'block';
             
-            // Inicializar mapa
             initMap();
             
-            // Obtener ubicación del cliente
             try {
-                const coords = await obtenerUbicacionCliente();
-                agregarMarcadorCliente(coords);
-                console.log('📍 Ubicación del cliente obtenida:', coords);
-                
-                // Iniciar seguimiento continuo del cliente
-                iniciarSeguimientoContinuoCliente();
-                
-                // INICIAR SEGUIMIENTO DEL REPARTIDOR (LEE DESDE repartidores_info)
-                iniciarSeguimientoUbicacion(pedido.repartidorIdAsignado, pedido.id);
-                
-                console.log('✅ Seguimiento en tiempo real iniciado');
-                
-            } catch (error) {
-                console.error('Error al obtener ubicación:', error);
+    // 1️⃣ PRIMERO: Obtener ubicación del cliente
+    const coords = await obtenerUbicacionCliente();
+    agregarMarcadorCliente(coords);
+    console.log('✅ Ubicación del cliente obtenida:', coords);
+    
+    // 2️⃣ SEGUNDO: Guardar en la variable global
+    clienteCoords = coords;
+    
+    // 3️⃣ TERCERO: Iniciar seguimiento continuo
+    iniciarSeguimientoContinuoCliente();
+    
+    // 4️⃣ CUARTO: Esperar 1 segundo para asegurar que clienteCoords esté lista
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // 5️⃣ QUINTO: Verificar que tenemos las coordenadas
+    if (clienteCoords && clienteCoords.lat && clienteCoords.lng) {
+        console.log('✅ Coordenadas del cliente confirmadas:', clienteCoords);
+        
+        // 6️⃣ SEXTO: AHORA SÍ iniciar seguimiento del repartidor
+        iniciarSeguimientoUbicacion(pedido.repartidorIdAsignado, pedido.id);
+        console.log('✅ Seguimiento en tiempo real iniciado');
+    } else {
+        throw new Error('No se pudieron obtener las coordenadas del cliente');
+    }
+    
+} catch (error) {
+    console.error('❌ Error al obtener ubicación:', error);
                 
                 if (error.code === 1) {
-                    alert('⚠️ Necesitamos tu permiso de ubicación para mostrar el mapa.\n\nActívalo en Ajustes (menú hamburguesa) o en la configuración de tu navegador.');
+                    alert('⚠️ Necesitamos tu permiso de ubicación para mostrar el mapa.\n\n' +
+                          'Actívalo en:\n' +
+                          '• Menú hamburguesa (arriba derecha) → Ubicación GPS\n' +
+                          '• O en la configuración de tu navegador');
                 } else {
                     alert('⚠️ No se pudo obtener tu ubicación. Verifica tu conexión y permisos.');
                 }
@@ -2309,13 +2402,21 @@
             }
         } else {
             console.log('ℹ️ Pedido completado o sin repartidor asignado. No se muestra mapa.');
-            // Pedido completado o cancelado - no mostrar mapa
             detenerSeguimientoUbicacion();
             mapContainer.style.display = 'none';
             mapLegend.style.display = 'none';
             mapInfo.style.display = 'none';
         }
     }
+
+    // ======================================================================
+    // === LOG DE INICIALIZACIÓN ===
+    // ======================================================================
+    
+    console.log('✅ Sistema del cliente inicializado v2.2.0');
+    console.log('📍 Envío automático de ubicación del cliente: HABILITADO');
+    console.log('🗺️ Compatible con seguimiento en tiempo real del repartidor');
+    console.log('🔄 Ubicación del cliente se envía a Firebase cada 5 segundos');
   </script>
   <script type="module">
     import { 
@@ -2334,7 +2435,8 @@
         orderByChild, 
         equalTo,
         off,
-        remove
+        remove,
+        update
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     
     import { 
@@ -2367,11 +2469,13 @@
     const auth = getAuth(app); 
     const storage = getStorage(app); 
 
+    // Exportar funciones de Firebase al scope global
     window.db = db;
     window.push = push;
     window.ref = ref;
     window.set = set;
     window.remove = remove;
+    window.update = update;
     window.storage = storage;
     window.storageRef = storageRef;
     window.uploadBytesResumable = uploadBytesResumable;
@@ -2399,6 +2503,10 @@
         passwordInput.value = '';
         statusDiv.textContent = '';
     }
+
+    // ======================================================================
+    // === AUTENTICACIÓN ===
+    // ======================================================================
 
     window.registrarConCorreo = function() {
         const email = emailInput.value.trim();
@@ -2463,6 +2571,9 @@
         
         detenerSeguimientoUbicacion();
         
+        // 🆕 DETENER ENVÍO DE UBICACIÓN DEL CLIENTE
+        detenerEnvioUbicacionCliente();
+        
         off(ref(db, `chats/${window.currentUserID}`));
         
         signOut(auth).then(() => {
@@ -2472,10 +2583,15 @@
             localStorage.removeItem("usuarioDomicilios"); 
             limpiarInputs();
             window.mostrarVista('vista-inicio');
+            console.log('🚪 Sesión cerrada - GPS del cliente detenido');
         }).catch((error) => {
             console.error("Error al cerrar sesión:", error);
         });
     }
+
+    // ======================================================================
+    // === OBSERVER DE AUTENTICACIÓN ===
+    // ======================================================================
 
     onAuthStateChanged(auth, (user) => {
       setTimeout(() => {
@@ -2521,6 +2637,11 @@
         hideSplashScreen();
       }
     });
+
+    // ======================================================================
+    // === GUARDAR USUARIO EN FIREBASE ===
+    // ======================================================================
+
     window.guardarUsuarioEnFirebase = function() {
         const authUser = window.currentAuthUser; 
 
@@ -2553,7 +2674,8 @@
             ubicacion: {lat: 'N/A', lon: 'N/A'}, 
             estado: "Activo",
             rol: window.USER_ROLE, 
-            registro: Date.now()
+            registro: Date.now(),
+            gpsActivo: false
         };
         
         const promesasEscritura = [];
@@ -2574,6 +2696,10 @@
                 console.error("Error de Firebase:", error); 
             });
     }
+
+    // ======================================================================
+    // === VERIFICAR APROBACIÓN DEL USUARIO ===
+    // ======================================================================
 
     window.verificarAprobacion = function() {
         if (!window.currentUserID) return;
@@ -2606,6 +2732,10 @@
             }
         });
     }
+
+    // ======================================================================
+    // === SISTEMA DE CHAT ===
+    // ======================================================================
 
     window.mostrarAviso = function() {
         if (tabServicio.disabled) return; 
@@ -2743,7 +2873,6 @@
             }
         });
     }
-
     window.iniciarChatFinal = async function() {
         if (tabServicio.disabled) return; 
 
@@ -2925,8 +3054,54 @@
       }
     }
     
-    console.log('✅ Sistema de seguimiento en tiempo real activado');
-    console.log('🗺️ El mapa mostrará la ubicación del repartidor cuando esté disponible');
+    // ======================================================================
+    // === LOG FINAL DE SISTEMA ===
+    // ======================================================================
+    
+    console.log('');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('🎉 SISTEMA CLIENTE SERVI ALIADOS - TOTALMENTE INICIALIZADO');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('');
+    console.log('📋 CARACTERÍSTICAS ACTIVAS:');
+    console.log('  ✅ Autenticación Firebase con Email/Password');
+    console.log('  ✅ Chat en tiempo real con multimedia (fotos y audio)');
+    console.log('  ✅ Notificaciones push con sonido personalizado');
+    console.log('  ✅ Sistema de permisos con menú hamburguesa');
+    console.log('  ✅ Limpieza automática de mensajes antiguos (24h)');
+    console.log('');
+    console.log('🆕 NUEVO - GPS AUTOMÁTICO DEL CLIENTE:');
+    console.log('  📍 Envío automático a Firebase cada 5 segundos');
+    console.log('  📡 Formato: usuarios/{clienteID}/ubicacion {lat, lon}');
+    console.log('  🗺️ Compatible con lectura del repartidor');
+    console.log('  💾 Guardado en Firebase Realtime Database');
+    console.log('  🔄 Se activa automáticamente al hacer login');
+    console.log('');
+    console.log('🗺️ SEGUIMIENTO EN TIEMPO REAL:');
+    console.log('  🏍️ Visualización de ubicación del repartidor');
+    console.log('  📏 Cálculo de distancia y tiempo estimado');
+    console.log('  🛣️ Trazado de ruta con Leaflet Routing Machine');
+    console.log('  🔄 Actualización automática en tiempo real');
+    console.log('');
+    console.log('📦 VERSIÓN: Cliente v2.2.0 - GPS Automático');
+    console.log('🕒 Fecha: ' + new Date().toLocaleString('es-ES'));
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('');
+    console.log('💡 CÓMO FUNCIONA EL GPS AUTOMÁTICO:');
+    console.log('   1. Al iniciar sesión, el GPS se activa automáticamente');
+    console.log('   2. Cada 5 segundos envía tu ubicación a Firebase');
+    console.log('   3. Se guarda en: usuarios/{clienteID}/ubicacion');
+    console.log('   4. Formato: {lat: number, lon: number}');
+    console.log('   5. El repartidor puede leer esta ubicación');
+    console.log('   6. Al cerrar sesión, el GPS se detiene automáticamente');
+    console.log('');
+    console.log('🔍 CONSOLA DE DEPURACIÓN:');
+    console.log('   • Eruda está activo (herramientas de desarrollo)');
+    console.log('   • Logs de GPS cada 5 segundos');
+    console.log('   • Monitoreo de permisos en tiempo real');
+    console.log('');
+    console.log('🚀 ¡Sistema listo para usar!');
+    console.log('═══════════════════════════════════════════════════════════');
   </script>
 </body>
 </html>

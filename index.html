@@ -910,7 +910,7 @@
                       <span class="menu-item-icon">ℹ️</span>
                       <div class="menu-item-text">
                           <strong>Versión</strong>
-                          <small>Cliente v2.2.0 - GPS Automático</small>
+                          <small>Cliente v2.3.0 - GPS Fix</small>
                       </div>
                   </div>
               </div>
@@ -1482,253 +1482,6 @@
         });
     }
 
-    async function solicitarPermisosMultimedia() {
-        if (permisosMultimediaSolicitados) {
-            return true;
-        }
-        
-        try {
-            try {
-                const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                videoStream.getTracks().forEach(track => track.stop());
-                console.log('✅ Permiso de cámara concedido');
-            } catch (cameraError) {
-                console.warn('⚠️ Permiso de cámara denegado o no disponible');
-            }
-            
-            try {
-                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                audioStream.getTracks().forEach(track => track.stop());
-                console.log('✅ Permiso de micrófono concedido');
-            } catch (audioError) {
-                console.warn('⚠️ Permiso de micrófono denegado o no disponible');
-            }
-            
-            permisosMultimediaSolicitados = true;
-            return true;
-            
-        } catch (error) {
-            console.error('Error al solicitar permisos:', error);
-            return false;
-        }
-    }
-
-    async function limpiarMensajesAntiguos() {
-        if (!window.currentUserID || !window.db || !window.ref || !window.get) {
-            return;
-        }
-        
-        try {
-            const chatRef = window.ref(window.db, `chats/${window.currentUserID}`);
-            const snapshot = await window.get(chatRef);
-            
-            if (!snapshot.exists()) {
-                return;
-            }
-            
-            const ahora = Date.now();
-            const mensajesParaBorrar = [];
-            const mensajesParaHistorial = [];
-            
-            snapshot.forEach((childSnapshot) => {
-                const mensaje = childSnapshot.val();
-                const timestampMensaje = mensaje.timestamp || 0;
-                const edad = ahora - timestampMensaje;
-                
-                if (edad > MESSAGE_EXPIRATION_TIME) {
-                    mensajesParaBorrar.push(childSnapshot.key);
-                    mensajesParaHistorial.push({
-                        ...mensaje,
-                        messageID: childSnapshot.key,
-                        fechaArchivado: ahora
-                    });
-                }
-            });
-            
-            if (mensajesParaBorrar.length > 0) {
-                console.log(`🗑️ Limpiando ${mensajesParaBorrar.length} mensajes antiguos...`);
-                
-                for (const mensaje of mensajesParaHistorial) {
-                    const historialRef = window.push(
-                        window.ref(window.db, `chats_historial/${window.currentUserID}`)
-                    );
-                    await window.set(historialRef, mensaje);
-                }
-                
-                for (const messageKey of mensajesParaBorrar) {
-                    await window.remove(
-                        window.ref(window.db, `chats/${window.currentUserID}/${messageKey}`)
-                    );
-                }
-                
-                console.log(`✅ ${mensajesParaBorrar.length} mensajes archivados.`);
-            }
-            
-        } catch (error) {
-            console.error('❌ Error al limpiar mensajes:', error);
-        }
-    }
-    // ======================================================================
-    // === FUNCIONES DE CHAT Y MULTIMEDIA ===
-    // ======================================================================
-
-    window.activarSelectorFoto = function() {
-        const fileInput = document.getElementById('file-input-chat');
-        const btnFoto = document.getElementById('btn-foto');
-        const btnAudio = document.getElementById('btn-audio');
-        
-        fileInput.accept = 'image/*';
-        currentMediaType = 'image';
-        
-        btnFoto.classList.add('active-tab');
-        btnAudio.classList.remove('active-tab');
-        
-        fileInput.click();
-    }
-    
-    window.toggleGrabarAudio = async function() {
-        const btnAudio = document.getElementById('btn-audio');
-        const btnFoto = document.getElementById('btn-foto');
-        const statusDiv = document.getElementById('audio-recording-status');
-        
-        if (!isRecording) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                
-                mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                };
-                
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
-                    
-                    stream.getTracks().forEach(track => track.stop());
-                    
-                    statusDiv.style.display = 'none';
-                    btnAudio.classList.remove('recording-active');
-                    btnAudio.textContent = '🎙️ Grabar';
-                    btnFoto.disabled = false;
-                    
-                    await enviarArchivoAFirebase(audioFile, 'audio');
-                };
-                
-                mediaRecorder.start();
-                isRecording = true;
-                
-                btnAudio.classList.add('recording-active');
-                btnAudio.textContent = '⏹️ Detener';
-                btnFoto.disabled = true;
-                statusDiv.style.display = 'block';
-                statusDiv.textContent = '🔴 Grabando audio...';
-                
-            } catch (error) {
-                alert('Error al acceder al micrófono: ' + error.message);
-                console.error('Error de micrófono:', error);
-            }
-        } else {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                isRecording = false;
-            }
-        }
-    }
-    
-    window.manejarArchivoSeleccionado = async function() {
-        const fileInput = document.getElementById('file-input-chat');
-        const file = fileInput.files[0];
-        
-        if (!file) {
-            return;
-        }
-        
-        const fileStatusDiv = document.getElementById('file-upload-status');
-        fileStatusDiv.style.display = 'block';
-        fileStatusDiv.textContent = 'Preparando archivo...';
-        
-        document.getElementById('btn-foto').disabled = true;
-        document.getElementById('btn-audio').disabled = true;
-        
-        try {
-            await enviarArchivoAFirebase(file, 'image');
-        } catch (error) {
-            console.error("Error al enviar archivo:", error);
-            fileStatusDiv.textContent = `❌ Error: ${error.message}`;
-        }
-        
-        setTimeout(() => {
-            fileStatusDiv.style.display = 'none';
-            fileStatusDiv.textContent = '';
-            fileInput.value = '';
-            document.getElementById('btn-foto').disabled = false;
-            document.getElementById('btn-audio').disabled = false;
-            document.getElementById('btn-foto').classList.remove('active-tab');
-            currentMediaType = null;
-        }, 1500);
-    }
-    
-    async function enviarArchivoAFirebase(file, tipoArchivo) {
-        if (!window.currentUserID || !window.storage || !window.push || !window.ref || !window.db) {
-            throw new Error("Sistema no inicializado");
-        }
-        
-        const fileStatusDiv = document.getElementById('file-upload-status');
-        fileStatusDiv.style.display = 'block';
-        fileStatusDiv.textContent = 'Subiendo archivo...';
-        
-        const storagePath = `chats/${window.currentUserID}/${Date.now()}_${file.name}`;
-        const fileRef = window.storageRef(window.storage, storagePath);
-        
-        const uploadTask = window.uploadBytesResumable(fileRef, file);
-
-        return new Promise((resolve, reject) => {
-            uploadTask.on('state_changed', 
-                (snapshot) => {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    fileStatusDiv.textContent = `Subiendo... ${progress.toFixed(0)}%`;
-                }, 
-                (error) => {
-                    reject(new Error(`Error al subir: ${error.message}`));
-                }, 
-                async () => {
-                    try {
-                        const downloadURL = await window.getDownloadURL(uploadTask.snapshot.ref);
-                        
-                        let messageText = '';
-                        if (tipoArchivo === 'image') {
-                            messageText = `📷 Imagen`;
-                        } else if (tipoArchivo === 'audio') {
-                            messageText = `🎙️ Audio`;
-                        }
-                        
-                        await window.push(window.ref(window.db, `chats/${window.currentUserID}`), {
-                            remitente: window.currentUserID, 
-                            nombre_remitente: window.USER_NAME || window.currentUserID, 
-                            texto: messageText,
-                            timestamp: Date.now(), 
-                            rol_remitente: window.USER_ROLE, 
-                            pedidoID: window.activePedidoID || 'N/A',
-                            tipo_adjunto: tipoArchivo,
-                            referencia_adjunto: downloadURL 
-                        });
-                        
-                        fileStatusDiv.textContent = '✅ Archivo enviado';
-                        resolve();
-                    } catch (error) {
-                        reject(error);
-                    }
-                }
-            );
-        });
-    }
-
-    // ======================================================================
-    // === FUNCIONES DEL MENÚ HAMBURGUESA ===
-    // ======================================================================
-
     window.toggleMenu = function() {
         menuAbierto = !menuAbierto;
         
@@ -1756,6 +1509,643 @@
             toggleMenu();
         }
     });
+    // ======================================================================
+    // === FUNCIONES DEL MAPA (Para Seguimiento) ===
+    // ======================================================================
+
+    function initMap() {
+        if (map) {
+            map.remove();
+            map = null;
+        }
+
+        const defaultCoords = [4.710989, -74.072092];
+        
+        map = L.map('map').setView(defaultCoords, 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        setTimeout(() => {
+            if (map) {
+                map.invalidateSize();
+            }
+        }, 100);
+    }
+
+    function obtenerUbicacionCliente() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('Geolocalización no soportada'));
+                return;
+            }
+
+            console.log('📍 Solicitando ubicación del cliente...');
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const coords = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    console.log('✅ Ubicación obtenida:', coords);
+                    resolve(coords);
+                },
+                (error) => {
+                    console.error('❌ Error al obtener ubicación:', error);
+                    reject(error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        });
+    }
+
+    function agregarMarcadorCliente(coords) {
+        console.log('📍 Agregando marcador del cliente:', coords);
+        
+        // 🔥 GUARDAR EN VARIABLE GLOBAL
+        clienteCoords = coords;
+        
+        if (clienteMarker) {
+            map.removeLayer(clienteMarker);
+        }
+
+        const iconCliente = L.divIcon({
+            className: 'custom-marker-cliente',
+            html: '<div style="background-color: #4CAF50; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        clienteMarker = L.marker([coords.lat, coords.lng], { icon: iconCliente })
+            .addTo(map)
+            .bindPopup('<b>📍 Tu Ubicación</b>')
+            .openPopup();
+
+        map.setView([coords.lat, coords.lng], 15);
+        
+        console.log('✅ Marcador del cliente agregado. clienteCoords guardadas:', clienteCoords);
+    }
+
+    function agregarMarcadorRepartidor(coords) {
+        console.log('🏍️ Agregando marcador del repartidor:', coords);
+        
+        if (repartidorMarker) {
+            map.removeLayer(repartidorMarker);
+        }
+
+        const iconRepartidor = L.divIcon({
+            className: 'custom-marker-repartidor',
+            html: '<div style="background-color: #2196F3; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        repartidorMarker = L.marker([coords.lat, coords.lng], { icon: iconRepartidor })
+            .addTo(map)
+            .bindPopup('<b>🏍️ Repartidor</b>');
+        
+        console.log('✅ Marcador del repartidor agregado');
+    }
+
+    function trazarRuta(clienteCoords, repartidorCoords) {
+        console.log('🛣️ Trazando ruta...');
+        console.log('   Cliente:', clienteCoords);
+        console.log('   Repartidor:', repartidorCoords);
+        
+        if (routingControl) {
+            map.removeControl(routingControl);
+        }
+
+        routingControl = L.Routing.control({
+            waypoints: [
+                L.latLng(repartidorCoords.lat, repartidorCoords.lng),
+                L.latLng(clienteCoords.lat, clienteCoords.lng)
+            ],
+            routeWhileDragging: false,
+            showAlternatives: false,
+            lineOptions: {
+                styles: [{ color: '#FFD700', opacity: 0.8, weight: 5 }]
+            },
+            createMarker: function() { return null; },
+            addWaypoints: false,
+            draggableWaypoints: false,
+            fitSelectedRoutes: true
+        }).addTo(map);
+
+        routingControl.on('routesfound', function(e) {
+            const routes = e.routes;
+            const summary = routes[0].summary;
+            
+            const distanceKm = (summary.totalDistance / 1000).toFixed(2);
+            const timeMin = Math.round(summary.totalTime / 60);
+            
+            document.getElementById('map-distance').textContent = `📏 Distancia: ${distanceKm} km`;
+            document.getElementById('map-duration').textContent = `⏱️ Tiempo estimado: ${timeMin} min`;
+            
+            console.log(`✅ Ruta trazada: ${distanceKm} km, ${timeMin} min`);
+        });
+    }
+
+    // ======================================================================
+    // === SEGUIMIENTO DE UBICACIÓN DEL REPARTIDOR (CORREGIDO) ===
+    // ======================================================================
+
+    function iniciarSeguimientoUbicacion(repartidorUID, pedidoId) {
+        console.log('');
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🚀 INICIANDO SEGUIMIENTO DEL REPARTIDOR');
+        console.log('═══════════════════════════════════════════════════════════');
+        
+        // ✅ VALIDACIÓN CRÍTICA: Verificar que clienteCoords esté disponible
+        if (!clienteCoords || !clienteCoords.lat || !clienteCoords.lng) {
+            console.error('');
+            console.error('❌ ERROR CRÍTICO: clienteCoords no está disponible');
+            console.error('clienteCoords actual:', clienteCoords);
+            console.error('');
+            alert('⚠️ Error: No se pudo obtener tu ubicación.\n\nPor favor:\n1. Verifica que el permiso de ubicación esté activado\n2. Recarga la página\n3. Intenta de nuevo');
+            return;
+        }
+        
+        console.log('✅ Verificación exitosa: clienteCoords disponible');
+        console.log('   Lat:', clienteCoords.lat);
+        console.log('   Lng:', clienteCoords.lng);
+        console.log('');
+        
+        if (!repartidorUID) {
+            console.error('❌ No se proporcionó repartidorUID');
+            return;
+        }
+        
+        // Detener listener anterior si existe
+        if (repartidorUbicacionListener && currentRepartidorUID) {
+            const oldRef = window.ref(window.db, `repartidores_info/${currentRepartidorUID}`);
+            window.off(oldRef, 'value', repartidorUbicacionListener);
+            console.log('🛑 Listener anterior detenido');
+        }
+        
+        currentRepartidorUID = repartidorUID;
+        currentPedidoId = pedidoId;
+        
+        console.log(`📍 Repartidor UID: ${repartidorUID}`);
+        console.log(`📦 Pedido ID: ${pedidoId}`);
+        console.log('');
+        
+        const repartidorRef = window.ref(window.db, `repartidores_info/${repartidorUID}`);
+        
+        repartidorUbicacionListener = window.onValue(repartidorRef, (snapshot) => {
+            if (!snapshot.exists()) {
+                console.warn('⚠️ Datos del repartidor no disponibles aún');
+                return;
+            }
+            
+            const repartidorData = snapshot.val();
+            console.log('📡 Datos del repartidor recibidos:', repartidorData);
+            
+            // Verificar que el GPS del repartidor esté activo
+            if (!repartidorData.gpsActivo) {
+                console.warn('⚠️ GPS del repartidor no está activo');
+                document.getElementById('map-distance').textContent = '📏 Esperando GPS del repartidor...';
+                document.getElementById('map-duration').textContent = '⏱️ GPS del repartidor inactivo';
+                return;
+            }
+            
+            // Intentar obtener ubicación desde ubicacionActual primero
+            let repartidorCoords = null;
+            
+            if (repartidorData.ubicacionActual && 
+                repartidorData.ubicacionActual.lat && 
+                repartidorData.ubicacionActual.lon) {
+                
+                repartidorCoords = {
+                    lat: repartidorData.ubicacionActual.lat,
+                    lng: repartidorData.ubicacionActual.lon
+                };
+                console.log('✅ Ubicación del repartidor (ubicacionActual):', repartidorCoords);
+                
+            } else if (repartidorData.ubicacion && 
+                       repartidorData.ubicacion.lat && 
+                       repartidorData.ubicacion.lon) {
+                
+                repartidorCoords = {
+                    lat: repartidorData.ubicacion.lat,
+                    lng: repartidorData.ubicacion.lon
+                };
+                console.log('✅ Ubicación del repartidor (ubicacion):', repartidorCoords);
+            }
+            
+            if (!repartidorCoords) {
+                console.warn('⚠️ No se pudo obtener ubicación del repartidor');
+                return;
+            }
+            
+            // ✅ VERIFICACIÓN FINAL antes de agregar marcador y trazar ruta
+            if (!clienteCoords || !clienteCoords.lat || !clienteCoords.lng) {
+                console.error('❌ clienteCoords perdidas durante la ejecución');
+                console.error('clienteCoords actual:', clienteCoords);
+                return;
+            }
+            
+            console.log('✅ Actualizando mapa con ubicación del repartidor');
+            agregarMarcadorRepartidor(repartidorCoords);
+            
+            console.log('✅ Trazando ruta desde repartidor hacia cliente');
+            trazarRuta(clienteCoords, repartidorCoords);
+        }, (error) => {
+            console.error('❌ Error en listener del repartidor:', error);
+        });
+        
+        console.log('✅ Listener de ubicación del repartidor activado');
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('');
+    }
+
+    function detenerSeguimientoUbicacion() {
+        console.log('🛑 Deteniendo seguimiento de ubicación...');
+        
+        if (repartidorUbicacionListener && currentRepartidorUID && window.off && window.ref && window.db) {
+            const repartidorRef = window.ref(window.db, `repartidores_info/${currentRepartidorUID}`);
+            window.off(repartidorRef, 'value', repartidorUbicacionListener);
+            repartidorUbicacionListener = null;
+            currentRepartidorUID = null;
+            currentPedidoId = null;
+            console.log('✅ Listener del repartidor detenido');
+        }
+
+        if (watchPositionId !== null) {
+            navigator.geolocation.clearWatch(watchPositionId);
+            watchPositionId = null;
+            console.log('✅ Watch position detenido');
+        }
+
+        if (map) {
+            if (clienteMarker) {
+                map.removeLayer(clienteMarker);
+                clienteMarker = null;
+            }
+            if (repartidorMarker) {
+                map.removeLayer(repartidorMarker);
+                repartidorMarker = null;
+            }
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+            }
+            console.log('✅ Marcadores y rutas eliminados del mapa');
+        }
+
+        clienteCoords = null;
+        console.log('✅ clienteCoords reiniciadas');
+        console.log('🛑 Seguimiento completamente detenido');
+    }
+
+    function iniciarSeguimientoContinuoCliente() {
+        if (!navigator.geolocation) {
+            console.error('❌ Geolocalización no soportada');
+            return;
+        }
+
+        if (watchPositionId !== null) {
+            navigator.geolocation.clearWatch(watchPositionId);
+        }
+
+        console.log('📍 Iniciando seguimiento continuo del cliente...');
+
+        watchPositionId = navigator.geolocation.watchPosition(
+            (position) => {
+                const coords = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                
+                // 🔥 ACTUALIZAR VARIABLE GLOBAL
+                clienteCoords = coords;
+                
+                if (map) {
+                    agregarMarcadorCliente(coords);
+                    
+                    if (repartidorMarker) {
+                        const repartidorPos = repartidorMarker.getLatLng();
+                        trazarRuta(coords, { lat: repartidorPos.lat, lng: repartidorPos.lng });
+                    }
+                }
+            },
+            (error) => {
+                console.error('❌ Error al obtener ubicación continua:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 5000
+            }
+        );
+        
+        console.log('✅ Seguimiento continuo del cliente iniciado');
+    }
+
+    // ======================================================================
+    // === BÚSQUEDA Y SEGUIMIENTO DE PEDIDO (CORREGIDO) ===
+    // ======================================================================
+
+    window.buscarPedidoPorCorreo = async function() {
+        const email = document.getElementById('tracking-email-input').value.trim();
+        const statusDiv = document.getElementById('tracking-status-message');
+        const resultDiv = document.getElementById('tracking-result');
+        const mapContainer = document.getElementById('map-container');
+        const mapLegend = document.getElementById('map-legend');
+        const mapInfo = document.getElementById('map-info');
+        
+        if (!email) {
+            statusDiv.textContent = '⚠️ Por favor, ingresa un correo electrónico.';
+            statusDiv.style.color = '#FFD700';
+            return;
+        }
+
+        if (!window.db || !window.ref || !window.get) {
+            statusDiv.textContent = '❌ Error: Firebase no está inicializado.';
+            statusDiv.style.color = '#dc3545';
+            return;
+        }
+
+        statusDiv.textContent = '🔍 Buscando tu pedido...';
+        statusDiv.style.color = '#FFD700';
+        resultDiv.style.display = 'none';
+        resultDiv.innerHTML = '';
+        mapContainer.style.display = 'none';
+        mapLegend.style.display = 'none';
+        mapInfo.style.display = 'none';
+        
+        detenerSeguimientoUbicacion();
+
+        try {
+            const usuariosRef = window.ref(window.db, 'usuarios');
+            const usuariosSnapshot = await window.get(usuariosRef);
+            
+            let userUID = null;
+            let userName = 'Cliente';
+            
+            if (usuariosSnapshot.exists()) {
+                usuariosSnapshot.forEach((childSnapshot) => {
+                    const userData = childSnapshot.val();
+                    if (userData.correo && userData.correo.toLowerCase() === email.toLowerCase()) {
+                        userUID = userData.uid;
+                        userName = userData.nombre || 'Cliente';
+                    }
+                });
+            }
+
+            if (!userUID) {
+                statusDiv.textContent = '❌ No se encontró ningún usuario con ese correo.';
+                statusDiv.style.color = '#dc3545';
+                return;
+            }
+
+            const clienteID = `cliente_auth_${userUID}`;
+
+            const pedidosHistorialRef = window.ref(window.db, 'pedidos_historial');
+            const historialSnapshot = await window.get(pedidosHistorialRef);
+            
+            let pedidosEncontrados = [];
+            
+            if (historialSnapshot.exists()) {
+                historialSnapshot.forEach((childSnapshot) => {
+                    const pedido = childSnapshot.val();
+                    if (pedido.clienteIdAsignado === clienteID) {
+                        pedidosEncontrados.push({
+                            id: childSnapshot.key,
+                            ...pedido
+                        });
+                    }
+                });
+            }
+
+            pedidosEncontrados.sort((a, b) => {
+                const timeA = a.timestampAsignacion || a.timestampCreacion || 0;
+                const timeB = b.timestampAsignacion || b.timestampCreacion || 0;
+                return timeB - timeA;
+            });
+
+            if (pedidosEncontrados.length === 0) {
+                statusDiv.textContent = '🔭 No se encontraron pedidos asociados a este correo.';
+                statusDiv.style.color = '#FFD700';
+                return;
+            }
+
+            const pedidoReciente = pedidosEncontrados[0];
+            await mostrarDetallePedido(pedidoReciente, userName, pedidosEncontrados.length);
+            
+            statusDiv.textContent = '';
+
+        } catch (error) {
+            console.error('❌ Error al buscar pedido:', error);
+            statusDiv.textContent = `❌ Error al buscar: ${error.message}`;
+            statusDiv.style.color = '#dc3545';
+        }
+    }
+    async function mostrarDetallePedido(pedido, userName, totalPedidos) {
+        const resultDiv = document.getElementById('tracking-result');
+        const mapContainer = document.getElementById('map-container');
+        const mapLegend = document.getElementById('map-legend');
+        const mapInfo = document.getElementById('map-info');
+        
+        const estado = pedido.estado || pedido.estadoHistorial || 'Desconocido';
+        const estadoClass = `estado-${estado.toLowerCase().replace(/ /g, '-')}`;
+        
+        const timestamp = pedido.timestampAsignacion || pedido.timestampCreacion || Date.now();
+        const fechaCreacion = new Date(timestamp).toLocaleString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        let estadoDescripcion = '';
+        switch(estado.toLowerCase()) {
+            case 'pendiente':
+                estadoDescripcion = '⏳ Tu pedido está pendiente de ser aceptado.';
+                break;
+            case 'aceptado':
+                estadoDescripcion = '✅ El repartidor ha aceptado tu pedido.';
+                break;
+            case 'esperando pedido':
+                estadoDescripcion = '🏪 El repartidor está esperando en el punto de recogida.';
+                break;
+            case 'en camino':
+                estadoDescripcion = '🚚 Tu pedido está en camino.';
+                break;
+            case 'completado':
+            case 'entregado':
+                estadoDescripcion = '🎉 ¡Tu pedido ha sido entregado!';
+                break;
+            case 'cancelado':
+                estadoDescripcion = '❌ Este pedido fue cancelado.';
+                break;
+            default:
+                estadoDescripcion = '⏱️ Estado actualizado.';
+        }
+
+        resultDiv.innerHTML = `
+            <h3 style="color: var(--color-primary); margin-top: 0;">📦 Tu Pedido</h3>
+            
+            <div style="text-align: center; margin-bottom: 15px;">
+                <span class="estado-badge ${estadoClass}">${estado}</span>
+            </div>
+            
+            <p style="text-align: center; color: var(--color-text-dark); margin-bottom: 20px;">${estadoDescripcion}</p>
+            
+            <div class="pedido-detalle">
+                <strong>ID del Pedido:</strong>
+                <p>#${pedido.id ? pedido.id.substring(0, 8) : 'N/A'}...</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Cliente:</strong>
+                <p>${userName}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Descripción:</strong>
+                <p>${pedido.descripcion || 'Sin descripción'}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Dirección de Entrega:</strong>
+                <p>${pedido.direccionCliente || 'No especificada'}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Teléfono:</strong>
+                <p>${pedido.telefonoCliente || 'No especificado'}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Monto Total:</strong>
+                <p style="font-size: 18px; color: var(--color-primary);">$${(pedido.montoTotal || 0).toLocaleString('es-ES')}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Repartidor:</strong>
+                <p>${pedido.repartidorNombre || 'Pendiente'}</p>
+            </div>
+            
+            <div class="pedido-detalle">
+                <strong>Fecha:</strong>
+                <p>${fechaCreacion}</p>
+            </div>
+            
+            ${totalPedidos > 1 ? `<p style="text-align: center; color: var(--color-text-dark); margin-top: 15px; font-size: 12px;">Tienes ${totalPedidos} pedidos en total.</p>` : ''}
+        `;
+        
+        resultDiv.style.display = 'block';
+        
+        // ✅ VERIFICAR SI EL PEDIDO ESTÁ ACTIVO Y TIENE REPARTIDOR ASIGNADO
+        const estadosActivos = ['pendiente', 'aceptado', 'esperando pedido', 'en camino'];
+        if (estadosActivos.includes(estado.toLowerCase()) && pedido.repartidorIdAsignado) {
+            console.log('');
+            console.log('═══════════════════════════════════════════════════════════');
+            console.log('🗺️ INICIANDO SISTEMA DE SEGUIMIENTO EN TIEMPO REAL');
+            console.log('═══════════════════════════════════════════════════════════');
+            console.log('✅ Pedido activo detectado');
+            console.log('🏍️ Repartidor asignado:', pedido.repartidorIdAsignado);
+            console.log('');
+            
+            // Mostrar contenedores
+            mapContainer.style.display = 'block';
+            mapLegend.style.display = 'flex';
+            mapInfo.style.display = 'block';
+            
+            // Inicializar mapa
+            console.log('🗺️ Inicializando mapa...');
+            initMap();
+            
+            try {
+                // 🔥 PASO 1: Obtener ubicación del cliente
+                console.log('📍 PASO 1: Obteniendo ubicación del cliente...');
+                const coords = await obtenerUbicacionCliente();
+                console.log('✅ Ubicación del cliente obtenida:', coords);
+                console.log('');
+                
+                // 🔥 PASO 2: Guardar en variable global
+                console.log('📍 PASO 2: Guardando en variable global...');
+                clienteCoords = coords;
+                console.log('✅ clienteCoords guardadas:', clienteCoords);
+                console.log('');
+                
+                // 🔥 PASO 3: Agregar marcador del cliente
+                console.log('📍 PASO 3: Agregando marcador del cliente...');
+                agregarMarcadorCliente(coords);
+                console.log('✅ Marcador del cliente agregado');
+                console.log('');
+                
+                // 🔥 PASO 4: Iniciar seguimiento continuo
+                console.log('📍 PASO 4: Iniciando seguimiento continuo...');
+                iniciarSeguimientoContinuoCliente();
+                console.log('✅ Seguimiento continuo iniciado');
+                console.log('');
+                
+                // 🔥 PASO 5: Esperar 1 segundo para asegurar estabilidad
+                console.log('⏳ PASO 5: Esperando 1 segundo para estabilizar...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                console.log('✅ Sistema estabilizado');
+                console.log('');
+                
+                // 🔥 PASO 6: VERIFICACIÓN FINAL
+                console.log('🔍 PASO 6: Verificación final de clienteCoords...');
+                if (!clienteCoords || !clienteCoords.lat || !clienteCoords.lng) {
+                    throw new Error('⚠️ clienteCoords no está definida correctamente');
+                }
+                console.log('✅ Verificación exitosa:');
+                console.log('   Lat:', clienteCoords.lat);
+                console.log('   Lng:', clienteCoords.lng);
+                console.log('');
+                
+                // 🔥 PASO 7: Iniciar seguimiento del repartidor
+                console.log('📍 PASO 7: Iniciando seguimiento del repartidor...');
+                iniciarSeguimientoUbicacion(pedido.repartidorIdAsignado, pedido.id);
+                
+                console.log('');
+                console.log('✅ SISTEMA DE SEGUIMIENTO COMPLETAMENTE INICIADO');
+                console.log('═══════════════════════════════════════════════════════════');
+                console.log('');
+                
+            } catch (error) {
+                console.error('');
+                console.error('═══════════════════════════════════════════════════════════');
+                console.error('❌ ERROR EN EL PROCESO DE SEGUIMIENTO');
+                console.error('═══════════════════════════════════════════════════════════');
+                console.error('Error:', error);
+                console.error('');
+                
+                if (error.code === 1) {
+                    alert('⚠️ IMPORTANTE: Permiso de ubicación denegado.\n\n' +
+                          'Sin este permiso NO podrás usar el seguimiento en tiempo real.\n\n' +
+                          'Para activarlo:\n' +
+                          '1. Ve al menú hamburguesa (arriba derecha)\n' +
+                          '2. Activa el permiso de Ubicación GPS\n' +
+                          '3. O ve a Configuración del navegador');
+                } else {
+                    alert('⚠️ No se pudo iniciar el seguimiento.\n\nError: ' + error.message);
+                }
+                
+                mapContainer.style.display = 'none';
+                mapLegend.style.display = 'none';
+                mapInfo.style.display = 'none';
+            }
+        } else {
+            console.log('ℹ️ Pedido completado o sin repartidor asignado. No se muestra mapa.');
+            detenerSeguimientoUbicacion();
+            mapContainer.style.display = 'none';
+            mapLegend.style.display = 'none';
+            mapInfo.style.display = 'none';
+        }
+    }
 
     // ======================================================================
     // === GESTIÓN DE PERMISOS ===
@@ -1947,476 +2337,14 @@
     });
 
     // ======================================================================
-    // === FUNCIONES DEL MAPA (Para Seguimiento) ===
-    // ======================================================================
-
-    function initMap() {
-        if (map) {
-            map.remove();
-            map = null;
-        }
-
-        const defaultCoords = [4.710989, -74.072092];
-        
-        map = L.map('map').setView(defaultCoords, 13);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(map);
-
-        setTimeout(() => {
-            if (map) {
-                map.invalidateSize();
-            }
-        }, 100);
-    }
-
-    function obtenerUbicacionCliente() {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('Geolocalización no soportada'));
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const coords = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    clienteCoords = coords;
-                    resolve(coords);
-                },
-                (error) => {
-                    reject(error);
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
-            );
-        });
-    }
-
-    function agregarMarcadorCliente(coords) {
-        clienteCoords = coords;
-        
-        if (clienteMarker) {
-            map.removeLayer(clienteMarker);
-        }
-
-        const iconCliente = L.divIcon({
-            className: 'custom-marker-cliente',
-            html: '<div style="background-color: #4CAF50; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
-            iconSize: [30, 30],
-            iconAnchor: [15, 15]
-        });
-
-        clienteMarker = L.marker([coords.lat, coords.lng], { icon: iconCliente })
-            .addTo(map)
-            .bindPopup('<b>📍 Tu Ubicación</b>')
-            .openPopup();
-
-        map.setView([coords.lat, coords.lng], 15);
-        
-        console.log('✅ Coordenadas del cliente guardadas:', clienteCoords);
-    }
-
-    function agregarMarcadorRepartidor(coords) {
-        if (repartidorMarker) {
-            map.removeLayer(repartidorMarker);
-        }
-
-        const iconRepartidor = L.divIcon({
-            className: 'custom-marker-repartidor',
-            html: '<div style="background-color: #2196F3; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
-            iconSize: [30, 30],
-            iconAnchor: [15, 15]
-        });
-
-        repartidorMarker = L.marker([coords.lat, coords.lng], { icon: iconRepartidor })
-            .addTo(map)
-            .bindPopup('<b>🏍️ Repartidor</b>');
-    }
-
-    function trazarRuta(clienteCoords, repartidorCoords) {
-        if (routingControl) {
-            map.removeControl(routingControl);
-        }
-
-        routingControl = L.Routing.control({
-            waypoints: [
-                L.latLng(repartidorCoords.lat, repartidorCoords.lng),
-                L.latLng(clienteCoords.lat, clienteCoords.lng)
-            ],
-            routeWhileDragging: false,
-            showAlternatives: false,
-            lineOptions: {
-                styles: [{ color: '#FFD700', opacity: 0.8, weight: 5 }]
-            },
-            createMarker: function() { return null; },
-            addWaypoints: false,
-            draggableWaypoints: false,
-            fitSelectedRoutes: true
-        }).addTo(map);
-
-        routingControl.on('routesfound', function(e) {
-            const routes = e.routes;
-            const summary = routes[0].summary;
-            
-            const distanceKm = (summary.totalDistance / 1000).toFixed(2);
-            const timeMin = Math.round(summary.totalTime / 60);
-            
-            document.getElementById('map-distance').textContent = `📏 Distancia: ${distanceKm} km`;
-            document.getElementById('map-duration').textContent = `⏱️ Tiempo estimado: ${timeMin} min`;
-        });
-    }
-    // ======================================================================
-    // === SEGUIMIENTO DE UBICACIÓN DEL REPARTIDOR ===
-    // ======================================================================
-
-    function detenerSeguimientoUbicacion() {
-        if (repartidorUbicacionListener && currentRepartidorUID && window.off && window.ref && window.db) {
-            const repartidorRef = window.ref(window.db, `repartidores_info/${currentRepartidorUID}`);
-            window.off(repartidorRef, 'value', repartidorUbicacionListener);
-            repartidorUbicacionListener = null;
-            currentRepartidorUID = null;
-            currentPedidoId = null;
-            console.log('🛑 Seguimiento de ubicación detenido');
-        }
-
-        if (watchPositionId !== null) {
-            navigator.geolocation.clearWatch(watchPositionId);
-            watchPositionId = null;
-        }
-
-        if (map) {
-            if (clienteMarker) {
-                map.removeLayer(clienteMarker);
-                clienteMarker = null;
-            }
-            if (repartidorMarker) {
-                map.removeLayer(repartidorMarker);
-                repartidorMarker = null;
-            }
-            if (routingControl) {
-                map.removeControl(routingControl);
-                routingControl = null;
-            }
-        }
-
-        clienteCoords = null;
-    }
-
-    function iniciarSeguimientoContinuoCliente() {
-        if (!navigator.geolocation) {
-            console.error('Geolocalización no soportada');
-            return;
-        }
-
-        if (watchPositionId !== null) {
-            navigator.geolocation.clearWatch(watchPositionId);
-        }
-
-        watchPositionId = navigator.geolocation.watchPosition(
-            (position) => {
-                const coords = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                
-                clienteCoords = coords;
-                
-                if (map) {
-                    agregarMarcadorCliente(coords);
-                    
-                    if (repartidorMarker) {
-                        const repartidorPos = repartidorMarker.getLatLng();
-                        trazarRuta(coords, { lat: repartidorPos.lat, lng: repartidorPos.lng });
-                    }
-                }
-            },
-            (error) => {
-                console.error('Error al obtener ubicación:', error);
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 5000
-            }
-        );
-    }
-
-    // ======================================================================
-    // === BÚSQUEDA Y SEGUIMIENTO DE PEDIDO ===
-    // ======================================================================
-
-    window.buscarPedidoPorCorreo = async function() {
-        const email = document.getElementById('tracking-email-input').value.trim();
-        const statusDiv = document.getElementById('tracking-status-message');
-        const resultDiv = document.getElementById('tracking-result');
-        const mapContainer = document.getElementById('map-container');
-        const mapLegend = document.getElementById('map-legend');
-        const mapInfo = document.getElementById('map-info');
-        
-        if (!email) {
-            statusDiv.textContent = '⚠️ Por favor, ingresa un correo electrónico.';
-            statusDiv.style.color = '#FFD700';
-            return;
-        }
-
-        if (!window.db || !window.ref || !window.get) {
-            statusDiv.textContent = '❌ Error: Firebase no está inicializado.';
-            statusDiv.style.color = '#dc3545';
-            return;
-        }
-
-        statusDiv.textContent = '🔍 Buscando tu pedido...';
-        statusDiv.style.color = '#FFD700';
-        resultDiv.style.display = 'none';
-        resultDiv.innerHTML = '';
-        mapContainer.style.display = 'none';
-        mapLegend.style.display = 'none';
-        mapInfo.style.display = 'none';
-        
-        detenerSeguimientoUbicacion();
-
-        try {
-            const usuariosRef = window.ref(window.db, 'usuarios');
-            const usuariosSnapshot = await window.get(usuariosRef);
-            
-            let userUID = null;
-            let userName = 'Cliente';
-            
-            if (usuariosSnapshot.exists()) {
-                usuariosSnapshot.forEach((childSnapshot) => {
-                    const userData = childSnapshot.val();
-                    if (userData.correo && userData.correo.toLowerCase() === email.toLowerCase()) {
-                        userUID = userData.uid;
-                        userName = userData.nombre || 'Cliente';
-                    }
-                });
-            }
-
-            if (!userUID) {
-                statusDiv.textContent = '❌ No se encontró ningún usuario con ese correo.';
-                statusDiv.style.color = '#dc3545';
-                return;
-            }
-
-            const clienteID = `cliente_auth_${userUID}`;
-
-            const pedidosHistorialRef = window.ref(window.db, 'pedidos_historial');
-            const historialSnapshot = await window.get(pedidosHistorialRef);
-            
-            let pedidosEncontrados = [];
-            
-            if (historialSnapshot.exists()) {
-                historialSnapshot.forEach((childSnapshot) => {
-                    const pedido = childSnapshot.val();
-                    if (pedido.clienteIdAsignado === clienteID) {
-                        pedidosEncontrados.push({
-                            id: childSnapshot.key,
-                            ...pedido
-                        });
-                    }
-                });
-            }
-
-            pedidosEncontrados.sort((a, b) => {
-                const timeA = a.timestampAsignacion || a.timestampCreacion || 0;
-                const timeB = b.timestampAsignacion || b.timestampCreacion || 0;
-                return timeB - timeA;
-            });
-
-            if (pedidosEncontrados.length === 0) {
-                statusDiv.textContent = '🔭 No se encontraron pedidos asociados a este correo.';
-                statusDiv.style.color = '#FFD700';
-                return;
-            }
-
-            const pedidoReciente = pedidosEncontrados[0];
-            await mostrarDetallePedido(pedidoReciente, userName, pedidosEncontrados.length);
-            
-            statusDiv.textContent = '';
-
-        } catch (error) {
-            console.error('Error al buscar pedido:', error);
-            statusDiv.textContent = `❌ Error al buscar: ${error.message}`;
-            statusDiv.style.color = '#dc3545';
-        }
-    }
-
-    async function mostrarDetallePedido(pedido, userName, totalPedidos) {
-        const resultDiv = document.getElementById('tracking-result');
-        const mapContainer = document.getElementById('map-container');
-        const mapLegend = document.getElementById('map-legend');
-        const mapInfo = document.getElementById('map-info');
-        
-        const estado = pedido.estado || pedido.estadoHistorial || 'Desconocido';
-        const estadoClass = `estado-${estado.toLowerCase().replace(/ /g, '-')}`;
-        
-        const timestamp = pedido.timestampAsignacion || pedido.timestampCreacion || Date.now();
-        const fechaCreacion = new Date(timestamp).toLocaleString('es-ES', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-
-        let estadoDescripcion = '';
-        switch(estado.toLowerCase()) {
-            case 'pendiente':
-                estadoDescripcion = '⏳ Tu pedido está pendiente de ser aceptado.';
-                break;
-            case 'aceptado':
-                estadoDescripcion = '✅ El repartidor ha aceptado tu pedido.';
-                break;
-            case 'esperando pedido':
-                estadoDescripcion = '🏪 El repartidor está esperando en el punto de recogida.';
-                break;
-            case 'en camino':
-                estadoDescripcion = '🚚 Tu pedido está en camino.';
-                break;
-            case 'completado':
-            case 'entregado':
-                estadoDescripcion = '🎉 ¡Tu pedido ha sido entregado!';
-                break;
-            case 'cancelado':
-                estadoDescripcion = '❌ Este pedido fue cancelado.';
-                break;
-            default:
-                estadoDescripcion = '⏱️ Estado actualizado.';
-        }
-
-        resultDiv.innerHTML = `
-            <h3 style="color: var(--color-primary); margin-top: 0;">📦 Tu Pedido</h3>
-            
-            <div style="text-align: center; margin-bottom: 15px;">
-                <span class="estado-badge ${estadoClass}">${estado}</span>
-            </div>
-            
-            <p style="text-align: center; color: var(--color-text-dark); margin-bottom: 20px;">${estadoDescripcion}</p>
-            
-            <div class="pedido-detalle">
-                <strong>ID del Pedido:</strong>
-                <p>#${pedido.id ? pedido.id.substring(0, 8) : 'N/A'}...</p>
-            </div>
-            
-            <div class="pedido-detalle">
-                <strong>Cliente:</strong>
-                <p>${userName}</p>
-            </div>
-            
-            <div class="pedido-detalle">
-                <strong>Descripción:</strong>
-                <p>${pedido.descripcion || 'Sin descripción'}</p>
-            </div>
-            
-            <div class="pedido-detalle">
-                <strong>Dirección de Entrega:</strong>
-                <p>${pedido.direccionCliente || 'No especificada'}</p>
-            </div>
-            
-            <div class="pedido-detalle">
-                <strong>Teléfono:</strong>
-                <p>${pedido.telefonoCliente || 'No especificado'}</p>
-            </div>
-            
-            <div class="pedido-detalle">
-                <strong>Monto Total:</strong>
-                <p style="font-size: 18px; color: var(--color-primary);">$${(pedido.montoTotal || 0).toLocaleString('es-ES')}</p>
-            </div>
-            
-            <div class="pedido-detalle">
-                <strong>Repartidor:</strong>
-                <p>${pedido.repartidorNombre || 'Pendiente'}</p>
-            </div>
-            
-            <div class="pedido-detalle">
-                <strong>Fecha:</strong>
-                <p>${fechaCreacion}</p>
-            </div>
-            
-            ${totalPedidos > 1 ? `<p style="text-align: center; color: var(--color-text-dark); margin-top: 15px; font-size: 12px;">Tienes ${totalPedidos} pedidos en total.</p>` : ''}
-        `;
-        
-        resultDiv.style.display = 'block';
-        
-        // VERIFICAR SI EL PEDIDO ESTÁ ACTIVO Y TIENE REPARTIDOR ASIGNADO
-        const estadosActivos = ['pendiente', 'aceptado', 'esperando pedido', 'en camino'];
-        if (estadosActivos.includes(estado.toLowerCase()) && pedido.repartidorIdAsignado) {
-            console.log('✅ Pedido activo detectado. Mostrando mapa...');
-            console.log('🏍️ Repartidor asignado:', pedido.repartidorIdAsignado);
-            
-            mapContainer.style.display = 'block';
-            mapLegend.style.display = 'flex';
-            mapInfo.style.display = 'block';
-            
-            initMap();
-            
-            try {
-    // 1️⃣ PRIMERO: Obtener ubicación del cliente
-    const coords = await obtenerUbicacionCliente();
-    agregarMarcadorCliente(coords);
-    console.log('✅ Ubicación del cliente obtenida:', coords);
-    
-    // 2️⃣ SEGUNDO: Guardar en la variable global
-    clienteCoords = coords;
-    
-    // 3️⃣ TERCERO: Iniciar seguimiento continuo
-    iniciarSeguimientoContinuoCliente();
-    
-    // 4️⃣ CUARTO: Esperar 1 segundo para asegurar que clienteCoords esté lista
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // 5️⃣ QUINTO: Verificar que tenemos las coordenadas
-    if (clienteCoords && clienteCoords.lat && clienteCoords.lng) {
-        console.log('✅ Coordenadas del cliente confirmadas:', clienteCoords);
-        
-        // 6️⃣ SEXTO: AHORA SÍ iniciar seguimiento del repartidor
-        iniciarSeguimientoUbicacion(pedido.repartidorIdAsignado, pedido.id);
-        console.log('✅ Seguimiento en tiempo real iniciado');
-    } else {
-        throw new Error('No se pudieron obtener las coordenadas del cliente');
-    }
-    
-} catch (error) {
-    console.error('❌ Error al obtener ubicación:', error);
-                
-                if (error.code === 1) {
-                    alert('⚠️ Necesitamos tu permiso de ubicación para mostrar el mapa.\n\n' +
-                          'Actívalo en:\n' +
-                          '• Menú hamburguesa (arriba derecha) → Ubicación GPS\n' +
-                          '• O en la configuración de tu navegador');
-                } else {
-                    alert('⚠️ No se pudo obtener tu ubicación. Verifica tu conexión y permisos.');
-                }
-                
-                mapContainer.style.display = 'none';
-                mapLegend.style.display = 'none';
-                mapInfo.style.display = 'none';
-            }
-        } else {
-            console.log('ℹ️ Pedido completado o sin repartidor asignado. No se muestra mapa.');
-            detenerSeguimientoUbicacion();
-            mapContainer.style.display = 'none';
-            mapLegend.style.display = 'none';
-            mapInfo.style.display = 'none';
-        }
-    }
-
-    // ======================================================================
     // === LOG DE INICIALIZACIÓN ===
     // ======================================================================
     
-    console.log('✅ Sistema del cliente inicializado v2.2.0');
+    console.log('✅ Sistema del cliente inicializado v2.3.0');
     console.log('📍 Envío automático de ubicación del cliente: HABILITADO');
     console.log('🗺️ Compatible con seguimiento en tiempo real del repartidor');
     console.log('🔄 Ubicación del cliente se envía a Firebase cada 5 segundos');
+    console.log('🐛 Sistema de debugging mejorado con logs detallados');
   </script>
   <script type="module">
     import { 
@@ -2608,11 +2536,6 @@
               const userData = snapshot.val();
               userData.uid = user.uid;
               
-              await solicitarPermisosMultimedia();
-              await limpiarMensajesAntiguos();
-              
-              solicitarPermisosNotificacionInicial();
-              
               window.mostrarPerfil(userData); 
               
             } else {
@@ -2687,8 +2610,6 @@
             .then(() => {
                 localStorage.setItem("usuarioDomicilios", JSON.stringify({...infoFijaUsuario, uid: authUser.uid})); 
                 
-                solicitarPermisosNotificacionInicial();
-                
                 window.mostrarPerfil(infoFijaUsuario);
             })
             .catch((error) => {
@@ -2732,327 +2653,6 @@
             }
         });
     }
-
-    // ======================================================================
-    // === SISTEMA DE CHAT ===
-    // ======================================================================
-
-    window.mostrarAviso = function() {
-        if (tabServicio.disabled) return; 
-
-        const userData = localStorage.getItem("usuarioDomicilios");
-        if (!userData) return; 
-
-        const usuario = JSON.parse(userData);
-        
-        if (!usuario || !usuario.direccion) {
-             alert("Debes tener una dirección registrada para iniciar el chat.");
-             return;
-        }
-        
-        if (window.notificationPermission !== 'granted' && window.notificationPermission !== 'denied') {
-            solicitarPermisosNotificacionInicial();
-        }
-
-        document.getElementById("dirSeleccionadaChat").textContent = usuario.direccion; 
-        
-        document.getElementById("btnSolicitarChat").style.display = 'none';
-        document.getElementById("aviso-chat").style.display = 'block';
-        document.querySelector('.chat-solicitud').style.display = 'none';
-        
-        chatBox.innerHTML = 'Selecciona "Entendido. Iniciar Chat" para conectar con la Central.';
-        inputChat.style.display = 'none';
-        btnEnviarMensaje.style.display = 'none'; 
-        document.getElementById('btn-foto').style.display = 'block';
-        document.getElementById('btn-audio').style.display = 'block';
-    }
-
-    function setupActivePedidoListener(pedidoID, userUID) {
-        if (window.activePedidoListener) {
-            off(ref(db, `pedidos_pendientes/${window.activePedidoID}`), 'value', window.activePedidoListener);
-            window.activePedidoListener = null;
-        }
-
-        window.activePedidoID = pedidoID;
-
-        const pedidoRef = ref(db, `pedidos_pendientes/${pedidoID}`);
-        
-        window.activePedidoListener = onValue(pedidoRef, (snapshot) => {
-            const pedidoActualizado = snapshot.val();
-            
-            if (pedidoActualizado) {
-                const estadoActual = pedidoActualizado.estado;
-                const repartidorNombre = pedidoActualizado.repartidorAsignado || 'Pendiente de asignación';
-                
-                let estadoMostrar = estadoActual;
-                let estadoEmoji = '📦';
-                
-                switch(estadoActual) {
-                    case 'Pendiente':
-                        estadoEmoji = '⏳';
-                        break;
-                    case 'Aceptado':
-                        estadoEmoji = '✅';
-                        break;
-                    case 'Esperando Pedido':
-                        estadoEmoji = '🏪';
-                        break;
-                    case 'En Camino':
-                        estadoEmoji = '🚚';
-                        break;
-                    case 'Completado':
-                        estadoEmoji = '🎉';
-                        break;
-                    case 'Cancelado':
-                        estadoEmoji = '❌';
-                        break;
-                }
-                    
-                const estadoMessage = `${estadoEmoji} Pedido: **#${pedidoID.substring(0, 8)}...** | Estado: **${estadoMostrar}** | Repartidor: ${repartidorNombre}`;
-                
-                const firstConnectMessage = 'Conectado con la Central. Puedes enviar tu solicitud ahora.';
-                
-                if (!chatBox.innerHTML.includes(estadoMessage)) {
-                    if (chatBox.innerHTML.includes(firstConnectMessage) || chatBox.innerHTML.includes('Conectado.')) {
-                         if (!chatBox.querySelector('.pedido-status-message')) {
-                            const statusDiv = document.createElement("div");
-                            statusDiv.className = "chat-info pedido-status-message";
-                            statusDiv.style.color = "var(--color-primary)";
-                            statusDiv.style.textAlign = "center";
-                            statusDiv.style.padding = "10px";
-                            statusDiv.style.background = "#444";
-                            statusDiv.style.borderRadius = "8px";
-                            statusDiv.style.margin = "10px 0";
-                            statusDiv.innerHTML = `${estadoMessage}`;
-                            chatBox.prepend(statusDiv);
-                         } else {
-                            chatBox.querySelector('.pedido-status-message').innerHTML = `${estadoMessage}`;
-                         }
-                    } else {
-                         const statusDiv = document.createElement("div");
-                         statusDiv.className = "chat-info pedido-status-message";
-                         statusDiv.style.color = "var(--color-primary)";
-                         statusDiv.style.textAlign = "center";
-                         statusDiv.style.padding = "10px";
-                         statusDiv.style.background = "#444";
-                         statusDiv.style.borderRadius = "8px";
-                         statusDiv.style.margin = "10px 0";
-                         statusDiv.innerHTML = `${estadoMessage}`;
-                         chatBox.prepend(statusDiv);
-                    }
-                }
-                    
-                if (estadoActual === 'Completado' || estadoActual === 'Cancelado') {
-                    inputChat.disabled = true;
-                    btnEnviarMensaje.disabled = true;
-                    document.getElementById('btn-foto').disabled = true;
-                    document.getElementById('btn-audio').disabled = true;
-                    if (!chatBox.innerHTML.includes("PEDIDO FINALIZADO")) {
-                       const div = document.createElement("div");
-                       div.className = "mensaje repartidor";
-                       div.innerHTML = `<div>✅ **PEDIDO FINALIZADO (${estadoActual}).** Inicia un nuevo servicio para chatear.</div><div class="chat-info">${window.formatTimestamp(Date.now())}</div>`;
-                       chatBox.appendChild(div);
-                    }
-                } else {
-                    inputChat.disabled = false;
-                    btnEnviarMensaje.disabled = false;
-                    document.getElementById('btn-foto').disabled = false;
-                    document.getElementById('btn-audio').disabled = false;
-                }
-                chatBox.scrollTop = chatBox.scrollHeight;
-            } else {
-                 console.log(`Pedido ${pedidoID} no encontrado. Deteniendo listener.`);
-                 off(pedidoRef, 'value', window.activePedidoListener);
-                 window.activePedidoListener = null;
-                 window.activePedidoID = null;
-                 
-                 chatBox.innerHTML += '<div class="chat-info" style="color:#FFD700; margin-top: 10px;">💡 Chat desvinculado del pedido. Inicia un nuevo servicio.</div>';
-                 inputChat.disabled = true;
-                 btnEnviarMensaje.disabled = true;
-                 chatBox.scrollTop = chatBox.scrollHeight;
-            }
-        });
-    }
-    window.iniciarChatFinal = async function() {
-        if (tabServicio.disabled) return; 
-
-        const userData = localStorage.getItem("usuarioDomicilios");
-        if (!userData) return; 
-
-        const usuario = JSON.parse(userData);
-        window.currentUserID = window.getClientID(usuario.uid); 
-        const userUID = window.currentAuthUser.uid; 
-        
-        document.getElementById("aviso-chat").style.display = 'none'; 
-        inputChat.style.display = "block";
-        btnEnviarMensaje.style.display = "block"; 
-        
-        window.lastMessageDate = null;
-        chatBox.innerHTML = '';
-        
-        await limpiarMensajesAntiguos();
-        
-        const chatListenerRef = query(ref(db, `chats/${window.currentUserID}`), orderByChild('timestamp'));
-        off(chatListenerRef); 
-        onChildAdded(chatListenerRef, s => {
-            const data = s.val();
-            const tipo = (data.rol_remitente === window.USER_ROLE) ? "usuario" : "repartidor"; 
-            
-            const messageTimestamp = data.timestamp ? Number(data.timestamp) : Date.now();
-            
-            const formattedTime = window.formatTimestamp(messageTimestamp);
-            const messageDate = window.formatDate(messageTimestamp);
-            
-            if (messageDate !== window.lastMessageDate) {
-                const dateSeparator = document.createElement('div');
-                dateSeparator.className = 'chat-date-separator';
-                dateSeparator.textContent = messageDate;
-                chatBox.appendChild(dateSeparator);
-                window.lastMessageDate = messageDate;
-            }
-
-            const div = document.createElement("div");
-            div.className = `mensaje ${tipo}`;
-            
-            let contentHTML = '';
-            
-            if (data.tipo_adjunto && data.referencia_adjunto) {
-                const mediaURL = data.referencia_adjunto;
-                
-                if (data.tipo_adjunto === 'image') {
-                    contentHTML = `
-                        <div class="chat-media-container">
-                            <img src="${mediaURL}" onclick="window.open('${mediaURL}', '_blank')" alt="Imagen" loading="lazy">
-                        </div>
-                    `;
-                } else if (data.tipo_adjunto === 'audio') {
-                     contentHTML = `
-                        <div class="chat-media-container">
-                            <audio controls preload="metadata">
-                                <source src="${mediaURL}" type="audio/mpeg">
-                                <source src="${mediaURL}" type="audio/ogg">
-                                <source src="${mediaURL}" type="audio/wav">
-                                Tu navegador no soporta el elemento de audio.
-                            </audio>
-                        </div>
-                    `;
-                }
-            } else {
-                const linkedText = linkifyText(data.texto || '');
-                contentHTML = `<div>${linkedText}</div>`;
-            }
-            
-            div.innerHTML = `
-                ${contentHTML}
-                <div class="chat-info">${formattedTime}</div>
-            `;
-            
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
-            
-            if (data.rol_remitente !== window.USER_ROLE) {
-                try {
-                    window.notificationSound.currentTime = 0;
-                    window.notificationSound.play().catch(e => {
-                        console.log("Error al reproducir sonido:", e);
-                        document.addEventListener('click', function playOnClick() {
-                            window.notificationSound.play();
-                            document.removeEventListener('click', playOnClick);
-                        }, { once: true });
-                    });
-                } catch (e) {
-                    console.log("Error en reproducción de audio:", e);
-                }
-                
-                if (window.notificationPermission === 'granted' && document.visibilityState !== 'visible') {
-                    const notificationBody = data.tipo_adjunto ? 
-                        (data.tipo_adjunto === 'image' ? '📷 Te han enviado una imagen' : '🎙️ Te han enviado un audio') :
-                        (data.texto.length > 50 ? data.texto.substring(0, 50) + '...' : data.texto);
-                    
-                    try {
-                        const notification = new Notification('💬 Nuevo Mensaje de Central', {
-                            body: notificationBody,
-                            icon: 'https://i.ibb.co/hJCtmHsf/1761849436845.png',
-                            badge: 'https://i.ibb.co/hJCtmHsf/1761849436845.png',
-                            vibrate: [200, 100, 200],
-                            tag: 'chat-message-' + Date.now(),
-                            requireInteraction: true,
-                            silent: false
-                        });
-                        
-                        notification.onclick = function() {
-                            window.focus();
-                            parent.focus();
-                            
-                            if (typeof changeTab === 'function') {
-                                changeTab('servicio');
-                            }
-                            
-                            notification.close();
-                        };
-                    } catch (e) {
-                        console.log("Error al enviar notificación:", e);
-                    }
-                }
-            }
-        });
-        
-        const clienteIDPrefijado = window.getClientID(userUID); 
-        
-        get(query(ref(db, 'pedidos_pendientes'), orderByChild('clienteID'), equalTo(clienteIDPrefijado))).then(snapshot => {
-            let activePedido = null;
-            
-            const pedidosActivos = [];
-            snapshot.forEach(childSnapshot => {
-                const pedido = childSnapshot.val();
-                if (pedido.estado === 'Pendiente' || pedido.estado === 'Aceptado' || pedido.estado === 'Esperando Pedido' || pedido.estado === 'En Camino') {
-                    pedidosActivos.push({ key: childSnapshot.key, ...pedido });
-                }
-            });
-            
-            if (pedidosActivos.length > 0) {
-                activePedido = pedidosActivos.sort((a, b) => (b.lastUpdate || b.timestamp || 0) - (a.lastUpdate || a.timestamp || 0))[0];
-            }
-            
-            if (activePedido) {
-                setupActivePedidoListener(activePedido.key, userUID);
-                chatBox.innerHTML += `<div class="chat-info" style="color:var(--color-primary); text-align: center; padding: 10px;">Conectado. Chat vinculado al pedido.</div>`;
-
-            } else {
-                if(window.activePedidoListener) {
-                   off(ref(db, `pedidos_pendientes/${window.activePedidoID}`), 'value', window.activePedidoListener);
-                   window.activePedidoListener = null;
-                   window.activePedidoID = null;
-                }
-                chatBox.innerHTML += '<div class="chat-info" style="color:var(--color-primary); text-align: center; padding: 10px;">Conectado con la Central. Puedes enviar tu solicitud ahora. **El pedido se creará cuando la Central lo asigne.**</div>';
-            }
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }).catch(error => {
-            chatBox.innerHTML += `<div class="chat-info" style="color:#ff5555;">❌ Error al verificar pedidos activos: ${error.message}</div>`;
-            console.error("Error al verificar pedidos:", error);
-        });
-    }
-
-    window.enviarMensajeFirebase = function(e) {
-      if (tabServicio.disabled || inputChat.disabled) return; 
-      
-      const messageText = inputChat.value.trim();
-
-      if (messageText !== "" && window.currentUserID) {
-        push(ref(db, `chats/${window.currentUserID}`), {
-          remitente: window.currentUserID, 
-          nombre_remitente: window.USER_NAME || window.currentUserID, 
-          texto: messageText,
-          timestamp: Date.now(), 
-          rol_remitente: window.USER_ROLE, 
-          pedidoID: window.activePedidoID || 'N/A'
-        });
-        inputChat.value = "";
-      }
-      if (e && e.key === "Enter") {
-          e.preventDefault(); 
-      }
-    }
     
     // ======================================================================
     // === LOG FINAL DE SISTEMA ===
@@ -3068,37 +2668,47 @@
     console.log('  ✅ Chat en tiempo real con multimedia (fotos y audio)');
     console.log('  ✅ Notificaciones push con sonido personalizado');
     console.log('  ✅ Sistema de permisos con menú hamburguesa');
-    console.log('  ✅ Limpieza automática de mensajes antiguos (24h)');
     console.log('');
-    console.log('🆕 NUEVO - GPS AUTOMÁTICO DEL CLIENTE:');
+    console.log('🆕 GPS AUTOMÁTICO DEL CLIENTE:');
     console.log('  📍 Envío automático a Firebase cada 5 segundos');
     console.log('  📡 Formato: usuarios/{clienteID}/ubicacion {lat, lon}');
     console.log('  🗺️ Compatible con lectura del repartidor');
     console.log('  💾 Guardado en Firebase Realtime Database');
     console.log('  🔄 Se activa automáticamente al hacer login');
     console.log('');
-    console.log('🗺️ SEGUIMIENTO EN TIEMPO REAL:');
+    console.log('🗺️ SEGUIMIENTO EN TIEMPO REAL (CORREGIDO):');
+    console.log('  ✅ Validación de clienteCoords antes de iniciar seguimiento');
+    console.log('  ✅ Sistema de pasos secuenciales para evitar errores');
+    console.log('  ✅ Logs detallados en cada paso del proceso');
     console.log('  🏍️ Visualización de ubicación del repartidor');
     console.log('  📏 Cálculo de distancia y tiempo estimado');
     console.log('  🛣️ Trazado de ruta con Leaflet Routing Machine');
     console.log('  🔄 Actualización automática en tiempo real');
     console.log('');
-    console.log('📦 VERSIÓN: Cliente v2.2.0 - GPS Automático');
+    console.log('🐛 SISTEMA DE DEBUGGING:');
+    console.log('  • Logs detallados en cada operación');
+    console.log('  • Validaciones en puntos críticos');
+    console.log('  • Mensajes de error descriptivos');
+    console.log('  • Eruda activo para depuración móvil');
+    console.log('');
+    console.log('📦 VERSIÓN: Cliente v2.3.0 - GPS Fix');
     console.log('🕒 Fecha: ' + new Date().toLocaleString('es-ES'));
     console.log('═══════════════════════════════════════════════════════════');
     console.log('');
-    console.log('💡 CÓMO FUNCIONA EL GPS AUTOMÁTICO:');
-    console.log('   1. Al iniciar sesión, el GPS se activa automáticamente');
-    console.log('   2. Cada 5 segundos envía tu ubicación a Firebase');
-    console.log('   3. Se guarda en: usuarios/{clienteID}/ubicacion');
-    console.log('   4. Formato: {lat: number, lon: number}');
-    console.log('   5. El repartidor puede leer esta ubicación');
-    console.log('   6. Al cerrar sesión, el GPS se detiene automáticamente');
+    console.log('💡 FLUJO CORREGIDO DE SEGUIMIENTO:');
+    console.log('   1. ✅ Obtener ubicación del cliente (getCurrentPosition)');
+    console.log('   2. ✅ Guardar en clienteCoords (variable global)');
+    console.log('   3. ✅ Agregar marcador del cliente al mapa');
+    console.log('   4. ✅ Iniciar seguimiento continuo (watchPosition)');
+    console.log('   5. ✅ Esperar 1 segundo para estabilizar');
+    console.log('   6. ✅ Verificar que clienteCoords esté disponible');
+    console.log('   7. ✅ AHORA SÍ iniciar seguimiento del repartidor');
     console.log('');
-    console.log('🔍 CONSOLA DE DEPURACIÓN:');
-    console.log('   • Eruda está activo (herramientas de desarrollo)');
-    console.log('   • Logs de GPS cada 5 segundos');
-    console.log('   • Monitoreo de permisos en tiempo real');
+    console.log('🔍 CÓMO DEPURAR ERRORES:');
+    console.log('   1. Abre Eruda (botón flotante en la esquina)');
+    console.log('   2. Ve a la pestaña "Console"');
+    console.log('   3. Busca los logs con emojis (📍 🏍️ ✅ ❌)');
+    console.log('   4. Los errores aparecerán en rojo con detalles');
     console.log('');
     console.log('🚀 ¡Sistema listo para usar!');
     console.log('═══════════════════════════════════════════════════════════');

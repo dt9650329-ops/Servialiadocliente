@@ -1133,7 +1133,8 @@
     function getClientID(uid) {
         return `cliente_auth_${uid}`;
     }
-    
+    // ✅ EXPORTAR AL SCOPE GLOBAL
+window.getClientID = getClientID;
     // ======================================================================
     // 🆕 SISTEMA DE ENVÍO AUTOMÁTICO DE UBICACIÓN DEL CLIENTE A FIREBASE
     // ======================================================================
@@ -1371,13 +1372,16 @@
     window.formatDate = formatDate; 
 
     function hideSplashScreen() {
-        const splash = document.getElementById('splash-screen');
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
         splash.style.opacity = '0';
         setTimeout(() => {
             splash.style.display = 'none';
         }, 500); 
     }
-    
+}
+    // ✅ EXPORTAR AL SCOPE GLOBAL
+window.hideSplashScreen = hideSplashScreen;
     function checkNotificationPermission() {
         const btnNotif = document.getElementById('btn-activar-notif');
         if (!('Notification' in window) || !btnNotif) {
@@ -1566,16 +1570,17 @@
         });
     }
 
-    function agregarMarcadorCliente(coords) {
-        console.log('📍 Agregando marcador del cliente:', coords);
-        
-        // 🔥 GUARDAR EN VARIABLE GLOBAL
-        clienteCoords = coords;
-        
-        if (clienteMarker) {
-            map.removeLayer(clienteMarker);
-        }
-
+    function agregarMarcadorCliente(coords, centrarMapa = false) {
+    console.log('📍 Agregando marcador del cliente:', coords);
+    
+    // 🔥 GUARDAR EN VARIABLE GLOBAL
+    clienteCoords = coords;
+    
+    if (clienteMarker) {
+        // Solo actualizar posición del marcador existente
+        clienteMarker.setLatLng([coords.lat, coords.lng]);
+    } else {
+        // Crear nuevo marcador solo si no existe
         const iconCliente = L.divIcon({
             className: 'custom-marker-cliente',
             html: '<div style="background-color: #4CAF50; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
@@ -1585,21 +1590,25 @@
 
         clienteMarker = L.marker([coords.lat, coords.lng], { icon: iconCliente })
             .addTo(map)
-            .bindPopup('<b>📍 Tu Ubicación</b>')
-            .openPopup();
-
-        map.setView([coords.lat, coords.lng], 15);
+            .bindPopup('<b>📍 Tu Ubicación</b>');
         
-        console.log('✅ Marcador del cliente agregado. clienteCoords guardadas:', clienteCoords);
+        // Solo centrar el mapa la primera vez
+        if (centrarMapa) {
+            map.setView([coords.lat, coords.lng], 15);
+        }
     }
+    
+    console.log('✅ Marcador del cliente actualizado. clienteCoords guardadas:', clienteCoords);
+}
 
     function agregarMarcadorRepartidor(coords) {
-        console.log('🏍️ Agregando marcador del repartidor:', coords);
-        
-        if (repartidorMarker) {
-            map.removeLayer(repartidorMarker);
-        }
-
+    console.log('🏍️ Agregando marcador del repartidor:', coords);
+    
+    if (repartidorMarker) {
+        // Solo actualizar posición del marcador existente
+        repartidorMarker.setLatLng([coords.lat, coords.lng]);
+    } else {
+        // Crear nuevo marcador solo si no existe
         const iconRepartidor = L.divIcon({
             className: 'custom-marker-repartidor',
             html: '<div style="background-color: #2196F3; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
@@ -1610,49 +1619,49 @@
         repartidorMarker = L.marker([coords.lat, coords.lng], { icon: iconRepartidor })
             .addTo(map)
             .bindPopup('<b>🏍️ Repartidor</b>');
-        
-        console.log('✅ Marcador del repartidor agregado');
     }
+    
+    console.log('✅ Marcador del repartidor actualizado');
+}
 
     function trazarRuta(clienteCoords, repartidorCoords) {
-        console.log('🛣️ Trazando ruta...');
-        console.log('   Cliente:', clienteCoords);
-        console.log('   Repartidor:', repartidorCoords);
-        
-        if (routingControl) {
-            map.removeControl(routingControl);
-        }
-
-        routingControl = L.Routing.control({
-            waypoints: [
-                L.latLng(repartidorCoords.lat, repartidorCoords.lng),
-                L.latLng(clienteCoords.lat, clienteCoords.lng)
-            ],
-            routeWhileDragging: false,
-            showAlternatives: false,
-            lineOptions: {
-                styles: [{ color: '#FFD700', opacity: 0.8, weight: 5 }]
-            },
-            createMarker: function() { return null; },
-            addWaypoints: false,
-            draggableWaypoints: false,
-            fitSelectedRoutes: true
-        }).addTo(map);
-
-        routingControl.on('routesfound', function(e) {
-            const routes = e.routes;
-            const summary = routes[0].summary;
-            
-            const distanceKm = (summary.totalDistance / 1000).toFixed(2);
-            const timeMin = Math.round(summary.totalTime / 60);
-            
-            document.getElementById('map-distance').textContent = `📏 Distancia: ${distanceKm} km`;
-            document.getElementById('map-duration').textContent = `⏱️ Tiempo estimado: ${timeMin} min`;
-            
-            console.log(`✅ Ruta trazada: ${distanceKm} km, ${timeMin} min`);
-        });
+    console.log('🛣️ Trazando ruta...');
+    console.log('   Cliente:', clienteCoords);
+    console.log('   Repartidor:', repartidorCoords);
+    
+    if (routingControl) {
+        map.removeControl(routingControl);
     }
 
+    routingControl = L.Routing.control({
+        waypoints: [
+            L.latLng(repartidorCoords.lat, repartidorCoords.lng),
+            L.latLng(clienteCoords.lat, clienteCoords.lng)
+        ],
+        routeWhileDragging: false,
+        showAlternatives: false,
+        lineOptions: {
+            styles: [{ color: '#FFD700', opacity: 0.8, weight: 5 }]
+        },
+        createMarker: function() { return null; },
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: false  // ✅ Cambiar a false para no recentrar
+    }).addTo(map);
+
+    routingControl.on('routesfound', function(e) {
+        const routes = e.routes;
+        const summary = routes[0].summary;
+        
+        const distanceKm = (summary.totalDistance / 1000).toFixed(2);
+        const timeMin = Math.round(summary.totalTime / 60);
+        
+        document.getElementById('map-distance').textContent = `📏 Distancia: ${distanceKm} km`;
+        document.getElementById('map-duration').textContent = `⏱️ Tiempo estimado: ${timeMin} min`;
+        
+        console.log(`✅ Ruta trazada: ${distanceKm} km, ${timeMin} min`);
+    });
+}
     // ======================================================================
     // === SEGUIMIENTO DE UBICACIÓN DEL REPARTIDOR (CORREGIDO) ===
     // ======================================================================
@@ -1806,49 +1815,48 @@
     }
 
     function iniciarSeguimientoContinuoCliente() {
-        if (!navigator.geolocation) {
-            console.error('❌ Geolocalización no soportada');
-            return;
-        }
-
-        if (watchPositionId !== null) {
-            navigator.geolocation.clearWatch(watchPositionId);
-        }
-
-        console.log('📍 Iniciando seguimiento continuo del cliente...');
-
-        watchPositionId = navigator.geolocation.watchPosition(
-            (position) => {
-                const coords = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                
-                // 🔥 ACTUALIZAR VARIABLE GLOBAL
-                clienteCoords = coords;
-                
-                if (map) {
-                    agregarMarcadorCliente(coords);
-                    
-                    if (repartidorMarker) {
-                        const repartidorPos = repartidorMarker.getLatLng();
-                        trazarRuta(coords, { lat: repartidorPos.lat, lng: repartidorPos.lng });
-                    }
-                }
-            },
-            (error) => {
-                console.error('❌ Error al obtener ubicación continua:', error);
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 5000
-            }
-        );
-        
-        console.log('✅ Seguimiento continuo del cliente iniciado');
+    if (!navigator.geolocation) {
+        console.error('❌ Geolocalización no soportada');
+        return;
     }
 
+    if (watchPositionId !== null) {
+        navigator.geolocation.clearWatch(watchPositionId);
+    }
+
+    console.log('📍 Iniciando seguimiento continuo del cliente...');
+
+    watchPositionId = navigator.geolocation.watchPosition(
+        (position) => {
+            const coords = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+            
+            // 🔥 ACTUALIZAR VARIABLE GLOBAL
+            clienteCoords = coords;
+            
+            if (map) {
+                agregarMarcadorCliente(coords, false);  // ✅ false = no centrar
+                
+                if (repartidorMarker) {
+                    const repartidorPos = repartidorMarker.getLatLng();
+                    trazarRuta(coords, { lat: repartidorPos.lat, lng: repartidorPos.lng });
+                }
+            }
+        },
+        (error) => {
+            console.error('❌ Error al obtener ubicación continua:', error);
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 5000
+        }
+    );
+    
+    console.log('✅ Seguimiento continuo del cliente iniciado');
+}
     // ======================================================================
     // === BÚSQUEDA Y SEGUIMIENTO DE PEDIDO (CORREGIDO) ===
     // ======================================================================

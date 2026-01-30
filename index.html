@@ -1703,7 +1703,8 @@
       const tel1 = document.getElementById("telefono1Usuario").value.trim();
       const direccion = document.getElementById("direccionUsuario").value.trim();
 
-      if (telef || direccion || nombre) {
+      // ✅ CORREGIDO: Verificar si están VACÍOS (con !)
+      if (!tel1 || !direccion || !nombre) {
         alert("Por favor completa los campos obligatorios (Nombre, Teléfono principal y Dirección).");
         return;
       }
@@ -3094,15 +3095,22 @@
         window.currentAuthUser = user;
         window.currentUserID = window.getClientID(user.uid);
         
+        console.log('👤 Usuario autenticado:', user.uid);
+        
         get(ref(db, `usuarios/${window.currentUserID}`)) 
           .then(async (snapshot) => {
             if (snapshot.exists() && snapshot.val().direccion && snapshot.val().tel1) {
+              // ✅ Usuario completo con datos - Mostrar perfil
               const userData = snapshot.val();
               userData.uid = user.uid;
               
               window.mostrarPerfil(userData); 
+              console.log('✅ Usuario completo - Mostrando perfil');
               
             } else {
+              // ⚠️ Usuario sin datos completos - Mostrar formulario de registro complementario
+              console.log('⚠️ Usuario sin datos completos - Mostrando formulario de registro');
+              
               const existingData = snapshot.exists() ? snapshot.val() : {};
               document.getElementById("nombreUsuario").value = existingData.nombre || "";
               document.getElementById("correoUsuario").value = user.email || ""; 
@@ -3115,7 +3123,7 @@
             hideSplashScreen();
           })
           .catch((error) => {
-            console.error("Error al leer datos de Firebase DB:", error);
+            console.error("❌ Error al leer datos de Firebase DB:", error);
             alert("Error al intentar cargar su perfil.");
             hideSplashScreen();
           });
@@ -3129,6 +3137,7 @@
         const authUser = window.currentAuthUser; 
 
         if (!authUser) {
+             console.error('❌ Error: No hay usuario autenticado');
              alert("Error: No se encontró la sesión de autenticación.");
              return;
         }
@@ -3140,6 +3149,8 @@
         const tel1 = document.getElementById("telefono1Usuario").value.trim(); 
         const tel2 = document.getElementById("telefono2Usuario").value.trim();
         const direccion = document.getElementById("direccionUsuario").value.trim();
+        
+        console.log('📝 Guardando usuario:', { nombre, tel1, direccion });
         
         if (!tel1 || !direccion) {
             alert("El teléfono principal y la dirección son obligatorios para completar el registro.");
@@ -3161,6 +3172,8 @@
             gpsActivo: false
         };
         
+        console.log('💾 Datos a guardar:', infoFijaUsuario);
+        
         const promesasEscritura = [];
 
         promesasEscritura.push(set(ref(db, `users/${usuarioID}`), infoFijaUsuario));
@@ -3168,6 +3181,7 @@
 
         Promise.all(promesasEscritura)
             .then(() => {
+                console.log('✅ Usuario guardado exitosamente en Firebase');
                 localStorage.setItem("usuarioDomicilios", JSON.stringify({...infoFijaUsuario, uid: authUser.uid})); 
                 
                 window.mostrarPerfil(infoFijaUsuario);

@@ -120,7 +120,7 @@
     .tab-content { display: none; padding-top: 15px; }
     .tab-content.active-content { display: block; }
     /* Estilos del Chat */
-    #chat-box { height: 300px; overflow-y: auto; border: 1px solid #555; border-radius: 10px; padding: 10px; background: #222; margin-top: 10px; display: flex; flex-direction: column; }
+    #chat-box { height: 400px; max-height: 60vh; overflow-y: auto; border: 1px solid #555; border-radius: 10px; padding: 10px; background: #222; margin-top: 10px; margin-bottom: 10px; display: flex; flex-direction: column; }
     .mensaje { padding: 8px 12px; border-radius: 12px; margin: 8px 0; max-width: 80%; word-wrap: break-word; position: relative; display: flex; flex-direction: column;}
     
     .usuario { 
@@ -166,6 +166,12 @@
         flex-wrap: wrap; 
         gap: 5px;
         margin-top: 10px;
+        position: sticky;
+        bottom: 0;
+        background-color: var(--color-card);
+        padding: 10px;
+        z-index: 100;
+        border-top: 1px solid #555;
     }
     
     #inputChat { 
@@ -221,6 +227,70 @@
         max-width: 280px;
         margin-top: 5px;
         border-radius: 20px;
+        display: none; /* Ocultamos el reproductor nativo */
+    }
+    
+    /* Reproductor de audio personalizado tipo WhatsApp */
+    .custom-audio-player {
+        display: flex;
+        align-items: center;
+        background-color: rgba(255, 255, 255, 0.15);
+        border-radius: 25px;
+        padding: 15px 18px;
+        width: 100%;
+        max-width: 100%;
+        gap: 12px;
+        min-height: 60px;
+    }
+    
+    .custom-audio-player .play-btn {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background-color: var(--color-primary);
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        flex-shrink: 0;
+        transition: background-color 0.2s;
+    }
+    
+    .custom-audio-player .play-btn:hover {
+        background-color: #ffaa00;
+    }
+    
+    .custom-audio-player .audio-info {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 0;
+    }
+    
+    .custom-audio-player .audio-progress {
+        width: 100%;
+        height: 5px;
+        background-color: rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+        position: relative;
+        cursor: pointer;
+    }
+    
+    .custom-audio-player .audio-progress-bar {
+        height: 100%;
+        background-color: var(--color-primary);
+        border-radius: 2px;
+        width: 0%;
+        transition: width 0.1s linear;
+    }
+    
+    .custom-audio-player .audio-time {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 500;
     }
     
     .media-caption {
@@ -1036,7 +1106,7 @@
                 <button id="btnEnviarMensaje" style="display:none; width: auto;" onclick="enviarMensajeFirebase()">Enviar</button>
               </div>
               
-              <input type="file" id="file-input-chat" accept="image/*" style="display:none;" onchange="manejarArchivoSeleccionado()">
+              <input type="file" id="file-input-chat" accept="image/*" style="display:none;" onchange="manejarArchivoSeleccionado(event)">
               
               <div id="audio-recording-status"></div>
               <div id="file-upload-status"></div>
@@ -1367,9 +1437,19 @@
                             <span class="chat-info">${formatTimestamp(msg.timestamp)}</span>
                         `;
                     } else if (msg.tipo === 'audio') {
+                        const audioId = `audio-${msg.timestamp}-${Math.random().toString(36).substr(2, 9)}`;
                         msgDiv.innerHTML = `
                             <div class="chat-media-container">
-                                <audio controls src="${msg.url}" style="max-width: 100%;"></audio>
+                                <audio id="${audioId}" src="${msg.url}" style="display:none;"></audio>
+                                <div class="custom-audio-player">
+                                    <button class="play-btn" onclick="toggleAudioPlay('${audioId}', this)">▶️</button>
+                                    <div class="audio-info">
+                                        <div class="audio-progress" onclick="seekAudio(event, '${audioId}')">
+                                            <div class="audio-progress-bar" id="${audioId}-progress"></div>
+                                        </div>
+                                        <div class="audio-time" id="${audioId}-time">0:00</div>
+                                    </div>
+                                </div>
                             </div>
                             <span class="chat-info">${formatTimestamp(msg.timestamp)}</span>
                         `;
@@ -1423,6 +1503,200 @@
                 alert('Error al enviar mensaje: ' + error.message);
             });
     }
+
+    // ====================================================================
+    // FUNCIONES PARA ENVIAR FOTOS
+    // ====================================================================
+    window.activarSelectorFoto = function() {
+        console.log('📷 Activando selector de fotos...');
+        document.getElementById('file-input-chat').click();
+    }
+
+    window.manejarArchivoSeleccionado = async function(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            console.warn('⚠️ No se seleccionó ningún archivo');
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            alert('⚠️ Por favor selecciona una imagen válida');
+            return;
+        }
+
+        if (!window.currentUserID) {
+            alert('Error: No hay sesión activa');
+            return;
+        }
+
+        console.log('📤 Subiendo imagen...');
+        document.getElementById('file-upload-status').style.display = 'block';
+        document.getElementById('file-upload-status').textContent = '📤 Subiendo imagen...';
+
+        try {
+            const timestamp = Date.now();
+            const fileName = `chat_${window.currentUserID}_${timestamp}.jpg`;
+            const fileRef = storageRef(storage, `chats/${fileName}`);
+            
+            const uploadTask = uploadBytesResumable(fileRef, file);
+
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    document.getElementById('file-upload-status').textContent = `📤 Subiendo: ${Math.round(progress)}%`;
+                },
+                (error) => {
+                    console.error('❌ Error al subir imagen:', error);
+                    alert('Error al subir imagen: ' + error.message);
+                    document.getElementById('file-upload-status').style.display = 'none';
+                },
+                async () => {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                    console.log('✅ Imagen subida correctamente:', downloadURL);
+
+                    const mensajeData = {
+                        remitente: 'Cliente',
+                        mensaje: '',
+                        tipo: 'imagen',
+                        url: downloadURL,
+                        timestamp: timestamp,
+                        leido: false
+                    };
+
+                    const nuevoMensajeRef = push(ref(db, `chats/${window.currentUserID}`));
+                    await set(nuevoMensajeRef, mensajeData);
+
+                    document.getElementById('file-upload-status').textContent = '✅ Imagen enviada';
+                    setTimeout(() => {
+                        document.getElementById('file-upload-status').style.display = 'none';
+                    }, 2000);
+
+                    event.target.value = '';
+                }
+            );
+        } catch (error) {
+            console.error('❌ Error al procesar imagen:', error);
+            alert('Error al enviar imagen: ' + error.message);
+            document.getElementById('file-upload-status').style.display = 'none';
+        }
+    }
+
+    // ====================================================================
+    // FUNCIONES PARA GRABAR Y ENVIAR AUDIO
+    // ====================================================================
+    window.toggleGrabarAudio = async function() {
+        if (isRecording) {
+            detenerGrabacion();
+        } else {
+            await iniciarGrabacion();
+        }
+    }
+
+    async function iniciarGrabacion() {
+        try {
+            console.log('🎙️ Iniciando grabación de audio...');
+            
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                console.log('🎙️ Grabación detenida, procesando audio...');
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                await enviarAudio(audioBlob);
+                
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+
+            document.getElementById('btn-audio').textContent = '⏹️ Detener';
+            document.getElementById('btn-audio').style.backgroundColor = '#ff4444';
+            document.getElementById('audio-recording-status').style.display = 'block';
+            document.getElementById('audio-recording-status').textContent = '🔴 Grabando audio...';
+
+            console.log('✅ Grabación iniciada');
+        } catch (error) {
+            console.error('❌ Error al iniciar grabación:', error);
+            alert('Error al acceder al micrófono: ' + error.message);
+        }
+    }
+
+    function detenerGrabacion() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            isRecording = false;
+
+            document.getElementById('btn-audio').textContent = '🎙️ Grabar';
+            document.getElementById('btn-audio').style.backgroundColor = '';
+            document.getElementById('audio-recording-status').style.display = 'none';
+
+            console.log('✅ Grabación detenida');
+        }
+    }
+
+    async function enviarAudio(audioBlob) {
+        if (!window.currentUserID) {
+            alert('Error: No hay sesión activa');
+            return;
+        }
+
+        console.log('📤 Subiendo audio...');
+        document.getElementById('audio-recording-status').style.display = 'block';
+        document.getElementById('audio-recording-status').textContent = '📤 Enviando audio...';
+
+        try {
+            const timestamp = Date.now();
+            const fileName = `audio_${window.currentUserID}_${timestamp}.webm`;
+            const fileRef = storageRef(storage, `chats/${fileName}`);
+            
+            const uploadTask = uploadBytesResumable(fileRef, audioBlob);
+
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    document.getElementById('audio-recording-status').textContent = `📤 Subiendo: ${Math.round(progress)}%`;
+                },
+                (error) => {
+                    console.error('❌ Error al subir audio:', error);
+                    alert('Error al subir audio: ' + error.message);
+                    document.getElementById('audio-recording-status').style.display = 'none';
+                },
+                async () => {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                    console.log('✅ Audio subido correctamente:', downloadURL);
+
+                    const mensajeData = {
+                        remitente: 'Cliente',
+                        mensaje: '',
+                        tipo: 'audio',
+                        url: downloadURL,
+                        timestamp: timestamp,
+                        leido: false
+                    };
+
+                    const nuevoMensajeRef = push(ref(db, `chats/${window.currentUserID}`));
+                    await set(nuevoMensajeRef, mensajeData);
+
+                    document.getElementById('audio-recording-status').textContent = '✅ Audio enviado';
+                    setTimeout(() => {
+                        document.getElementById('audio-recording-status').style.display = 'none';
+                    }, 2000);
+                }
+            );
+        } catch (error) {
+            console.error('❌ Error al enviar audio:', error);
+            alert('Error al enviar audio: ' + error.message);
+            document.getElementById('audio-recording-status').style.display = 'none';
+        }
+    }
     function registrarUsuarioComplemento() {
 
       const nombre = document.getElementById("nombreUsuario").value.trim();
@@ -1469,6 +1743,70 @@
             hour12: true
         };
         return date.toLocaleString('es-ES', options);
+    }
+
+    // Funciones para el reproductor de audio personalizado
+    function toggleAudioPlay(audioId, button) {
+        const audio = document.getElementById(audioId);
+        const progressBar = document.getElementById(`${audioId}-progress`);
+        const timeDisplay = document.getElementById(`${audioId}-time`);
+        
+        if (audio.paused) {
+            // Pausar cualquier otro audio que esté reproduciéndose
+            document.querySelectorAll('audio').forEach(a => {
+                if (a.id !== audioId && !a.paused) {
+                    a.pause();
+                    const otherButton = document.querySelector(`button[onclick*="${a.id}"]`);
+                    if (otherButton) otherButton.textContent = '▶️';
+                }
+            });
+            
+            audio.play();
+            button.textContent = '⏸️';
+            
+            // Actualizar progreso
+            audio.ontimeupdate = () => {
+                const progress = (audio.currentTime / audio.duration) * 100;
+                progressBar.style.width = progress + '%';
+                
+                const currentMin = Math.floor(audio.currentTime / 60);
+                const currentSec = Math.floor(audio.currentTime % 60);
+                timeDisplay.textContent = `${currentMin}:${currentSec.toString().padStart(2, '0')}`;
+            };
+            
+            audio.onended = () => {
+                button.textContent = '▶️';
+                progressBar.style.width = '0%';
+                timeDisplay.textContent = formatAudioDuration(audio.duration);
+            };
+        } else {
+            audio.pause();
+            button.textContent = '▶️';
+        }
+        
+        // Mostrar duración cuando se carga
+        audio.onloadedmetadata = () => {
+            if (audio.paused) {
+                timeDisplay.textContent = formatAudioDuration(audio.duration);
+            }
+        };
+    }
+    
+    function seekAudio(event, audioId) {
+        const audio = document.getElementById(audioId);
+        const progressContainer = event.currentTarget;
+        const clickX = event.offsetX;
+        const width = progressContainer.offsetWidth;
+        const duration = audio.duration;
+        
+        audio.currentTime = (clickX / width) * duration;
+    }
+    
+    function formatAudioDuration(seconds) {
+        if (isNaN(seconds)) return '0:00';
+        const min = Math.floor(seconds / 60);
+        const sec = Math.floor(seconds % 60);
+        return `${min}:${sec.toString().padStart(2, '0')}`;
     }
 
     function formatDate(timestamp) {
@@ -1930,21 +2268,21 @@
             
             if (repartidorData.ubicacionActual && 
                 repartidorData.ubicacionActual.lat && 
-                repartidorData.ubicacionActual.lon) {
+                repartidorData.ubicacionActual.lng) {
                 
                 repartidorCoords = {
                     lat: repartidorData.ubicacionActual.lat,
-                    lng: repartidorData.ubicacionActual.lon
+                    lng: repartidorData.ubicacionActual.lng
                 };
                 console.log('✅ Ubicación del repartidor (ubicacionActual):', repartidorCoords);
                 
             } else if (repartidorData.ubicacion && 
                        repartidorData.ubicacion.lat && 
-                       repartidorData.ubicacion.lon) {
+                       repartidorData.ubicacion.lng) {
                 
                 repartidorCoords = {
                     lat: repartidorData.ubicacion.lat,
-                    lng: repartidorData.ubicacion.lon
+                    lng: repartidorData.ubicacion.lng
                 };
                 console.log('✅ Ubicación del repartidor (ubicacion):', repartidorCoords);
             }

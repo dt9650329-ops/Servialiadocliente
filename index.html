@@ -2129,21 +2129,32 @@
             return;
         }
         
-        // ✅ ELIMINAR RUTA ANTERIOR
+        // ✅ ELIMINAR RUTA ANTERIOR COMPLETAMENTE
         if (routingControl) {
             console.log('🗑️ Eliminando ruta anterior...');
-            map.removeControl(routingControl);
-            routingControl = null;
+            try {
+                map.removeControl(routingControl);
+                routingControl = null;
+            } catch (error) {
+                console.warn('⚠️ Error al eliminar ruta anterior:', error);
+                routingControl = null;
+            }
         }
 
         console.log('🛣️ Creando nueva ruta...');
         
         try {
+            // ✅ CONFIGURACIÓN OPTIMIZADA PARA EVITAR TIMEOUTS
             routingControl = L.Routing.control({
                 waypoints: [
                     L.latLng(repartidorCoords.lat, repartidorCoords.lng),
                     L.latLng(clienteCoords.lat, clienteCoords.lng)
                 ],
+                router: L.Routing.osrmv1({
+                    serviceUrl: 'https://router.project-osrm.org/route/v1',
+                    timeout: 8000, // ✅ TIMEOUT DE 8 SEGUNDOS
+                    profile: 'driving' // ✅ PERFIL DE CONDUCCIÓN
+                }),
                 routeWhileDragging: false,
                 showAlternatives: false,
                 lineOptions: {
@@ -2156,7 +2167,28 @@
                 show: false // ✅ Ocultar panel de instrucciones
             }).addTo(map);
 
+            // ✅ TIMEOUT PERSONALIZADO - Si no responde en 10 seg, usar distancia directa
+            let routingTimeout = setTimeout(() => {
+                console.warn('⚠️ Routing timeout - Usando distancia directa como fallback');
+                const distKm = (distance / 1000).toFixed(2);
+                document.getElementById('map-distance').textContent = `📏 Distancia aprox.: ${distKm} km`;
+                document.getElementById('map-duration').textContent = `⏱️ Calculando...`;
+                
+                // Limpiar control de routing
+                if (routingControl) {
+                    try {
+                        map.removeControl(routingControl);
+                        routingControl = null;
+                    } catch (e) {
+                        console.warn('Error al limpiar routing:', e);
+                    }
+                }
+            }, 10000);
+
             routingControl.on('routesfound', function(e) {
+                // ✅ CANCELAR TIMEOUT SI SE ENCUENTRA LA RUTA
+                clearTimeout(routingTimeout);
+                
                 const routes = e.routes;
                 const summary = routes[0].summary;
                 
@@ -2172,6 +2204,9 @@
             });
             
             routingControl.on('routingerror', function(e) {
+                // ✅ CANCELAR TIMEOUT SI HAY ERROR
+                clearTimeout(routingTimeout);
+                
                 console.error('❌ Error al trazar ruta:', e);
                 console.error('═══════════════════════════════════════════════════════════');
                 console.error('');
@@ -2180,12 +2215,28 @@
                 const distKm = (distance / 1000).toFixed(2);
                 document.getElementById('map-distance').textContent = `📏 Distancia aprox.: ${distKm} km`;
                 document.getElementById('map-duration').textContent = `⏱️ No disponible`;
+                
+                // ✅ LIMPIAR routingControl PARA EVITAR CONFLICTOS
+                if (routingControl) {
+                    try {
+                        map.removeControl(routingControl);
+                        routingControl = null;
+                    } catch (error) {
+                        console.warn('Error al limpiar routing:', error);
+                        routingControl = null;
+                    }
+                }
             });
             
         } catch (error) {
             console.error('❌ Error crítico al crear ruta:', error);
             console.error('═══════════════════════════════════════════════════════════');
             console.error('');
+            
+            // ✅ Fallback a distancia directa
+            const distKm = (distance / 1000).toFixed(2);
+            document.getElementById('map-distance').textContent = `📏 Distancia aprox.: ${distKm} km`;
+            document.getElementById('map-duration').textContent = `⏱️ No disponible`;
         }
     }
     

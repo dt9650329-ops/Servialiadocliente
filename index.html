@@ -2520,6 +2520,7 @@
             case 'aceptado':
                 estadoDescripcion = '✅ El repartidor ha aceptado tu pedido.';
                 break;
+            case 'esperando':
             case 'esperando pedido':
                 estadoDescripcion = '🏪 El repartidor está esperando en el punto de recogida.';
                 break;
@@ -2591,14 +2592,33 @@
         
         resultDiv.style.display = 'block';
         
-        const estadosActivos = ['pendiente', 'aceptado', 'esperando pedido', 'en camino'];
-        if (estadosActivos.includes(estado.toLowerCase()) && pedido.repartidorIdAsignado) {
+        // 🔥 DEBUG: Mostrar información completa del pedido en consola
+        console.log('');
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🔍 DIAGNÓSTICO COMPLETO DEL PEDIDO');
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('📦 Estado del pedido:', estado);
+        console.log('🏍️ repartidorIdAsignado:', pedido.repartidorIdAsignado || '❌ NO ASIGNADO');
+        console.log('🆔 repartidorId:', pedido.repartidorId || 'N/A');
+        console.log('👤 repartidorNombre:', pedido.repartidorNombre || 'N/A');
+        console.log('🔑 repartidorUID:', pedido.repartidorUID || 'N/A');
+        console.log('📋 Campos disponibles:', Object.keys(pedido));
+        console.log('🎯 Estado en estadosActivos?', ['pendiente', 'aceptado', 'esperando pedido', 'en camino', 'completado', 'entregado'].includes(estado.toLowerCase()));
+        console.log('🎯 Tiene repartidorIdAsignado?', !!pedido.repartidorIdAsignado);
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('');
+        
+        // 🔥 MOSTRAR MAPA PARA TODOS LOS PEDIDOS QUE TENGAN REPARTIDOR ASIGNADO
+        const estadosActivos = ['pendiente', 'aceptado', 'esperando', 'esperando pedido', 'en camino', 'completado', 'entregado'];
+        const tieneRepartidor = pedido.repartidorIdAsignado || pedido.repartidorUID || pedido.repartidorId;
+        
+        if (estadosActivos.includes(estado.toLowerCase()) && tieneRepartidor) {
             console.log('');
             console.log('═══════════════════════════════════════════════════════════');
             console.log('🗺️ INICIANDO SISTEMA DE SEGUIMIENTO EN TIEMPO REAL');
             console.log('═══════════════════════════════════════════════════════════');
             console.log('✅ Pedido activo detectado');
-            console.log('🏍️ Repartidor asignado:', pedido.repartidorIdAsignado);
+            console.log('🏍️ Repartidor asignado:', tieneRepartidor);
             console.log('');
             
             mapContainer.style.display = 'block';
@@ -2644,7 +2664,7 @@
                 console.log('');
                 
                 console.log('📍 PASO 7: Iniciando seguimiento del repartidor...');
-                iniciarSeguimientoUbicacion(pedido.repartidorIdAsignado, pedido.id);
+                iniciarSeguimientoUbicacion(tieneRepartidor, pedido.id);
                 
                 console.log('');
                 console.log('✅ SISTEMA DE SEGUIMIENTO COMPLETAMENTE INICIADO');
@@ -2676,11 +2696,27 @@
                 mapInfo.style.display = 'none';
             }
         } else {
-            console.log('ℹ️ Pedido completado o sin repartidor asignado. No se muestra mapa.');
+            console.log('');
+            console.log('═══════════════════════════════════════════════════════════');
+            console.log('ℹ️ MAPA NO DISPONIBLE');
+            console.log('═══════════════════════════════════════════════════════════');
+            console.log('Razón: Pedido completado o sin repartidor asignado');
+            console.log('Estado del pedido:', estado);
+            console.log('Repartidor asignado:', pedido.repartidorIdAsignado || pedido.repartidorUID || pedido.repartidorId || 'Ninguno');
+            console.log('═══════════════════════════════════════════════════════════');
+            console.log('');
+            
             detenerSeguimientoUbicacion();
             mapContainer.style.display = 'none';
             mapLegend.style.display = 'none';
             mapInfo.style.display = 'none';
+            
+            // Mostrar mensaje informativo al usuario
+            const mapInfo = document.getElementById('map-info');
+            if (!pedido.repartidorIdAsignado && !pedido.repartidorUID && !pedido.repartidorId) {
+                mapInfo.innerHTML = '<p style="text-align: center; color: var(--color-primary); padding: 15px;">⏳ <strong>Esperando asignación de repartidor...</strong><br><small>El mapa se mostrará cuando un repartidor acepte tu pedido</small></p>';
+                mapInfo.style.display = 'block';
+            }
         }
     }
 

@@ -1338,6 +1338,19 @@
         document.getElementById(`tab-${tabName}`).classList.add('active-tab');
         document.getElementById(`content-${tabName}`).classList.add('active-content');
         
+        // 🆕 Si salimos del tab de tracking, detener listener del pedido
+        if (tabName !== 'tracking' && window.activePedidoListener && window.activePedidoID) {
+            try {
+                const pedidoRef = window.ref(window.db, `pedidos_historial/${window.activePedidoID}`);
+                window.off(pedidoRef, 'value', window.activePedidoListener);
+                window.activePedidoListener = null;
+                window.activePedidoID = null;
+                console.log('🛑 Listener del pedido detenido al salir de tracking');
+            } catch (e) {
+                console.log('Info: Error al detener listener:', e);
+            }
+        }
+        
         if (tabName === 'servicio') {
             habilitarChat(); 
             checkNotificationPermission();
@@ -2552,6 +2565,13 @@
         const mapLegend = document.getElementById('map-legend');
         const mapInfo = document.getElementById('map-info');
         
+        // 🆕 Detener listener anterior si existe
+        if (window.activePedidoListener && window.activePedidoID) {
+            window.off(window.ref(window.db, `pedidos_historial/${window.activePedidoID}`), 'value', window.activePedidoListener);
+            window.activePedidoListener = null;
+            console.log('🛑 Listener anterior del pedido detenido');
+        }
+        
         const estado = pedido.estado || pedido.estadoHistorial || 'Desconocido';
         const estadoClass = `estado-${estado.toLowerCase().replace(/ /g, '-')}`;
         
@@ -2594,10 +2614,10 @@
             <h3 style="color: var(--color-primary); margin-top: 0;">📦 Tu Pedido</h3>
             
             <div style="text-align: center; margin-bottom: 15px;">
-                <span class="estado-badge ${estadoClass}">${estado}</span>
+                <span id="estado-badge-display" class="estado-badge ${estadoClass}">${estado}</span>
             </div>
             
-            <p style="text-align: center; color: var(--color-text-dark); margin-bottom: 20px;">${estadoDescripcion}</p>
+            <p id="estado-descripcion-display" style="text-align: center; color: var(--color-text-dark); margin-bottom: 20px;">${estadoDescripcion}</p>
             
             <div class="pedido-detalle">
                 <strong>ID del Pedido:</strong>
@@ -2643,6 +2663,87 @@
         `;
         
         resultDiv.style.display = 'block';
+        
+        // 🆕 INICIAR LISTENER PARA DETECTAR CAMBIOS EN EL ESTADO DEL PEDIDO
+        window.activePedidoID = pedido.id;
+        const pedidoRef = window.ref(window.db, `pedidos_historial/${pedido.id}`);
+        
+        window.activePedidoListener = window.onValue(pedidoRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const pedidoActualizado = snapshot.val();
+                const nuevoEstado = pedidoActualizado.estado || pedidoActualizado.estadoHistorial || 'Desconocido';
+                
+                console.log(`📡 Estado del pedido actualizado: ${nuevoEstado}`);
+                
+                // Actualizar el badge del estado en la interfaz
+                const estadoBadge = document.getElementById('estado-badge-display');
+                const estadoDescripcionElement = document.getElementById('estado-descripcion-display');
+                
+                if (estadoBadge) {
+                    const nuevoEstadoClass = `estado-${nuevoEstado.toLowerCase().replace(/ /g, '-')}`;
+                    estadoBadge.className = `estado-badge ${nuevoEstadoClass}`;
+                    estadoBadge.textContent = nuevoEstado;
+                }
+                
+                // Actualizar descripción del estado
+                let nuevaDescripcion = '';
+                switch(nuevoEstado.toLowerCase()) {
+                    case 'pendiente':
+                        nuevaDescripcion = '⏳ Tu pedido está pendiente de ser aceptado.';
+                        break;
+                    case 'aceptado':
+                        nuevaDescripcion = '✅ El repartidor ha aceptado tu pedido.';
+                        break;
+                    case 'esperando':
+                    case 'esperando pedido':
+                        nuevaDescripcion = '🏪 El repartidor está esperando en el punto de recogida.';
+                        break;
+                    case 'en camino':
+                        nuevaDescripcion = '🚚 Tu pedido está en camino.';
+                        break;
+                    case 'completado':
+                    case 'entregado':
+                        nuevaDescripcion = '🎉 ¡Tu pedido ha sido entregado!';
+                        break;
+                    case 'cancelado':
+                        nuevaDescripcion = '❌ Este pedido fue cancelado.';
+                        break;
+                    default:
+                        nuevaDescripcion = '⏱️ Estado actualizado.';
+                }
+                
+                if (estadoDescripcionElement) {
+                    estadoDescripcionElement.textContent = nuevaDescripcion;
+                }
+                
+                // 🆕 OCULTAR MAPA SI EL PEDIDO ESTÁ COMPLETADO O CANCELADO
+                if (nuevoEstado.toLowerCase() === 'completado' || 
+                    nuevoEstado.toLowerCase() === 'entregado' || 
+                    nuevoEstado.toLowerCase() === 'cancelado') {
+                    
+                    console.log('🗺️ Ocultando mapa - Pedido finalizado');
+                    
+                    // Ocultar contenedores del mapa
+                    if (mapContainer) mapContainer.style.display = 'none';
+                    if (mapLegend) mapLegend.style.display = 'none';
+                    if (mapInfo) mapInfo.style.display = 'none';
+                    
+                    // Detener seguimiento de ubicación
+                    detenerSeguimientoUbicacion();
+                    detenerEnvioUbicacionCliente();
+                    
+                    // Detener listener del pedido
+                    if (window.activePedidoListener) {
+                        window.off(pedidoRef, 'value', window.activePedidoListener);
+                        window.activePedidoListener = null;
+                        window.activePedidoID = null;
+                        console.log('🛑 Listener del pedido detenido');
+                    }
+                }
+            }
+        });
+        
+        console.log('👂 Listener del pedido iniciado para detectar cambios de estado');
         
         // 🔥 DEBUG: Mostrar información completa del pedido en consola
         console.log('');
@@ -3111,8 +3212,22 @@
     }
 
     window.signOutUser = function() {
-        if (window.activePedidoListener) {
-            off(ref(db, `pedidos_pendientes/${window.activePedidoID}`), 'value', window.activePedidoListener);
+        // Detener listener de pedidos_pendientes si existe
+        if (window.activePedidoListener && window.activePedidoID) {
+            try {
+                off(ref(db, `pedidos_pendientes/${window.activePedidoID}`), 'value', window.activePedidoListener);
+            } catch (e) {
+                console.log('Info: No hay listener de pedidos_pendientes activo');
+            }
+            
+            // 🆕 También detener listener de pedidos_historial (tracking)
+            try {
+                off(ref(db, `pedidos_historial/${window.activePedidoID}`), 'value', window.activePedidoListener);
+                console.log('🛑 Listener del pedido de tracking detenido');
+            } catch (e) {
+                console.log('Info: No hay listener de tracking activo');
+            }
+            
             window.activePedidoListener = null;
             window.activePedidoID = null;
         }
@@ -3277,7 +3392,7 @@
     
     console.log('');
     console.log('═══════════════════════════════════════════════════════════');
-    console.log('🎉 SISTEMA CLIENTE SERVI ALIADOS - v2.4.0 ROUTING FIX');
+    console.log('🎉 SISTEMA CLIENTE SERVI ALIADOS - v2.5.0 MAP AUTO-HIDE');
     console.log('═══════════════════════════════════════════════════════════');
     console.log('');
     console.log('📋 CARACTERÍSTICAS ACTIVAS:');
@@ -3299,12 +3414,20 @@
     console.log('  ✅ Logs detallados en cada paso');
     console.log('  ✅ Fallback a distancia directa');
     console.log('');
+    console.log('🆕 OCULTACIÓN AUTOMÁTICA DEL MAPA:');
+    console.log('  ✅ Listener en tiempo real del estado del pedido');
+    console.log('  ✅ Mapa se oculta al completar/cancelar pedido');
+    console.log('  ✅ Detiene seguimiento de ubicación automáticamente');
+    console.log('  ✅ Actualización visual del estado en tiempo real');
+    console.log('  ✅ Limpieza de listeners al cambiar de vista');
+    console.log('');
     console.log('🐛 ERRORES CORREGIDOS:');
     console.log('  ✅ Advertencias OSRM demo server (normales)');
     console.log('  ✅ Coordenadas muy cercanas manejadas');
     console.log('  ✅ Validaciones robustas en trazado de rutas');
+    console.log('  ✅ Mapa permanecía visible tras entrega ❌ → ✅ SOLUCIONADO');
     console.log('');
-    console.log('📦 VERSIÓN: Cliente v2.4.0 - Routing Fix');
+    console.log('📦 VERSIÓN: Cliente v2.5.0 - Map Auto-Hide on Delivery');
     console.log('🕒 Fecha: ' + new Date().toLocaleString('es-ES'));
     console.log('═══════════════════════════════════════════════════════════');
   </script>

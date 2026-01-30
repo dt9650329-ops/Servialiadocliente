@@ -1012,7 +1012,7 @@
                   <label for="terminos-check" style="display:inline; font-weight: normal; color: var(--color-text-dark);">Acepto los términos y condiciones.</label>
               </div>
               
-              <button id="btnSolicitarChat" onclick="mostrarAviso()" disabled>Solicitar Servicio (Chat con Central)</button>
+       <button id="btnSolicitarChat" onclick="mostrarAviso()" disabled>Solicitar Servicio (Chat con Central)</button>
               <div class="chat-solicitud">Presiona para solicitar un nuevo servicio.</div>
 
               <button id="btn-activar-notif" onclick="requestNotificationPermission()" style="display:none;">🔔 Activar Notificaciones de Chat</button>
@@ -1288,13 +1288,148 @@
         const servicioBloqueado = document.getElementById("tab-servicio").disabled;
         btnChat.disabled = servicioBloqueado || !checked;
     }
+// Función para mostrar el aviso antes de iniciar el chat
+    window.mostrarAviso = function() {
+        const direccion = document.getElementById("dirPerfil") ? document.getElementById("dirPerfil").textContent : "No disponible";
+        document.getElementById("dirSeleccionadaChat").textContent = direccion;
+        document.getElementById("aviso-chat").style.display = "block";
+        document.getElementById("btnSolicitarChat").style.display = "none";
+        console.log('📋 Mostrando aviso de servicio con dirección:', direccion);
+    }
 
+    // Función para iniciar el chat después de aceptar el aviso
+    window.iniciarChatFinal = function() {
+        document.getElementById("aviso-chat").style.display = "none";
+        document.getElementById("chat-box").style.display = "flex";
+        document.getElementById("chat-box").innerHTML = "<div style='text-align:center; color: var(--color-text-dark); padding: 20px;'>💬 Chat iniciado. La central te responderá pronto.</div>";
+        
+        // Mostrar controles del chat
+        document.getElementById("inputChat").style.display = "block";
+        document.getElementById("btnEnviarMensaje").style.display = "inline-block";
+        document.getElementById("btn-foto").style.display = "inline-block";
+        document.getElementById("btn-audio").style.display = "inline-block";
+        
+        console.log('✅ Chat iniciado con la central');
+        
+        // Iniciar escucha de mensajes si no está activa
+        if (window.currentUserID) {
+            escucharMensajes();
+        }
+    }
+// Función para escuchar mensajes en tiempo real desde Firebase
+    window.escucharMensajes = function() {
+        if (!window.currentUserID) {
+            console.error('❌ No hay usuario autenticado para escuchar mensajes');
+            return;
+        }
+        
+        const chatRef = ref(db, `chats/${window.currentUserID}`);
+        
+        onValue(chatRef, (snapshot) => {
+            const chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML = ""; // Limpiar chat
+            
+            if (snapshot.exists()) {
+                const mensajes = snapshot.val();
+                const mensajesArray = Object.entries(mensajes).map(([id, data]) => ({id, ...data}));
+                
+                // Ordenar por timestamp
+                mensajesArray.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                
+                let lastDate = null;
+                
+                mensajesArray.forEach(msg => {
+                    // Separador de fecha
+                    const msgDate = new Date(msg.timestamp).toLocaleDateString('es-ES');
+                    if (msgDate !== lastDate) {
+                        const dateSeparator = document.createElement('div');
+                        dateSeparator.className = 'chat-date-separator';
+                        dateSeparator.textContent = msgDate;
+                        chatBox.appendChild(dateSeparator);
+                        lastDate = msgDate;
+                    }
+                    
+                    // Crear elemento del mensaje
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `mensaje ${msg.remitente === 'Cliente' ? 'usuario' : 'repartidor'}`;
+                    
+                    // Contenido del mensaje
+                    if (msg.tipo === 'texto') {
+                        msgDiv.innerHTML = `
+                            <div>${msg.mensaje}</div>
+                            <span class="chat-info">${formatTimestamp(msg.timestamp)}</span>
+                        `;
+                    } else if (msg.tipo === 'imagen') {
+                        msgDiv.innerHTML = `
+                            <div class="chat-media-container">
+                                <img src="${msg.url}" alt="Imagen" style="max-width: 100%; border-radius: 8px;">
+                            </div>
+                            <span class="chat-info">${formatTimestamp(msg.timestamp)}</span>
+                        `;
+                    } else if (msg.tipo === 'audio') {
+                        msgDiv.innerHTML = `
+                            <div class="chat-media-container">
+                                <audio controls src="${msg.url}" style="max-width: 100%;"></audio>
+                            </div>
+                            <span class="chat-info">${formatTimestamp(msg.timestamp)}</span>
+                        `;
+                    }
+                    
+                    chatBox.appendChild(msgDiv);
+                });
+                
+                // Scroll al final
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } else {
+                chatBox.innerHTML = "<div style='text-align:center; color: var(--color-text-dark); padding: 20px;'>💬 Sin mensajes aún.</div>";
+            }
+        });
+        
+        console.log('👂 Escuchando mensajes en Firebase para:', window.currentUserID);
+    }
+
+    // Función para enviar mensajes de texto a Firebase
+    window.enviarMensajeFirebase = function() {
+        const inputChat = document.getElementById("inputChat");
+        const mensaje = inputChat.value.trim();
+        
+        if (!mensaje) {
+            console.warn('⚠️ No se puede enviar un mensaje vacío');
+            return;
+        }
+        
+        if (!window.currentUserID) {
+            alert('Error: No hay sesión activa');
+            return;
+        }
+        
+        const mensajeData = {
+            remitente: 'Cliente',
+            mensaje: mensaje,
+            tipo: 'texto',
+            timestamp: Date.now(),
+            leido: false
+        };
+        
+        const nuevoMensajeRef = push(ref(db, `chats/${window.currentUserID}`));
+        
+        set(nuevoMensajeRef, mensajeData)
+            .then(() => {
+                console.log('✅ Mensaje enviado correctamente');
+                inputChat.value = ''; // Limpiar input
+            })
+            .catch((error) => {
+                console.error('❌ Error al enviar mensaje:', error);
+                alert('Error al enviar mensaje: ' + error.message);
+            });
+    }
     function registrarUsuarioComplemento() {
+
       const nombre = document.getElementById("nombreUsuario").value.trim();
       const tel1 = document.getElementById("telefono1Usuario").value.trim();
       const direccion = document.getElementById("direccionUsuario").value.trim();
 
-      if (!tel1 || !direccion || !nombre) {
+      if (telef || direccion || nombre) {
         alert("Por favor completa los campos obligatorios (Nombre, Teléfono principal y Dirección).");
         return;
       }
@@ -2576,7 +2711,9 @@
 
     onAuthStateChanged(auth, (user) => {
       setTimeout(() => {
-          hideSplashScreen();
+          if (typeof hideSplashScreen === 'function') {
+    hideSplashScreen();
+}
       }, 2000);
       
       if (user) {

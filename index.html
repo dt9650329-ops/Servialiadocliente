@@ -2761,9 +2761,31 @@
         console.log('═══════════════════════════════════════════════════════════');
         console.log('');
         
-        // 🔥 MOSTRAR MAPA PARA TODOS LOS PEDIDOS QUE TENGAN REPARTIDOR ASIGNADO
-        const estadosActivos = ['pendiente', 'aceptado', 'esperando', 'esperando pedido', 'en camino', 'completado', 'entregado'];
+        // 🔥 MOSTRAR MAPA SOLO PARA PEDIDOS ACTIVOS (NO COMPLETADOS/CANCELADOS)
+        const estadosActivos = ['pendiente', 'aceptado', 'esperando', 'esperando pedido', 'en camino'];
+        const estadosFinalizados = ['completado', 'entregado', 'cancelado'];
         const tieneRepartidor = pedido.repartidorIdAsignado || pedido.repartidorUID || pedido.repartidorId;
+        
+        // 🆕 NO MOSTRAR MAPA SI EL PEDIDO YA ESTÁ FINALIZADO
+        if (estadosFinalizados.includes(estado.toLowerCase())) {
+            console.log('');
+            console.log('═══════════════════════════════════════════════════════════');
+            console.log('ℹ️ PEDIDO FINALIZADO - MAPA NO DISPONIBLE');
+            console.log('═══════════════════════════════════════════════════════════');
+            console.log('Estado:', estado);
+            console.log('Razón: El pedido ya fue', estado.toLowerCase());
+            console.log('═══════════════════════════════════════════════════════════');
+            console.log('');
+            
+            // Asegurarse de que el mapa esté oculto
+            mapContainer.style.display = 'none';
+            mapLegend.style.display = 'none';
+            mapInfo.style.display = 'none';
+            detenerSeguimientoUbicacion();
+            detenerEnvioUbicacionCliente();
+            
+            return; // 🚨 IMPORTANTE: Salir de la función aquí
+        }
         
         if (estadosActivos.includes(estado.toLowerCase()) && tieneRepartidor) {
             console.log('');
@@ -2853,7 +2875,7 @@
             console.log('═══════════════════════════════════════════════════════════');
             console.log('ℹ️ MAPA NO DISPONIBLE');
             console.log('═══════════════════════════════════════════════════════════');
-            console.log('Razón: Pedido completado o sin repartidor asignado');
+            console.log('Razón: Pedido sin repartidor asignado o estado no permite seguimiento');
             console.log('Estado del pedido:', estado);
             console.log('Repartidor asignado:', pedido.repartidorIdAsignado || pedido.repartidorUID || pedido.repartidorId || 'Ninguno');
             console.log('═══════════════════════════════════════════════════════════');
@@ -2864,11 +2886,18 @@
             mapLegend.style.display = 'none';
             mapInfo.style.display = 'none';
             
-            // Mostrar mensaje informativo al usuario
-            const mapInfo = document.getElementById('map-info');
-            if (!pedido.repartidorIdAsignado && !pedido.repartidorUID && !pedido.repartidorId) {
-                mapInfo.innerHTML = '<p style="text-align: center; color: var(--color-primary); padding: 15px;">⏳ <strong>Esperando asignación de repartidor...</strong><br><small>El mapa se mostrará cuando un repartidor acepte tu pedido</small></p>';
-                mapInfo.style.display = 'block';
+            // Mostrar mensaje informativo SOLO si el pedido está pendiente (sin repartidor)
+            const mapInfoElement = document.getElementById('map-info');
+            const estadosFinalizados = ['completado', 'entregado', 'cancelado'];
+            
+            if (!pedido.repartidorIdAsignado && !pedido.repartidorUID && !pedido.repartidorId && 
+                !estadosFinalizados.includes(estado.toLowerCase())) {
+                // Solo mostrar mensaje de "esperando repartidor" si NO está finalizado
+                mapInfoElement.innerHTML = '<p style="text-align: center; color: var(--color-primary); padding: 15px;">⏳ <strong>Esperando asignación de repartidor...</strong><br><small>El mapa se mostrará cuando un repartidor acepte tu pedido</small></p>';
+                mapInfoElement.style.display = 'block';
+            } else {
+                // Si está finalizado o tiene repartidor pero no está activo, no mostrar nada
+                mapInfoElement.style.display = 'none';
             }
         }
     }
@@ -3392,7 +3421,7 @@
     
     console.log('');
     console.log('═══════════════════════════════════════════════════════════');
-    console.log('🎉 SISTEMA CLIENTE SERVI ALIADOS - v2.5.0 MAP AUTO-HIDE');
+    console.log('🎉 SISTEMA CLIENTE SERVI ALIADOS - v2.5.1 MAP FIX FINAL');
     console.log('═══════════════════════════════════════════════════════════');
     console.log('');
     console.log('📋 CARACTERÍSTICAS ACTIVAS:');
@@ -3414,20 +3443,23 @@
     console.log('  ✅ Logs detallados en cada paso');
     console.log('  ✅ Fallback a distancia directa');
     console.log('');
-    console.log('🆕 OCULTACIÓN AUTOMÁTICA DEL MAPA:');
+    console.log('🆕 OCULTACIÓN INTELIGENTE DEL MAPA:');
     console.log('  ✅ Listener en tiempo real del estado del pedido');
     console.log('  ✅ Mapa se oculta al completar/cancelar pedido');
-    console.log('  ✅ Detiene seguimiento de ubicación automáticamente');
+    console.log('  ✅ NO muestra mapa si pedido YA está completado');
+    console.log('  ✅ Detiene seguimiento automáticamente');
     console.log('  ✅ Actualización visual del estado en tiempo real');
     console.log('  ✅ Limpieza de listeners al cambiar de vista');
+    console.log('  ✅ Previene reactivación de mapa en pedidos finalizados');
     console.log('');
     console.log('🐛 ERRORES CORREGIDOS:');
     console.log('  ✅ Advertencias OSRM demo server (normales)');
     console.log('  ✅ Coordenadas muy cercanas manejadas');
     console.log('  ✅ Validaciones robustas en trazado de rutas');
     console.log('  ✅ Mapa permanecía visible tras entrega ❌ → ✅ SOLUCIONADO');
+    console.log('  ✅ Mapa se reactivaba al buscar pedido completado ❌ → ✅ SOLUCIONADO');
     console.log('');
-    console.log('📦 VERSIÓN: Cliente v2.5.0 - Map Auto-Hide on Delivery');
+    console.log('📦 VERSIÓN: Cliente v2.5.1 - Map Fix Final');
     console.log('🕒 Fecha: ' + new Date().toLocaleString('es-ES'));
     console.log('═══════════════════════════════════════════════════════════');
   </script>

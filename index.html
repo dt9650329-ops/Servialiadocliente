@@ -2505,6 +2505,8 @@
                 <p style="color:#28a745; font-weight:bold; font-size:13px; margin-bottom:6px;">⏱️ Tiempo estimado</p>
                 <p style="color:#f0f0f0; font-size:14px; margin:3px 0;">📦 Recogida: <strong style="color:#FFD700;" id="domi-tiempo-recogida-texto">15 – 20 minutos</strong></p>
                 <p style="color:#f0f0f0; font-size:14px; margin:3px 0;">🏠 Entrega: <strong style="color:#FFD700;" id="domi-tiempo-entrega-texto">25 – 40 minutos</strong></p>
+                <!-- Explicación de la ruta optimizada -->
+                <p id="domi-explicacion-ruta" style="color:#aaa; font-size:12px; margin-top:8px; padding:8px; background:#1a1a1a; border-radius:6px; display:none;"></p>
               </div>
             </div>
 
@@ -2975,11 +2977,19 @@
     async function _actualizarTiempoEstimadoFormulario() {
         const elRecogida = document.getElementById('domi-tiempo-recogida-texto');
         const elEntrega  = document.getElementById('domi-tiempo-entrega-texto');
+        const elExplicacion = document.getElementById('domi-explicacion-ruta');
         if (!elRecogida || !elEntrega) return;
 
         try {
             const repsSnap = await window.get(window.ref(window.db, 'repartidores_info'));
-            if (!repsSnap.exists()) return;
+            if (!repsSnap.exists()) {
+                elRecogida.textContent = '15 – 25 minutos';
+                elEntrega.textContent  = '30 – 45 minutos';
+                if (elExplicacion) {
+                    elExplicacion.style.display = 'none';
+                }
+                return;
+            }
 
             let repartidorDisponible = null;
             repsSnap.forEach(child => {
@@ -2992,30 +3002,103 @@
             if (!repartidorDisponible) {
                 elRecogida.textContent = '15 – 25 minutos';
                 elEntrega.textContent  = '30 – 45 minutos';
+                if (elExplicacion) {
+                    elExplicacion.textContent = 'ℹ️ No hay repartidores disponibles en este momento';
+                    elExplicacion.style.display = 'block';
+                }
                 return;
             }
 
             const rGPS = repartidorDisponible.ubicacionActual || repartidorDisponible.ubicacion;
             const pedidosEnCola = repartidorDisponible.pedidosActivos || 0;
+            const zonaRecogida = document.getElementById('domi-zona-recogida').value;
+            const zonaEntrega  = document.getElementById('domi-zona-entrega').value;
 
             if (rGPS && rGPS.lat && (rGPS.lng || rGPS.lon)) {
-                // Distancia aproximada desde el repartidor (sin coords del cliente, usar 1km por defecto)
-                const tiempoBase = 5; // mínimo 5 min, se refinará al enviar
-                const tiempoExtra = pedidosEnCola * 12; // 12 min por pedido en cola
-                const minMin = Math.max(3, tiempoBase + tiempoExtra);
-                const minMax = minMin + 7;
+                let tiempoBase = 5; // Tiempo base estimado
+                let tiempoAdicional = 0;
+                let explicacion = '';
 
+                // 🔍 Si tiene pedidos activos, obtener detalles para calcular mejor
                 if (pedidosEnCola > 0) {
-                    elRecogida.textContent = `${minMin} – ${minMax} min (lleva ${pedidosEnCola} servicio${pedidosEnCola > 1 ? 's' : ''} activo${pedidosEnCola > 1 ? 's' : ''})`;
+                    try {
+                        const pedidosRef = window.ref(window.db, `repartidores_pedidos/${repartidorDisponible.uid}`);
+                        const pedidosSnap = await window.get(pedidosRef);
+                        
+                        if (pedidosSnap.exists()) {
+                            const pedidos = Object.values(pedidosSnap.val()).filter(p => 
+                                p.estado === 'aceptado' || p.estado === 'en_camino' || p.estado === 'pendiente'
+                            );
+
+                            const tiempoActual = Date.now();
+                            let hayUrgentes = false;
+                            let enMismaZona = false;
+
+                            for (const pedido of pedidos) {
+                                const tiempoConPedido = (tiempoActual - (pedido.timestamp || tiempoActual)) / 60000;
+                                
+                                // REGLA 1: Pedidos urgentes (>20 min)
+                                if (tiempoConPedido > 20) {
+                                    hayUrgentes = true;
+                                    tiempoAdicional += 10; // Debe entregar primero
+                                }
+                                // REGLA 2: Misma zona de recogida
+                                else if (pedido.zonaRecogida === zonaRecogida) {
+                                    enMismaZona = true;
+                                    tiempoAdicional += 3; // Solo tiempo de recogida adicional
+                                }
+                                // REGLA 3: Zonas diferentes
+                                else {
+                                    tiempoAdicional += 8; // Debe completar entrega primero
+                                }
+                            }
+
+                            // Generar explicación
+                            if (hayUrgentes) {
+                                explicacion = `⏳ El repartidor completará ${pedidos.length} entrega(s) urgente(s) primero`;
+                            } else if (enMismaZona) {
+                                explicacion = `✅ Recogerá tu pedido junto con otro de la misma zona`;
+                            } else if (pedidos.length > 0) {
+                                explicacion = `⏳ Completará entrega actual primero (zona diferente)`;
+                            }
+
+                        } else {
+                            // Si no hay datos detallados, usar estimación simple
+                            tiempoAdicional = pedidosEnCola * 8;
+                            explicacion = `⏳ ${pedidosEnCola} pedido(s) activo(s)`;
+                        }
+                    } catch (err) {
+                        console.warn('Error al obtener detalles de pedidos:', err);
+                        tiempoAdicional = pedidosEnCola * 8;
+                        explicacion = `⏳ ${pedidosEnCola} pedido(s) en cola`;
+                    }
                 } else {
-                    elRecogida.textContent = `${minMin} – ${minMax} minutos`;
+                    // Sin pedidos activos
+                    explicacion = '✅ Repartidor disponible, irá directo';
                 }
-                elEntrega.textContent = `${minMin + 15} – ${minMax + 20} minutos`;
+
+                const minMin = Math.max(1, tiempoBase + tiempoAdicional);
+                const minMax = minMin + 5;
+
+                elRecogida.textContent = `${minMin} – ${minMax} minutos`;
+                elEntrega.textContent = `${minMin + 10} – ${minMax + 15} minutos`;
+                
+                if (elExplicacion && explicacion) {
+                    elExplicacion.textContent = explicacion;
+                    elExplicacion.style.display = 'block';
+                } else if (elExplicacion) {
+                    elExplicacion.style.display = 'none';
+                }
+
             } else {
                 elRecogida.textContent = '10 – 20 minutos';
                 elEntrega.textContent  = '25 – 40 minutos';
+                if (elExplicacion) {
+                    elExplicacion.style.display = 'none';
+                }
             }
         } catch(e) {
+            console.warn('Error al actualizar tiempo estimado:', e);
             // silently fail - keep default text
         }
     }
@@ -3132,43 +3215,165 @@
             const timestamp  = Date.now();
             const nombres    = { sur:'Sur', centro:'Centro', norte:'Norte' };
 
-            // ── Calcular tiempo estimado real basado en GPS del repartidor ──
+            // ═══════════════════════════════════════════════════════════════════
+            // ⚡ SISTEMA DE ENRUTAMIENTO INTELIGENTE Y CÁLCULO DE TIEMPO OPTIMIZADO
+            // ═══════════════════════════════════════════════════════════════════
             let tiempoEstimadoRecogida = '15 – 20 minutos';
             let tiempoEstimadoEntrega  = '25 – 40 minutos';
             let minRecogida = 15;
+            let explicacionRuta = ''; // Para mostrar al usuario por qué ese tiempo
 
             if (repartidorAsignado) {
                 try {
                     const rGPS = repartidorAsignado.ubicacionActual || repartidorAsignado.ubicacion;
-                    const cGPS = window.clienteUbicacionActual; // coords del cliente guardadas al enviar GPS
+                    const cGPS = window.clienteUbicacionActual; // coords del cliente
+                    
+                    // 📍 Datos del NUEVO pedido
+                    const nuevoPedido = {
+                        zonaRecogida: d.zonaRecogida,  // sur, centro, norte
+                        zonaEntrega: d.zonaEntrega,
+                        coordsRecogida: cGPS  // Para este pedido usamos coords del cliente como recogida
+                    };
 
                     if (rGPS && rGPS.lat && rGPS.lng) {
-                        // Distancia en metros usando Haversine
-                        const R = 6371e3;
-                        const lat1 = rGPS.lat * Math.PI / 180;
-                        const lat2 = (cGPS && cGPS.lat) ? cGPS.lat * Math.PI / 180 : lat1;
-                        const dLat = lat2 - lat1;
-                        const dLng = ((cGPS && cGPS.lng ? cGPS.lng : rGPS.lng) - rGPS.lng) * Math.PI / 180;
-                        const a = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
-                        const distMetros = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                        // ────────────────────────────────────────────────────────────
+                        // 🔍 PASO 1: Obtener pedidos activos del repartidor desde Firebase
+                        // ────────────────────────────────────────────────────────────
+                        let pedidosActivosRepartidor = [];
+                        
+                        if (window.db && window.ref && window.get && repartidorAsignado.uid) {
+                            try {
+                                const pedidosRef = window.ref(window.db, `repartidores_pedidos/${repartidorAsignado.uid}`);
+                                const snapshot = await window.get(pedidosRef);
+                                
+                                if (snapshot.exists()) {
+                                    const pedidosObj = snapshot.val();
+                                    pedidosActivosRepartidor = Object.values(pedidosObj).filter(p => 
+                                        p.estado === 'aceptado' || p.estado === 'en_camino' || p.estado === 'pendiente'
+                                    );
+                                }
+                                console.log(`📦 Pedidos activos del repartidor: ${pedidosActivosRepartidor.length}`, pedidosActivosRepartidor);
+                            } catch(err) {
+                                console.warn('⚠️ Error al obtener pedidos del repartidor:', err);
+                            }
+                        }
 
-                        // Velocidad promedio moto en ciudad: 25 km/h
-                        const velocidadMs = 25000 / 3600;
-                        const tiempoBase = Math.ceil(distMetros / velocidadMs / 60); // minutos
+                        // ────────────────────────────────────────────────────────────
+                        // 📏 FUNCIÓN: Calcular distancia Haversine (en metros)
+                        // ────────────────────────────────────────────────────────────
+                        const calcularDistancia = (coords1, coords2) => {
+                            if (!coords1 || !coords2 || !coords1.lat || !coords2.lat) return 999999;
+                            const R = 6371e3; // Radio de la Tierra en metros
+                            const lat1 = coords1.lat * Math.PI / 180;
+                            const lat2 = coords2.lat * Math.PI / 180;
+                            const dLat = (coords2.lat - coords1.lat) * Math.PI / 180;
+                            const dLng = (coords2.lng - coords1.lng) * Math.PI / 180;
+                            const a = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+                            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                        };
 
-                        // Sumar tiempo por pedidos en cola (15 min por pedido activo previo)
-                        const pedidosEnCola = repartidorAsignado.pedidosActivos || 0;
-                        minRecogida = tiempoBase + (pedidosEnCola * 15);
+                        // ────────────────────────────────────────────────────────────
+                        // ⏱️ PASO 2: Aplicar lógica de enrutamiento inteligente
+                        // ────────────────────────────────────────────────────────────
+                        const velocidadMs = 25000 / 3600; // 25 km/h en m/s
+                        const tiempoActual = Date.now();
+                        let tiempoAdicional = 0;
 
-                        // Mínimo 5 min, mostrar rango de ±5 min
-                        minRecogida = Math.max(5, minRecogida);
-                        const minMax = minRecogida + 5;
+                        // Distancia base: repartidor -> recogida del nuevo pedido
+                        const distRepartidorARecogida = calcularDistancia(rGPS, cGPS);
+                        let tiempoBase = Math.ceil(distRepartidorARecogida / velocidadMs / 60); // minutos
+
+                        if (pedidosActivosRepartidor.length > 0) {
+                            console.log('🚦 ANALIZANDO RUTA ÓPTIMA...');
+                            
+                            for (const pedido of pedidosActivosRepartidor) {
+                                // ¿Cuánto tiempo lleva el repartidor con este pedido?
+                                const tiempoConPedido = (tiempoActual - (pedido.timestamp || tiempoActual)) / 60000; // minutos
+                                const esUrgente = tiempoConPedido > 20; // Más de 20 min es urgente
+                                
+                                console.log(`📦 Pedido existente: ${pedido.zonaRecogida || '?'} → ${pedido.zonaEntrega || '?'} (${tiempoConPedido.toFixed(0)} min esperando)`);
+                                
+                                // ═══════════════════════════════════════════════════════════
+                                // 🎯 REGLA 1: Si el pedido existente lleva mucho tiempo (>20 min)
+                                //            → ENTREGAR PRIMERO antes de recoger el nuevo
+                                // ═══════════════════════════════════════════════════════════
+                                if (esUrgente && pedido.estado === 'aceptado') {
+                                    console.log('⚠️ URGENTE: Pedido lleva más de 20 min, debe entregar primero');
+                                    // Estimar: ir a entrega actual + volver a zona de recogida
+                                    const distEntrega = 3000; // Estimado 3km entrega
+                                    tiempoAdicional += Math.ceil(distEntrega / velocidadMs / 60) + 5; // +5 min por entrega
+                                    explicacionRuta = `⚠️ El repartidor debe entregar primero un pedido urgente (${tiempoConPedido.toFixed(0)} min en cola)`;
+                                    continue;
+                                }
+
+                                // ═══════════════════════════════════════════════════════════
+                                // 🎯 REGLA 2: Si están en la MISMA ZONA de recogida
+                                //            → RECOGER AMBOS primero, luego entregar
+                                // ═══════════════════════════════════════════════════════════
+                                if (pedido.zonaRecogida === nuevoPedido.zonaRecogida) {
+                                    console.log('✅ OPTIMIZACIÓN: Misma zona de recogida, puede recoger ambos');
+                                    // Solo añadir tiempo de la recogida adicional (~2-3 min)
+                                    tiempoAdicional += 3;
+                                    if (!explicacionRuta) {
+                                        explicacionRuta = `✅ Recogerá primero ambos pedidos de la zona ${pedido.zonaRecogida}`;
+                                    }
+                                    continue;
+                                }
+
+                                // ═══════════════════════════════════════════════════════════
+                                // 🎯 REGLA 3: Si el NUEVO pedido queda EN RUTA hacia la entrega actual
+                                //            → RECOGER primero el nuevo, luego entregar ambos
+                                // ═══════════════════════════════════════════════════════════
+                                // Verificar si la recogida del nuevo pedido está cerca de la ruta
+                                const distRecogidaAEntrega = calcularDistancia(
+                                    nuevoPedido.coordsRecogida,
+                                    { lat: rGPS.lat, lng: rGPS.lng } // Simulamos destino con GPS del repartidor
+                                );
+                                
+                                if (distRecogidaAEntrega < 2000) { // Menos de 2km = "en ruta"
+                                    console.log('✅ OPTIMIZACIÓN: Nuevo pedido queda en ruta, puede recoger primero');
+                                    tiempoAdicional += 4; // Solo tiempo de desvío mínimo
+                                    if (!explicacionRuta) {
+                                        explicacionRuta = `✅ Tu pedido queda en ruta, lo recogerá antes de entregar`;
+                                    }
+                                    continue;
+                                }
+
+                                // ═══════════════════════════════════════════════════════════
+                                // 🎯 REGLA 4: Zonas DIFERENTES y NO en ruta
+                                //            → ENTREGAR primero el pedido actual, luego recoger el nuevo
+                                // ═══════════════════════════════════════════════════════════
+                                console.log('⏳ Debe completar entrega actual en zona diferente primero');
+                                // Tiempo de entregar el pedido actual + volver
+                                const tiempoEntrega = 8; // ~8 min promedio entregar
+                                const tiempoRegreso = Math.ceil(distRepartidorARecogida / velocidadMs / 60);
+                                tiempoAdicional += tiempoEntrega + Math.ceil(tiempoRegreso * 0.5); // 50% del regreso
+                                if (!explicacionRuta) {
+                                    explicacionRuta = `⏳ Completará entrega en ${pedido.zonaEntrega || 'otra zona'} primero`;
+                                }
+                            }
+                        } else {
+                            // ✅ SIN PEDIDOS ACTIVOS: Tiempo directo
+                            console.log('✅ Repartidor libre, irá directo');
+                            explicacionRuta = '✅ Repartidor disponible, irá directo a recoger';
+                        }
+
+                        // ────────────────────────────────────────────────────────────
+                        // 📊 PASO 3: Calcular tiempo final optimizado
+                        // ────────────────────────────────────────────────────────────
+                        minRecogida = Math.max(1, tiempoBase + tiempoAdicional); // Mínimo 1 min
+                        const minMax = minRecogida + 3; // Margen de ±3 min
                         tiempoEstimadoRecogida = `${minRecogida} – ${minMax} minutos`;
                         tiempoEstimadoEntrega  = `${minRecogida + 10} – ${minMax + 15} minutos`;
-                        console.log(`⏱️ Tiempo estimado calculado: ${tiempoEstimadoRecogida} (dist: ${(distMetros/1000).toFixed(1)}km, cola: ${pedidosEnCola})`);
+                        
+                        console.log(`⏱️ TIEMPO CALCULADO: ${tiempoEstimadoRecogida}`);
+                        console.log(`📍 Distancia: ${(distRepartidorARecogida/1000).toFixed(2)} km`);
+                        console.log(`⚡ Tiempo base: ${tiempoBase} min | Adicional: ${tiempoAdicional} min`);
+                        console.log(`💡 ${explicacionRuta}`);
                     }
                 } catch(eTime) {
                     console.warn('⚠️ No se pudo calcular tiempo exacto, usando estimado por defecto:', eTime);
+                    explicacionRuta = 'ℹ️ Usando tiempo estimado estándar';
                 }
             }
 
@@ -3207,6 +3412,7 @@
                 // Tiempos estimados (calculados con GPS real)
                 tiempoEstimadoRecogida : tiempoEstimadoRecogida,
                 tiempoEstimadoEntrega  : tiempoEstimadoEntrega,
+                explicacionRuta        : explicacionRuta, // Nueva: explicación de la ruta optimizada
 
                 timestampCreacion  : timestamp,
                 timestampAsignacion: repartidorAsignado ? timestamp : null,

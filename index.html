@@ -2484,6 +2484,17 @@
               </select>
             </div>
 
+            <!-- ===== TAMAÑO / VOLUMEN ===== -->
+            <div style="background:#2a2a2a; border-radius:10px; padding:14px; margin-bottom:14px; border-left:3px solid #e67e22;">
+              <p style="color:#e67e22; font-weight:bold; margin-bottom:10px;">📏 ¿Qué tan grande es el paquete?</p>
+              <select id="domi-tamano" onchange="calcularPrecioDomi()" style="margin-bottom:8px;">
+                <option value="normal">📦 Normal – cabe en una mochila (sin costo extra)</option>
+                <option value="grande">📫 Grande – caja o bolsa voluminosa (+$1.000)</option>
+                <option value="muy_grande">🛋️ Muy grande – mueble, electrodoméstico, etc. (+$2.000)</option>
+              </select>
+              <p id="domi-tamano-nota" style="color:#aaa; font-size:12px; margin:0; display:none;"></p>
+            </div>
+
             <!-- ===== PRECIO CALCULADO ===== -->
             <div id="domi-precio-box" style="display:none; background:#1a3a1a; border:2px solid #28a745; border-radius:10px; padding:14px; margin-bottom:14px; text-align:center;">
               <p style="color:#aaa; font-size:13px; margin-bottom:4px;">Valor del domicilio:</p>
@@ -2492,8 +2503,8 @@
               <!-- Tiempo estimado visible desde el formulario -->
               <div style="border-top:1px solid #2d5a2d; padding-top:10px; margin-top:4px;">
                 <p style="color:#28a745; font-weight:bold; font-size:13px; margin-bottom:6px;">⏱️ Tiempo estimado</p>
-                <p style="color:#f0f0f0; font-size:14px; margin:3px 0;">📦 Recogida: <strong style="color:#FFD700;">15 – 20 minutos</strong></p>
-                <p style="color:#f0f0f0; font-size:14px; margin:3px 0;">🏠 Entrega: <strong style="color:#FFD700;">25 – 40 minutos</strong></p>
+                <p style="color:#f0f0f0; font-size:14px; margin:3px 0;">📦 Recogida: <strong style="color:#FFD700;" id="domi-tiempo-recogida-texto">15 – 20 minutos</strong></p>
+                <p style="color:#f0f0f0; font-size:14px; margin:3px 0;">🏠 Entrega: <strong style="color:#FFD700;" id="domi-tiempo-entrega-texto">25 – 40 minutos</strong></p>
               </div>
             </div>
 
@@ -2903,12 +2914,25 @@
     function habilitarChat() {}
 
     // Calcular precio según zonas seleccionadas
-    window.calcularPrecioDomi = function() {
+    window.calcularPrecioDomi = async function() {
         const zonaRecogida = document.getElementById('domi-zona-recogida').value;
         const zonaEntrega  = document.getElementById('domi-zona-entrega').value;
+        const tamano       = document.getElementById('domi-tamano').value;
         const precioBox    = document.getElementById('domi-precio-box');
         const precioValor  = document.getElementById('domi-precio-valor');
         const precioRazon  = document.getElementById('domi-precio-razon');
+        const tamanoNota   = document.getElementById('domi-tamano-nota');
+
+        // Actualizar nota de tamaño
+        if (tamano === 'grande') {
+            tamanoNota.textContent = '⚠️ Se cobra $1.000 extra por paquete grande.';
+            tamanoNota.style.display = 'block';
+        } else if (tamano === 'muy_grande') {
+            tamanoNota.textContent = '⚠️ Se cobra $2.000 extra por paquete muy grande. El repartidor podrá reconfirmar si es necesario.';
+            tamanoNota.style.display = 'block';
+        } else {
+            tamanoNota.style.display = 'none';
+        }
 
         if (!zonaRecogida || !zonaEntrega) {
             precioBox.style.display = 'none';
@@ -2917,26 +2941,84 @@
 
         let precio = 5000;
         let razon  = 'Misma zona';
-
         const zonas = { sur: 0, centro: 1, norte: 2 };
+        const nombres = { sur:'Sur', centro:'Centro', norte:'Norte' };
         const diff  = Math.abs(zonas[zonaRecogida] - zonas[zonaEntrega]);
 
         if (diff === 0) {
             precio = 5000;
-            razon  = `Misma zona (${zonaRecogida})`;
+            razon  = `Misma zona (${nombres[zonaRecogida]})`;
         } else if (diff === 1) {
             precio = 6000;
-            const nombres = { sur:'Sur', centro:'Centro', norte:'Norte' };
             razon  = `Zona distante: ${nombres[zonaRecogida]} → ${nombres[zonaEntrega]}`;
         } else {
             precio = 7000;
             razon  = `Zona lejana: Sur ↔ Norte`;
         }
 
+        // Extra por volumen
+        const extraVolumen = tamano === 'grande' ? 1000 : tamano === 'muy_grande' ? 2000 : 0;
+        if (extraVolumen > 0) {
+            precio += extraVolumen;
+            razon += ` + extra volumen`;
+        }
+
         precioValor.textContent = `$${precio.toLocaleString('es-CO')}`;
         precioRazon.textContent  = razon;
         precioBox.style.display  = 'block';
+
+        // Calcular tiempo real del repartidor disponible
+        await _actualizarTiempoEstimadoFormulario();
     };
+
+    // Calcular y mostrar tiempo real del repartidor en el formulario
+    async function _actualizarTiempoEstimadoFormulario() {
+        const elRecogida = document.getElementById('domi-tiempo-recogida-texto');
+        const elEntrega  = document.getElementById('domi-tiempo-entrega-texto');
+        if (!elRecogida || !elEntrega) return;
+
+        try {
+            const repsSnap = await window.get(window.ref(window.db, 'repartidores_info'));
+            if (!repsSnap.exists()) return;
+
+            let repartidorDisponible = null;
+            repsSnap.forEach(child => {
+                const d = child.val();
+                if (d.online === true && (d.pedidosActivos || 0) < 2 && !repartidorDisponible) {
+                    repartidorDisponible = { uid: child.key, ...d };
+                }
+            });
+
+            if (!repartidorDisponible) {
+                elRecogida.textContent = '15 – 25 minutos';
+                elEntrega.textContent  = '30 – 45 minutos';
+                return;
+            }
+
+            const rGPS = repartidorDisponible.ubicacionActual || repartidorDisponible.ubicacion;
+            const pedidosEnCola = repartidorDisponible.pedidosActivos || 0;
+
+            if (rGPS && rGPS.lat && (rGPS.lng || rGPS.lon)) {
+                // Distancia aproximada desde el repartidor (sin coords del cliente, usar 1km por defecto)
+                const tiempoBase = 5; // mínimo 5 min, se refinará al enviar
+                const tiempoExtra = pedidosEnCola * 12; // 12 min por pedido en cola
+                const minMin = Math.max(3, tiempoBase + tiempoExtra);
+                const minMax = minMin + 7;
+
+                if (pedidosEnCola > 0) {
+                    elRecogida.textContent = `${minMin} – ${minMax} min (lleva ${pedidosEnCola} servicio${pedidosEnCola > 1 ? 's' : ''} activo${pedidosEnCola > 1 ? 's' : ''})`;
+                } else {
+                    elRecogida.textContent = `${minMin} – ${minMax} minutos`;
+                }
+                elEntrega.textContent = `${minMin + 15} – ${minMax + 20} minutos`;
+            } else {
+                elRecogida.textContent = '10 – 20 minutos';
+                elEntrega.textContent  = '25 – 40 minutos';
+            }
+        } catch(e) {
+            // silently fail - keep default text
+        }
+    }
 
     // Mostrar modal de confirmación antes de enviar
     window.solicitarDomicilio = async function() {
@@ -2948,6 +3030,7 @@
         const dirEntrega     = document.getElementById('domi-dir-entrega').value.trim();
         const telRecibe      = document.getElementById('domi-tel-recibe').value.trim();
         const zonaEntrega    = document.getElementById('domi-zona-entrega').value;
+        const tamano         = document.getElementById('domi-tamano').value;
 
         if (!nombreEntrega || !dirRecogida || !telEntrega || !zonaRecogida ||
             !nombreRecibe  || !dirEntrega  || !telRecibe  || !zonaEntrega) {
@@ -2955,11 +3038,14 @@
             return;
         }
 
-        // Calcular precio
+        // Calcular precio con volumen
         const zonas = { sur: 0, centro: 1, norte: 2 };
         const diff  = Math.abs(zonas[zonaRecogida] - zonas[zonaEntrega]);
-        const precio = diff === 0 ? 5000 : diff === 1 ? 6000 : 7000;
+        let precio = diff === 0 ? 5000 : diff === 1 ? 6000 : 7000;
+        const extraVolumen = tamano === 'grande' ? 1000 : tamano === 'muy_grande' ? 2000 : 0;
+        precio += extraVolumen;
         const nombres = { sur:'Sur', centro:'Centro', norte:'Norte' };
+        const tamanoLabels = { normal: 'Normal (sin extra)', grande: 'Grande (+$1.000)', muy_grande: 'Muy grande (+$2.000)' };
 
         // Construir resumen en modal
         const resumen = document.getElementById('modal-domi-resumen');
@@ -2978,6 +3064,9 @@
               <p style="margin:2px 0; color:#ddd;"><strong>Teléfono:</strong> ${telRecibe}</p>
               <p style="margin:2px 0; color:#ddd;"><strong>Zona:</strong> ${nombres[zonaEntrega]}</p>
             </div>
+            ${extraVolumen > 0 ? `<div style="background:#2a1e00; border-radius:8px; padding:8px 10px; margin-bottom:8px; border-left:3px solid #e67e22;">
+              <p style="margin:0; color:#e67e22; font-size:13px;">📏 Paquete: <strong>${tamanoLabels[tamano]}</strong></p>
+            </div>` : ''}
             <div style="background:#1a3010; border-radius:8px; padding:10px; text-align:center;">
               <p style="margin:2px 0; color:#aaa; font-size:12px;">Valor del domicilio</p>
               <p style="margin:2px 0; color:#FFD700; font-size:22px; font-weight:bold;">$${precio.toLocaleString('es-CO')}</p>
@@ -2986,7 +3075,7 @@
 
         // Guardar datos temporalmente
         window._domiPendiente = { nombreEntrega, dirRecogida, telEntrega, zonaRecogida,
-                                   nombreRecibe, dirEntrega, telRecibe, zonaEntrega, precio };
+                                   nombreRecibe, dirEntrega, telRecibe, zonaEntrega, precio, tamano };
 
         document.getElementById('modal-confirmar-domi').style.display = 'block';
     };
@@ -3102,6 +3191,7 @@
 
                 // Economía
                 montoTotal     : d.precio,
+                tamano         : d.tamano || 'normal',
                 descripcion    : `De ${nombres[d.zonaRecogida]} a ${nombres[d.zonaEntrega]}`,
 
                 // Cliente
@@ -3112,6 +3202,7 @@
                 // Repartidor
                 repartidorUID    : repartidorAsignado ? repartidorAsignado.uid   : null,
                 repartidorNombre : repartidorAsignado ? (repartidorAsignado.nombre || 'Repartidor') : 'Sin asignar',
+                pedidosEnColaRepartidor: repartidorAsignado ? (repartidorAsignado.pedidosActivos || 0) : 0,
 
                 // Tiempos estimados (calculados con GPS real)
                 tiempoEstimadoRecogida : tiempoEstimadoRecogida,
@@ -3159,13 +3250,22 @@
             });
             document.getElementById('domi-zona-recogida').value = '';
             document.getElementById('domi-zona-entrega').value  = '';
+            document.getElementById('domi-tamano').value        = 'normal';
+            document.getElementById('domi-tamano-nota').style.display = 'none';
             document.getElementById('domi-precio-box').style.display = 'none';
             window._domiPendiente = null;
 
             // ── Mensaje de éxito ──
             if (repartidorAsignado) {
+                const pedidosEnCola = repartidorAsignado.pedidosActivos || 0;
                 statusMsg.style.color = '#28a745';
-                statusMsg.textContent = `✅ ¡Pedido enviado! Repartidor asignado: ${repartidorAsignado.nombre || 'en camino'}. Te llegará en ${tiempoEstimadoRecogida}.`;
+                let msgExtra = '';
+                if (pedidosEnCola > 0) {
+                    msgExtra = ` ⚠️ El repartidor lleva ${pedidosEnCola} servicio${pedidosEnCola > 1 ? 's' : ''} activo${pedidosEnCola > 1 ? 's' : ''} — pasará a recogerte y después completará la ruta. Puedes seguir su ubicación en tiempo real en la pestaña "Seguir".`;
+                } else {
+                    msgExtra = ` Puedes seguir su ubicación en la pestaña "Seguir".`;
+                }
+                statusMsg.innerHTML = `✅ ¡Pedido enviado! Repartidor: <strong>${repartidorAsignado.nombre || 'en camino'}</strong>. Llega en <strong>${tiempoEstimadoRecogida}</strong>.${msgExtra}`;
             } else {
                 statusMsg.style.color = '#FFD700';
                 statusMsg.textContent = '⚠️ Pedido registrado. En este momento no hay repartidores disponibles. Te contactaremos pronto.';
@@ -3848,12 +3948,12 @@
         } else {
             const iconCliente = L.divIcon({
                 className: 'custom-marker-cliente',
-                html: '<div style="background-color: #4CAF50; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
+                html: '<div style="background-color: #4CAF50; width: 36px; height: 36px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; font-size:18px;">📍</div>',
+                iconSize: [36, 36],
+                iconAnchor: [18, 18]
             });
 
-            clienteMarker = L.marker([coords.lat, coords.lng], { icon: iconCliente })
+            clienteMarker = L.marker([coords.lat, coords.lng], { icon: iconCliente, zIndexOffset: 500 })
                 .addTo(map)
                 .bindPopup('<b>📍 Tu Ubicación</b>');
             
@@ -3873,12 +3973,12 @@
         } else {
             const iconRepartidor = L.divIcon({
                 className: 'custom-marker-repartidor',
-                html: '<div style="background-color: #2196F3; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>',
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
+                html: '<div style="background-color: #2196F3; width: 44px; height: 44px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 12px rgba(33,150,243,0.6); display:flex; align-items:center; justify-content:center; font-size:22px;">🏍️</div>',
+                iconSize: [44, 44],
+                iconAnchor: [22, 22]
             });
 
-            repartidorMarker = L.marker([coords.lat, coords.lng], { icon: iconRepartidor })
+            repartidorMarker = L.marker([coords.lat, coords.lng], { icon: iconRepartidor, zIndexOffset: 1000 })
                 .addTo(map)
                 .bindPopup('<b>🏍️ Repartidor</b>');
         }
@@ -4412,6 +4512,24 @@
             
             <p id="estado-descripcion-display" style="text-align: center; color: var(--color-text-dark); margin-bottom: 20px;">${estadoDescripcion}</p>
             
+            ${(pedido.pedidosEnColaRepartidor > 0) ? `
+            <div style="background:#2a1a00; border:1px solid #e67e22; border-radius:10px; padding:12px; margin-bottom:14px;">
+              <p style="color:#e67e22; font-weight:bold; margin:0 0 6px 0;">🛵 Información del repartidor</p>
+              <p style="color:#f0f0f0; font-size:13px; margin:0 0 4px 0;">
+                El repartidor lleva <strong style="color:#FFD700;">${pedido.pedidosEnColaRepartidor} servicio${pedido.pedidosEnColaRepartidor > 1 ? 's' : ''} activo${pedido.pedidosEnColaRepartidor > 1 ? 's' : ''}</strong> antes del tuyo.
+              </p>
+              <p style="color:#aaa; font-size:12px; margin:0;">
+                📍 Pasará a recogerte y entregará en el orden de la ruta. Puedes ver su ubicación en tiempo real en el mapa de arriba.
+              </p>
+            </div>` : ''}
+
+            ${(pedido.tiempoEstimadoRecogida || pedido.tiempoEstimadoEntrega) ? `
+            <div style="background:#1a2a1a; border:1px solid #28a745; border-radius:10px; padding:12px; margin-bottom:14px;">
+              <p style="color:#28a745; font-weight:bold; margin:0 0 6px 0;">⏱️ Tiempos estimados</p>
+              <p style="color:#f0f0f0; font-size:13px; margin:2px 0;">📦 Recogida: <strong style="color:#FFD700;">${pedido.tiempoEstimadoRecogida || '15 – 20 min'}</strong></p>
+              <p style="color:#f0f0f0; font-size:13px; margin:2px 0;">🏠 Entrega: <strong style="color:#FFD700;">${pedido.tiempoEstimadoEntrega || '25 – 40 min'}</strong></p>
+            </div>` : ''}
+
             <div class="pedido-detalle">
                 <strong>ID del Pedido:</strong>
                 <p>#${pedido.id ? pedido.id.substring(0, 8) : 'N/A'}...</p>

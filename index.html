@@ -2484,15 +2484,28 @@
               </select>
             </div>
 
-            <!-- ===== TAMAÑO / VOLUMEN ===== -->
+            <!-- ===== OTROS SERVICIOS ===== -->
             <div style="background:#2a2a2a; border-radius:10px; padding:14px; margin-bottom:14px; border-left:3px solid #e67e22;">
-              <p style="color:#e67e22; font-weight:bold; margin-bottom:10px;">📏 ¿Qué tan grande es el paquete?</p>
-              <select id="domi-tamano" onchange="calcularPrecioDomi()" style="margin-bottom:8px;">
+              <p style="color:#e67e22; font-weight:bold; margin-bottom:10px;">🛍️ Otros servicios</p>
+              
+              <!-- Recargo por volumen -->
+              <label style="color:#f0f0f0; font-size:14px; margin-bottom:6px; display:block;">📦 Tamaño del paquete:</label>
+              <select id="domi-tamano" onchange="calcularPrecioDomi()" style="margin-bottom:12px;">
                 <option value="normal">📦 Normal – cabe en una mochila (sin costo extra)</option>
                 <option value="grande">📫 Grande – caja o bolsa voluminosa (+$1.000)</option>
                 <option value="muy_grande">🛋️ Muy grande – mueble, electrodoméstico, etc. (+$2.000)</option>
               </select>
-              <p id="domi-tamano-nota" style="color:#aaa; font-size:12px; margin:0; display:none;"></p>
+              <p id="domi-tamano-nota" style="color:#aaa; font-size:12px; margin:0 0 12px 0; display:none;"></p>
+              
+              <!-- Servicio de compra -->
+              <label style="color:#f0f0f0; font-size:14px; margin-bottom:6px; display:block;">🛒 ¿Necesitas que hagamos una compra por ti?</label>
+              <select id="domi-servicio-compra" onchange="verificarServicioCompra()" style="margin-bottom:8px;">
+                <option value="no">No, solo recoger y entregar</option>
+                <option value="si">Sí, necesito que hagan una compra</option>
+              </select>
+              <p id="domi-compra-nota" style="color:#4A9EFF; font-size:12px; margin:0; display:none;">
+                ℹ️ Se abrirá un chat con el administrador para coordinar los detalles de tu compra.
+              </p>
             </div>
 
             <!-- ===== PRECIO CALCULADO ===== -->
@@ -2973,6 +2986,62 @@
         await _actualizarTiempoEstimadoFormulario();
     };
 
+    // ═══════════════════════════════════════════════════════════════════
+    // 🛒 FUNCIÓN: Verificar servicio de compra y abrir chat con admin
+    // ═══════════════════════════════════════════════════════════════════
+    window.verificarServicioCompra = function() {
+        const servicioCompra = document.getElementById('domi-servicio-compra').value;
+        const compraNota = document.getElementById('domi-compra-nota');
+        
+        if (servicioCompra === 'si') {
+            // Mostrar nota informativa
+            compraNota.style.display = 'block';
+            
+            // Abrir chat con admin automáticamente
+            setTimeout(() => {
+                if (!window.currentUserID) {
+                    alert('⚠️ Debes iniciar sesión para solicitar el servicio de compra');
+                    document.getElementById('domi-servicio-compra').value = 'no';
+                    compraNota.style.display = 'none';
+                    return;
+                }
+                
+                // Abrir modal de chat con admin
+                document.getElementById('modal-chat-admin').style.display = 'block';
+                cargarMensajesAdmin();
+                
+                // Enviar mensaje automático al admin
+                const chatRef = window.ref(window.db, `soporte_cliente/${window.currentUserID}`);
+                const nuevoMensajeRef = window.push(chatRef);
+                
+                window.set(nuevoMensajeRef, {
+                    mensaje: '🛒 SOLICITUD DE SERVICIO DE COMPRA\n\nHola, necesito que hagan una compra por mí. Por favor, ayúdame a coordinar los detalles.',
+                    remitente: 'cliente',
+                    timestamp: Date.now(),
+                    leido: false,
+                    clienteNombre: window.currentUserNombre || 'Cliente',
+                    clienteEmail: window.currentUserEmail || '',
+                    tipoServicio: 'compra'
+                }).then(() => {
+                    console.log('✅ Mensaje automático de servicio de compra enviado al admin');
+                }).catch(error => {
+                    console.error('Error al enviar mensaje automático:', error);
+                });
+                
+                // Auto-scroll al final del chat
+                setTimeout(() => {
+                    const container = document.getElementById('chat-messages-container');
+                    if (container) {
+                        container.scrollTop = container.scrollHeight;
+                    }
+                }, 100);
+                
+            }, 300);
+        } else {
+            compraNota.style.display = 'none';
+        }
+    };
+
     // Calcular y mostrar tiempo real del repartidor en el formulario
     async function _actualizarTiempoEstimadoFormulario() {
         const elRecogida = document.getElementById('domi-tiempo-recogida-texto');
@@ -3114,6 +3183,7 @@
         const telRecibe      = document.getElementById('domi-tel-recibe').value.trim();
         const zonaEntrega    = document.getElementById('domi-zona-entrega').value;
         const tamano         = document.getElementById('domi-tamano').value;
+        const servicioCompra = document.getElementById('domi-servicio-compra').value; // 🆕 Servicio de compra
 
         if (!nombreEntrega || !dirRecogida || !telEntrega || !zonaRecogida ||
             !nombreRecibe  || !dirEntrega  || !telRecibe  || !zonaEntrega) {
@@ -3150,15 +3220,19 @@
             ${extraVolumen > 0 ? `<div style="background:#2a1e00; border-radius:8px; padding:8px 10px; margin-bottom:8px; border-left:3px solid #e67e22;">
               <p style="margin:0; color:#e67e22; font-size:13px;">📏 Paquete: <strong>${tamanoLabels[tamano]}</strong></p>
             </div>` : ''}
+            ${servicioCompra === 'si' ? `<div style="background:#1a2a3a; border-radius:8px; padding:8px 10px; margin-bottom:8px; border-left:3px solid #4A9EFF;">
+              <p style="margin:0; color:#4A9EFF; font-size:13px;">🛒 <strong>Incluye servicio de compra</strong></p>
+              <p style="margin:4px 0 0 0; color:#aaa; font-size:11px;">El admin coordinará los detalles de la compra contigo</p>
+            </div>` : ''}
             <div style="background:#1a3010; border-radius:8px; padding:10px; text-align:center;">
               <p style="margin:2px 0; color:#aaa; font-size:12px;">Valor del domicilio</p>
               <p style="margin:2px 0; color:#FFD700; font-size:22px; font-weight:bold;">$${precio.toLocaleString('es-CO')}</p>
             </div>
         `;
 
-        // Guardar datos temporalmente
+        // Guardar datos temporalmente (🆕 Incluye servicio de compra)
         window._domiPendiente = { nombreEntrega, dirRecogida, telEntrega, zonaRecogida,
-                                   nombreRecibe, dirEntrega, telRecibe, zonaEntrega, precio, tamano };
+                                   nombreRecibe, dirEntrega, telRecibe, zonaEntrega, precio, tamano, servicioCompra };
 
         document.getElementById('modal-confirmar-domi').style.display = 'block';
     };
@@ -3397,7 +3471,8 @@
                 // Economía
                 montoTotal     : d.precio,
                 tamano         : d.tamano || 'normal',
-                descripcion    : `De ${nombres[d.zonaRecogida]} a ${nombres[d.zonaEntrega]}`,
+                servicioCompra : d.servicioCompra || 'no', // 🆕 Servicio de compra
+                descripcion    : `De ${nombres[d.zonaRecogida]} a ${nombres[d.zonaEntrega]}${d.servicioCompra === 'si' ? ' + Servicio de compra' : ''}`,
 
                 // Cliente
                 clienteIdAsignado : clienteID,
@@ -3457,7 +3532,9 @@
             document.getElementById('domi-zona-recogida').value = '';
             document.getElementById('domi-zona-entrega').value  = '';
             document.getElementById('domi-tamano').value        = 'normal';
+            document.getElementById('domi-servicio-compra').value = 'no'; // 🆕 Resetear servicio de compra
             document.getElementById('domi-tamano-nota').style.display = 'none';
+            document.getElementById('domi-compra-nota').style.display = 'none'; // 🆕 Ocultar nota de compra
             document.getElementById('domi-precio-box').style.display = 'none';
             window._domiPendiente = null;
 
@@ -4776,7 +4853,7 @@
                 <p>${fechaCreacion}</p>
             </div>
             
-            ${(estado === 'Pendiente' || estado === 'Aceptado' || estado === 'En camino') ? `
+            ${(estado === 'Pendiente' || estado === 'Aceptado') ? `
             <button onclick="cancelarPedidoCliente('${pedido.id}')" style="
                 width: 100%;
                 padding: 12px;
@@ -4792,6 +4869,16 @@
             " onmouseover="this.style.background='linear-gradient(135deg, #c82333, #bd2130)'" onmouseout="this.style.background='linear-gradient(135deg, #dc3545, #c82333)'">
                 ❌ Cancelar Pedido
             </button>
+            <p style="text-align: center; color: #aaa; font-size: 12px; margin-top: 8px;">
+                Solo puedes cancelar antes de que el repartidor recoja el pedido
+            </p>
+            ` : (estado === 'En camino' || estado === 'Recogido') ? `
+            <div style="background: #2a1a1a; border: 1px solid #dc3545; border-radius: 10px; padding: 12px; margin-top: 20px; text-align: center;">
+                <p style="color: #dc3545; font-weight: bold; margin: 0 0 6px 0;">⚠️ No se puede cancelar</p>
+                <p style="color: #aaa; font-size: 13px; margin: 0;">
+                    El repartidor ya recogió tu pedido. Si tienes algún problema, contacta a soporte.
+                </p>
+            </div>
             ` : ''}
             
             ${totalPedidos > 1 ? `<p style="text-align: center; color: var(--color-text-dark); margin-top: 15px; font-size: 12px;">Tienes ${totalPedidos} pedidos en total.</p>` : ''}

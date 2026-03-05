@@ -616,6 +616,105 @@
         background-color: #218838;
     }
     
+    .support-pedidos-btn {
+        background-color: #FFC300;
+        color: #111;
+        margin-top: 10px;
+        font-weight: bold;
+    }
+    .support-pedidos-btn:hover {
+        background-color: #e6b200;
+    }
+    
+    /* Estilos para el modal de chat con admin */
+    #modal-chat-admin .modal-content {
+        max-width: 600px;
+        padding: 0;
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    
+    .chat-header {
+        background: linear-gradient(135deg, #FFC300 0%, #e6b200 100%);
+        color: #111;
+        padding: 20px;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .chat-messages {
+        height: 400px;
+        overflow-y: auto;
+        padding: 20px;
+        background: var(--color-background);
+    }
+    
+    .chat-message {
+        margin-bottom: 15px;
+        padding: 10px 15px;
+        border-radius: 10px;
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+    
+    .chat-message.cliente {
+        background: #2a2a2a;
+        margin-left: auto;
+        text-align: right;
+    }
+    
+    .chat-message.admin {
+        background: #1a3a1a;
+        margin-right: auto;
+    }
+    
+    .chat-message-time {
+        font-size: 11px;
+        color: #888;
+        margin-top: 5px;
+    }
+    
+    .chat-input-container {
+        padding: 15px;
+        background: var(--color-card);
+        border-top: 1px solid #333;
+        display: flex;
+        gap: 10px;
+    }
+    
+    .chat-input {
+        flex: 1;
+        padding: 12px;
+        border: 1px solid #444;
+        border-radius: 25px;
+        background: var(--color-background);
+        color: var(--color-text);
+        font-size: 14px;
+    }
+    
+    .chat-send-btn {
+        padding: 12px 24px;
+        background: #FFC300;
+        color: #111;
+        border: none;
+        border-radius: 25px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .chat-send-btn:hover {
+        background: #e6b200;
+        transform: scale(1.05);
+    }
+    
+    .chat-send-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
     #file-upload-status {
         width: 100%;
         text-align: center;
@@ -2325,6 +2424,10 @@
              📞 Soporte WhatsApp
           </button>
 
+          <button type="button" class="support-pedidos-btn" onclick="abrirSoportePedidos()">
+             💬 Soporte para Pedidos
+          </button>
+
           <button type="button" class="back-btn" onclick="signOutUser()">Cerrar Sesión</button>
       </div>
       
@@ -2497,6 +2600,34 @@
 
         <button type="submit">Guardar Negocio</button>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal de Chat con Admin -->
+  <div id="modal-chat-admin" class="modal">
+    <div class="modal-content">
+      <div class="chat-header">
+        <span>💬 Soporte para Pedidos</span>
+        <span class="close-modal" onclick="cerrarChatAdmin()" style="color: #111;">&times;</span>
+      </div>
+      <div class="chat-messages" id="chat-messages-container">
+        <div style="text-align: center; color: #888; padding: 20px;">
+          <p>👋 Hola, estamos aquí para ayudarte con tus pedidos</p>
+          <p style="font-size: 12px;">Los mensajes se envían directamente al administrador</p>
+        </div>
+      </div>
+      <div class="chat-input-container">
+        <input 
+          type="text" 
+          id="chat-input" 
+          class="chat-input" 
+          placeholder="Escribe tu mensaje..." 
+          onkeypress="if(event.key==='Enter') enviarMensajeAdmin()"
+        />
+        <button class="chat-send-btn" onclick="enviarMensajeAdmin()">
+          Enviar
+        </button>
+      </div>
     </div>
   </div>
 
@@ -5417,6 +5548,142 @@ ${mensajeEstado}
     window.cerrarModalNegocio = function() {
         document.getElementById('modal-negocio').style.display = 'none';
         document.getElementById('form-negocio').reset();
+    }
+
+    // =========================================
+    // FUNCIONES DE CHAT CON ADMIN
+    // =========================================
+    let chatAdminListener = null;
+    
+    window.abrirSoportePedidos = function() {
+        if (!window.currentUserID) {
+            alert('Debes iniciar sesión para contactar con soporte');
+            return;
+        }
+        
+        document.getElementById('modal-chat-admin').style.display = 'block';
+        cargarMensajesAdmin();
+        
+        // Auto-scroll al final
+        setTimeout(() => {
+            const container = document.getElementById('chat-messages-container');
+            container.scrollTop = container.scrollHeight;
+        }, 100);
+    }
+    
+    window.cerrarChatAdmin = function() {
+        document.getElementById('modal-chat-admin').style.display = 'none';
+        if (chatAdminListener) {
+            const chatRef = window.ref(window.db, `soporte_cliente/${window.currentUserID}`);
+            window.off(chatRef, 'value', chatAdminListener);
+            chatAdminListener = null;
+        }
+    }
+    
+    function cargarMensajesAdmin() {
+        if (!window.currentUserID || !window.db) return;
+        
+        const chatRef = window.ref(window.db, `soporte_cliente/${window.currentUserID}`);
+        
+        // Detener listener anterior si existe
+        if (chatAdminListener) {
+            window.off(chatRef, 'value', chatAdminListener);
+        }
+        
+        chatAdminListener = window.onValue(chatRef, (snapshot) => {
+            const mensajes = [];
+            
+            if (snapshot.exists()) {
+                snapshot.forEach((child) => {
+                    mensajes.push({
+                        id: child.key,
+                        ...child.val()
+                    });
+                });
+            }
+            
+            mostrarMensajesAdmin(mensajes);
+        });
+    }
+    
+    function mostrarMensajesAdmin(mensajes) {
+        const container = document.getElementById('chat-messages-container');
+        
+        if (mensajes.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; color: #888; padding: 20px;">
+                    <p>👋 Hola, estamos aquí para ayudarte con tus pedidos</p>
+                    <p style="font-size: 12px;">Los mensajes se envían directamente al administrador</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        mensajes.forEach(msg => {
+            const div = document.createElement('div');
+            div.className = `chat-message ${msg.remitente || 'cliente'}`;
+            
+            const fecha = new Date(msg.timestamp);
+            const tiempo = fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+            
+            div.innerHTML = `
+                <div>${msg.mensaje || msg.texto || ''}</div>
+                <div class="chat-message-time">${tiempo}</div>
+            `;
+            
+            container.appendChild(div);
+        });
+        
+        // Auto-scroll al final
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    window.enviarMensajeAdmin = async function() {
+        const input = document.getElementById('chat-input');
+        const mensaje = input.value.trim();
+        
+        if (!mensaje) return;
+        
+        if (!window.currentUserID || !window.db) {
+            alert('Error: No se pudo enviar el mensaje');
+            return;
+        }
+        
+        try {
+            const chatRef = window.ref(window.db, `soporte_cliente/${window.currentUserID}`);
+            const nuevoMensajeRef = window.push(chatRef);
+            
+            await window.set(nuevoMensajeRef, {
+                mensaje: mensaje,
+                remitente: 'cliente',
+                timestamp: Date.now(),
+                leido: false,
+                clienteNombre: window.currentUserNombre || 'Cliente',
+                clienteEmail: window.currentUserEmail || ''
+            });
+            
+            input.value = '';
+            
+            // Scroll al final
+            setTimeout(() => {
+                const container = document.getElementById('chat-messages-container');
+                container.scrollTop = container.scrollHeight;
+            }, 100);
+            
+        } catch (error) {
+            console.error('Error al enviar mensaje:', error);
+            alert('Error al enviar mensaje. Por favor intenta de nuevo.');
+        }
+    }
+    
+    // Cerrar modal al hacer clic fuera
+    window.onclick = function(event) {
+        const modal = document.getElementById('modal-chat-admin');
+        if (event.target === modal) {
+            cerrarChatAdmin();
+        }
     }
 
     // 🆕 GUARDAR NEGOCIO DIRECTAMENTE (SIN VERIFICACIÓN DE ADMIN)

@@ -2642,12 +2642,50 @@
           <p style="font-size: 12px;">Los mensajes se envían directamente al administrador</p>
         </div>
       </div>
+      
+      <!-- 🆕 INPUT OCULTO PARA SELECCIONAR IMÁGENES -->
+      <input type="file" id="admin-chat-file-input" accept="image/*" style="display: none;" onchange="enviarImagenAdmin(event)">
+      
+      <!-- 🆕 INDICADORES DE ESTADO -->
+      <div id="admin-file-upload-status" style="display: none; text-align: center; padding: 8px; background: #2a2a2a; color: #FFD700; font-size: 13px; border-radius: 6px; margin: 0 10px;"></div>
+      <div id="admin-audio-recording-status" style="display: none; text-align: center; padding: 8px; background: #2a2a2a; color: #ff4444; font-size: 13px; border-radius: 6px; margin: 0 10px;"></div>
+      
+      <!-- 🆕 BOTONES DE GALERÍA Y AUDIO -->
+      <div style="display: flex; gap: 10px; padding: 10px; background: #2a2a2a;">
+        <button onclick="document.getElementById('admin-chat-file-input').click()" style="
+          flex: 1;
+          padding: 10px;
+          background: #444;
+          color: #FFD700;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: bold;
+          cursor: pointer;
+        ">
+          🖼️ Galería
+        </button>
+        <button id="admin-btn-audio" onclick="toggleGrabarAudioAdmin()" style="
+          flex: 1;
+          padding: 10px;
+          background: #444;
+          color: #FFD700;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: bold;
+          cursor: pointer;
+        ">
+          🎙️ Grabar Audio
+        </button>
+      </div>
+      
       <div class="chat-input-container">
         <input 
           type="text" 
           id="chat-input" 
           class="chat-input" 
-          placeholder="Escribe tu mensaje..." 
+          placeholder="Escribe un mensaje..." 
           onkeypress="if(event.key==='Enter') enviarMensajeAdmin()"
         />
         <button class="chat-send-btn" onclick="enviarMensajeAdmin()">
@@ -6057,8 +6095,35 @@ ${mensajeEstado}
             const fecha = new Date(msg.timestamp);
             const tiempo = fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
             
+            let contenido = '';
+            
+            // 🆕 Renderizar según tipo de mensaje
+            if (msg.tipo === 'imagen' && msg.imagenURL) {
+                // Mensaje con imagen
+                contenido = `
+                    <div style="margin-bottom: 5px;">
+                        <img src="${msg.imagenURL}" alt="Imagen" style="max-width: 200px; max-height: 200px; border-radius: 8px; cursor: pointer;" onclick="window.open('${msg.imagenURL}', '_blank')">
+                    </div>
+                    ${msg.mensaje ? `<div>${msg.mensaje}</div>` : ''}
+                `;
+            } else if (msg.tipo === 'audio' && msg.audioURL) {
+                // Mensaje con audio
+                contenido = `
+                    <div style="margin-bottom: 5px;">
+                        <audio controls style="max-width: 200px;">
+                            <source src="${msg.audioURL}" type="audio/webm">
+                            Tu navegador no soporta el elemento de audio.
+                        </audio>
+                    </div>
+                    ${msg.mensaje ? `<div>${msg.mensaje}</div>` : ''}
+                `;
+            } else {
+                // Mensaje de texto normal
+                contenido = `<div>${msg.mensaje || msg.texto || ''}</div>`;
+            }
+            
             div.innerHTML = `
-                <div>${msg.mensaje || msg.texto || ''}</div>
+                ${contenido}
                 <div class="chat-message-time">${tiempo}</div>
             `;
             
@@ -6087,6 +6152,7 @@ ${mensajeEstado}
             await window.set(nuevoMensajeRef, {
                 mensaje: mensaje,
                 remitente: 'cliente',
+                tipo: 'texto',
                 timestamp: Date.now(),
                 leido: false,
                 clienteNombre: window.currentUserNombre || 'Cliente',
@@ -6104,6 +6170,205 @@ ${mensajeEstado}
         } catch (error) {
             console.error('Error al enviar mensaje:', error);
             alert('Error al enviar mensaje. Por favor intenta de nuevo.');
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 📷 FUNCIONES PARA ENVIAR IMÁGENES AL ADMIN
+    // ═══════════════════════════════════════════════════════════════════
+    window.enviarImagenAdmin = async function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!window.currentUserID || !window.storage) {
+            alert('Error: No hay sesión activa o Firebase Storage no está disponible');
+            return;
+        }
+
+        console.log('📤 Subiendo imagen al chat con admin...');
+        const statusElement = document.getElementById('admin-file-upload-status');
+        statusElement.style.display = 'block';
+        statusElement.textContent = '📤 Subiendo imagen...';
+
+        try {
+            const timestamp = Date.now();
+            const fileName = `admin_chat_${window.currentUserID}_${timestamp}_${file.name}`;
+            const fileRef = window.storageRef(window.storage, `chats_admin/${fileName}`);
+            
+            const uploadTask = window.uploadBytesResumable(fileRef, file);
+
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    statusElement.textContent = `📤 Subiendo: ${Math.round(progress)}%`;
+                },
+                (error) => {
+                    console.error('❌ Error al subir imagen:', error);
+                    alert('Error al subir imagen: ' + error.message);
+                    statusElement.style.display = 'none';
+                },
+                async () => {
+                    const downloadURL = await window.getDownloadURL(uploadTask.snapshot.ref);
+                    console.log('✅ Imagen subida, URL:', downloadURL);
+
+                    // Guardar mensaje con imagen en Firebase
+                    const chatRef = window.ref(window.db, `soporte_cliente/${window.currentUserID}`);
+                    const nuevoMensajeRef = window.push(chatRef);
+                    
+                    await window.set(nuevoMensajeRef, {
+                        mensaje: '',
+                        imagenURL: downloadURL,
+                        tipo: 'imagen',
+                        remitente: 'cliente',
+                        timestamp: Date.now(),
+                        leido: false,
+                        clienteNombre: window.currentUserNombre || 'Cliente',
+                        clienteEmail: window.currentUserEmail || ''
+                    });
+
+                    statusElement.textContent = '✅ Imagen enviada';
+                    setTimeout(() => {
+                        statusElement.style.display = 'none';
+                    }, 2000);
+
+                    event.target.value = '';
+                }
+            );
+        } catch (error) {
+            console.error('❌ Error al procesar imagen:', error);
+            alert('Error al enviar imagen: ' + error.message);
+            statusElement.style.display = 'none';
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎙️ FUNCIONES PARA GRABAR Y ENVIAR AUDIO AL ADMIN
+    // ═══════════════════════════════════════════════════════════════════
+    let isRecordingAdmin = false;
+    let mediaRecorderAdmin = null;
+    let audioChunksAdmin = [];
+
+    window.toggleGrabarAudioAdmin = async function() {
+        if (isRecordingAdmin) {
+            detenerGrabacionAdmin();
+        } else {
+            await iniciarGrabacionAdmin();
+        }
+    }
+
+    async function iniciarGrabacionAdmin() {
+        try {
+            console.log('🎙️ Iniciando grabación de audio para admin...');
+            
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderAdmin = new MediaRecorder(stream);
+            audioChunksAdmin = [];
+
+            mediaRecorderAdmin.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksAdmin.push(event.data);
+                }
+            };
+
+            mediaRecorderAdmin.onstop = async () => {
+                console.log('🎙️ Grabación detenida, procesando audio...');
+                const audioBlob = new Blob(audioChunksAdmin, { type: 'audio/webm' });
+                await enviarAudioAdmin(audioBlob);
+                
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorderAdmin.start();
+            isRecordingAdmin = true;
+
+            const btnAudio = document.getElementById('admin-btn-audio');
+            const statusElement = document.getElementById('admin-audio-recording-status');
+            
+            btnAudio.textContent = '⏹️ Detener';
+            btnAudio.style.backgroundColor = '#ff4444';
+            statusElement.style.display = 'block';
+            statusElement.textContent = '🔴 Grabando audio...';
+
+            console.log('✅ Grabación iniciada');
+        } catch (error) {
+            console.error('❌ Error al iniciar grabación:', error);
+            alert('Error al acceder al micrófono: ' + error.message);
+        }
+    }
+
+    function detenerGrabacionAdmin() {
+        if (mediaRecorderAdmin && mediaRecorderAdmin.state !== 'inactive') {
+            mediaRecorderAdmin.stop();
+            isRecordingAdmin = false;
+
+            const btnAudio = document.getElementById('admin-btn-audio');
+            const statusElement = document.getElementById('admin-audio-recording-status');
+            
+            btnAudio.textContent = '🎙️ Grabar Audio';
+            btnAudio.style.backgroundColor = '';
+            statusElement.style.display = 'none';
+
+            console.log('✅ Grabación detenida');
+        }
+    }
+
+    async function enviarAudioAdmin(audioBlob) {
+        if (!window.currentUserID || !window.storage) {
+            alert('Error: No hay sesión activa o Firebase Storage no está disponible');
+            return;
+        }
+
+        console.log('📤 Subiendo audio al chat con admin...');
+        const statusElement = document.getElementById('admin-audio-recording-status');
+        statusElement.style.display = 'block';
+        statusElement.textContent = '📤 Enviando audio...';
+
+        try {
+            const timestamp = Date.now();
+            const fileName = `admin_audio_${window.currentUserID}_${timestamp}.webm`;
+            const fileRef = window.storageRef(window.storage, `chats_admin/${fileName}`);
+            
+            const uploadTask = window.uploadBytesResumable(fileRef, audioBlob);
+
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    statusElement.textContent = `📤 Subiendo: ${Math.round(progress)}%`;
+                },
+                (error) => {
+                    console.error('❌ Error al subir audio:', error);
+                    alert('Error al subir audio: ' + error.message);
+                    statusElement.style.display = 'none';
+                },
+                async () => {
+                    const downloadURL = await window.getDownloadURL(uploadTask.snapshot.ref);
+                    console.log('✅ Audio subido, URL:', downloadURL);
+
+                    // Guardar mensaje con audio en Firebase
+                    const chatRef = window.ref(window.db, `soporte_cliente/${window.currentUserID}`);
+                    const nuevoMensajeRef = window.push(chatRef);
+                    
+                    await window.set(nuevoMensajeRef, {
+                        mensaje: '🎤 Audio',
+                        audioURL: downloadURL,
+                        tipo: 'audio',
+                        remitente: 'cliente',
+                        timestamp: Date.now(),
+                        leido: false,
+                        clienteNombre: window.currentUserNombre || 'Cliente',
+                        clienteEmail: window.currentUserEmail || ''
+                    });
+
+                    statusElement.textContent = '✅ Audio enviado';
+                    setTimeout(() => {
+                        statusElement.style.display = 'none';
+                    }, 2000);
+                }
+            );
+        } catch (error) {
+            console.error('❌ Error al enviar audio:', error);
+            alert('Error al enviar audio: ' + error.message);
+            statusElement.style.display = 'none';
         }
     }
 

@@ -4776,6 +4776,24 @@
                 <p>${fechaCreacion}</p>
             </div>
             
+            ${(estado === 'Pendiente' || estado === 'Aceptado' || estado === 'En camino') ? `
+            <button onclick="cancelarPedidoCliente('${pedido.id}')" style="
+                width: 100%;
+                padding: 12px;
+                margin-top: 20px;
+                background: linear-gradient(135deg, #dc3545, #c82333);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s;
+            " onmouseover="this.style.background='linear-gradient(135deg, #c82333, #bd2130)'" onmouseout="this.style.background='linear-gradient(135deg, #dc3545, #c82333)'">
+                ❌ Cancelar Pedido
+            </button>
+            ` : ''}
+            
             ${totalPedidos > 1 ? `<p style="text-align: center; color: var(--color-text-dark); margin-top: 15px; font-size: 12px;">Tienes ${totalPedidos} pedidos en total.</p>` : ''}
         `;
         
@@ -5999,6 +6017,210 @@ ${mensajeEstado}
         } catch (error) {
             console.error('Error al enviar mensaje:', error);
             alert('Error al enviar mensaje. Por favor intenta de nuevo.');
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🚫 FUNCIÓN: Cancelar Pedido desde Cliente y Abrir Chat con Admin
+    // ═══════════════════════════════════════════════════════════════════
+    window.cancelarPedidoCliente = async function(pedidoId) {
+        if (!window.currentUserID || !window.db) {
+            alert('❌ Error: No se pudo procesar la cancelación');
+            return;
+        }
+
+        // Crear modal para pedir motivo de cancelación
+        const modalHTML = `
+            <div id="modal-cancelar-pedido" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.9);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            ">
+                <div style="
+                    background: #2a2a2a;
+                    padding: 30px;
+                    border-radius: 15px;
+                    max-width: 500px;
+                    width: 90%;
+                    text-align: center;
+                    border: 2px solid #dc3545;
+                ">
+                    <h2 style="color: #dc3545; margin-bottom: 20px;">⚠️ Cancelar Pedido</h2>
+                    
+                    <p style="color: #fff; font-size: 16px; margin-bottom: 20px;">
+                        Por favor, explica brevemente el motivo de la cancelación:
+                    </p>
+                    
+                    <textarea id="motivo-cancelacion" placeholder="Ej: Ya no necesito el servicio, encontré otra opción, etc." style="
+                        width: 100%;
+                        min-height: 100px;
+                        padding: 12px;
+                        border-radius: 8px;
+                        background: #1a1a1a;
+                        color: #fff;
+                        border: 2px solid #555;
+                        font-size: 14px;
+                        margin-bottom: 20px;
+                        resize: vertical;
+                    "></textarea>
+                    
+                    <button onclick="confirmarCancelacionPedido('${pedidoId}')" style="
+                        width: 100%;
+                        padding: 15px;
+                        background: linear-gradient(135deg, #dc3545, #c82333);
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        font-size: 16px;
+                        font-weight: bold;
+                        cursor: pointer;
+                        margin-bottom: 10px;
+                    ">
+                        ✅ Confirmar Cancelación
+                    </button>
+                    
+                    <button onclick="cerrarModalCancelar()" style="
+                        width: 100%;
+                        padding: 15px;
+                        background: #444;
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        font-size: 16px;
+                        font-weight: bold;
+                        cursor: pointer;
+                    ">
+                        ❌ Volver
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    window.cerrarModalCancelar = function() {
+        const modal = document.getElementById('modal-cancelar-pedido');
+        if (modal) modal.remove();
+    }
+
+    window.confirmarCancelacionPedido = async function(pedidoId) {
+        const motivo = document.getElementById('motivo-cancelacion').value.trim();
+        
+        if (!motivo) {
+            alert('⚠️ Por favor escribe el motivo de la cancelación');
+            return;
+        }
+
+        try {
+            console.log('🚫 Cancelando pedido:', pedidoId);
+            
+            // 1️⃣ Obtener información del pedido
+            const pedidoRef = window.ref(window.db, `pedidos_historial/${pedidoId}`);
+            const pedidoSnapshot = await window.get(pedidoRef);
+            
+            if (!pedidoSnapshot.exists()) {
+                alert('❌ Error: No se encontró el pedido');
+                return;
+            }
+            
+            const pedido = pedidoSnapshot.val();
+            
+            // 2️⃣ Actualizar estado del pedido a "cancelado"
+            await window.update(pedidoRef, {
+                estado: 'cancelado',
+                motivoCancelacion: motivo,
+                canceladoPor: 'cliente',
+                timestampCancelacion: Date.now()
+            });
+            
+            // 3️⃣ Si hay repartidor asignado, decrementar sus pedidos activos
+            if (pedido.repartidorUID) {
+                const repartidorRef = window.ref(window.db, `repartidores_info/${pedido.repartidorUID}`);
+                const repartidorSnap = await window.get(repartidorRef);
+                
+                if (repartidorSnap.exists()) {
+                    const repartidor = repartidorSnap.val();
+                    const pedidosActivos = Math.max(0, (repartidor.pedidosActivos || 1) - 1);
+                    await window.update(repartidorRef, { pedidosActivos });
+                }
+                
+                // Eliminar de repartidores_pedidos
+                const repPedidoRef = window.ref(window.db, `repartidores_pedidos/${pedido.repartidorUID}/${pedidoId}`);
+                await window.remove(repPedidoRef);
+            }
+            
+            // 4️⃣ Eliminar de pedidos_pendientes si existe
+            const pendienteRef = window.ref(window.db, `pedidos_pendientes/${pedidoId}`);
+            await window.remove(pendienteRef);
+            
+            // 5️⃣ Registrar en pedidos_cancelados
+            const canceladosRef = window.ref(window.db, 'pedidos_cancelados');
+            await window.push(canceladosRef, {
+                ...pedido,
+                id: pedidoId,
+                motivoCancelacion: motivo,
+                canceladoPor: 'cliente',
+                timestampCancelacion: Date.now()
+            });
+            
+            console.log('✅ Pedido cancelado exitosamente');
+            
+            // 6️⃣ Cerrar modal de cancelación
+            cerrarModalCancelar();
+            
+            // 7️⃣ Enviar mensaje automático al admin con el motivo
+            const chatRef = window.ref(window.db, `soporte_cliente/${window.currentUserID}`);
+            const nuevoMensajeRef = window.push(chatRef);
+            
+            const mensajeAdmin = `🚫 PEDIDO CANCELADO
+
+ID: #${pedidoId.substring(0, 8)}
+Descripción: ${pedido.descripcion || 'N/A'}
+Monto: $${(pedido.montoTotal || 0).toLocaleString('es-ES')}
+
+Motivo de cancelación:
+${motivo}`;
+            
+            await window.set(nuevoMensajeRef, {
+                mensaje: mensajeAdmin,
+                remitente: 'cliente',
+                timestamp: Date.now(),
+                leido: false,
+                clienteNombre: window.currentUserNombre || 'Cliente',
+                clienteEmail: window.currentUserEmail || '',
+                tipoPedido: 'cancelacion',
+                pedidoId: pedidoId
+            });
+            
+            // 8️⃣ Abrir chat con admin automáticamente
+            document.getElementById('modal-chat-admin').style.display = 'block';
+            cargarMensajesAdmin();
+            
+            // Auto-scroll al final
+            setTimeout(() => {
+                const container = document.getElementById('chat-messages-container');
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                }
+            }, 100);
+            
+            // 9️⃣ Mostrar confirmación
+            alert('✅ Pedido cancelado exitosamente.\n\nSe ha abierto el chat con soporte para que puedas recibir más información si lo necesitas.');
+            
+            // 🔟 Recargar vista de pedidos
+            verMisPedidos();
+            
+        } catch (error) {
+            console.error('❌ Error al cancelar pedido:', error);
+            alert('❌ Error al cancelar el pedido. Por favor intenta de nuevo o contacta a soporte.');
         }
     }
     

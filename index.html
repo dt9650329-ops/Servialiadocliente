@@ -627,7 +627,30 @@
     }
     
     /* Estilos para el modal de chat con admin */
-    #modal-chat-admin .modal-content {
+    /* X específica del chat de soporte */
+    .chat-close-btn {
+        background: rgba(0,0,0,0.2);
+        border: none;
+        border-radius: 50%;
+        width: 34px;
+        height: 34px;
+        font-size: 20px;
+        font-weight: bold;
+        color: #111;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        flex-shrink: 0;
+        transition: background 0.2s;
+        margin: 0;
+        padding: 0;
+        width: 34px;
+    }
+    .chat-close-btn:hover {
+        background: rgba(0,0,0,0.35);
+    }
         max-width: 600px;
         padding: 0;
         border-radius: 15px;
@@ -2645,7 +2668,7 @@
     <div class="modal-content">
       <div class="chat-header">
         <span>💬 Soporte para Pedidos</span>
-        <span class="close-modal" onclick="cerrarChatAdmin()" style="color: #111;">&times;</span>
+        <button class="chat-close-btn" onclick="cerrarChatAdmin()" title="Cerrar">✕</button>
       </div>
       <div class="chat-messages" id="chat-messages-container">
         <div style="text-align: center; color: #888; padding: 20px;">

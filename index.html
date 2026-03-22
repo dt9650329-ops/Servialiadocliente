@@ -2571,6 +2571,7 @@
                     <option value="via_montenegro">Vía Armenia - Montenegro (km)</option>
                     <option value="via_calarca">Vía Armenia - Calarcá (km)</option>
                     <option value="via_circasia">Vía Armenia - Circasia (km)</option>
+                    <option value="via_puerto_tapao">Vía Armenia - Puerto Tapao (km)</option>
                     <option value="vereda_otro">Vereda / Finca (otro)</option>
                   </optgroup>
                 </select>
@@ -3175,7 +3176,8 @@
                 via_tebaida:   { base:5000, porKm:800, origenSurCentro:0, origenNorte:2000 },
                 via_montenegro:{ base:5000, porKm:800, origenSurCentro:0, origenNorte:2000 },
                 via_calarca:   { base:4000, porKm:700, origenSurCentro:0, origenNorte:0    },
-                via_circasia:  { base:4000, porKm:700, origenSurCentro:0, origenNorte:0    },
+                via_circasia:     { base:4000, porKm:700, origenSurCentro:0, origenNorte:0    },
+                via_puerto_tapao: { base:5000, porKm:800, origenSurCentro:0, origenNorte:2000 },
             };
 
             const nombresMunicipios = {
@@ -3493,6 +3495,7 @@
                 via_montenegro:{base:5000,porKm:800,recNorte:2000},
                 via_calarca:{base:4000,porKm:700,recNorte:0},
                 via_circasia:{base:4000,porKm:700,recNorte:0},
+                via_puerto_tapao:{base:5000,porKm:800,recNorte:2000},
             };
             const zona = zonaRecogida || 'centro';
             if (tarifasMunicipiosSol[municipioId]) {
@@ -5892,52 +5895,64 @@
         });
     }
 
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
       setTimeout(() => {
-          if (typeof hideSplashScreen === 'function') {
-    hideSplashScreen();
+          if (typeof window.hideSplashScreen === 'function') {
+    window.hideSplashScreen();
+} else {
+    const s = document.getElementById('splash-screen');
+    if (s) s.style.display = 'none';
 }
       }, 2000);
       
       if (user) {
         window.currentAuthUser = user;
+        // Fallback por si window.getClientID no está listo
+        if (!window.getClientID) window.getClientID = (uid) => `cliente_auth_${uid}`;
         window.currentUserID = window.getClientID(user.uid);
         
         console.log('👤 Usuario autenticado:', user.uid);
         
-        get(ref(db, `usuarios/${window.currentUserID}`)) 
-          .then(async (snapshot) => {
-            if (snapshot.exists() && snapshot.val().direccion && snapshot.val().tel1) {
-              // ✅ Usuario completo con datos - Mostrar perfil
-              const userData = snapshot.val();
-              userData.uid = user.uid;
-              
-              window.mostrarPerfil(userData); 
-              console.log('✅ Usuario completo - Mostrando perfil');
-              
-            } else {
-              // ⚠️ Usuario sin datos completos - Mostrar formulario de registro complementario
-              console.log('⚠️ Usuario sin datos completos - Mostrando formulario de registro');
-              
-              const existingData = snapshot.exists() ? snapshot.val() : {};
-              document.getElementById("nombreUsuario").value = existingData.nombre || "";
-              document.getElementById("correoUsuario").value = user.email || ""; 
-              document.getElementById("telefono1Usuario").value = existingData.tel1 || ""; 
-              document.getElementById("telefono2Usuario").value = existingData.tel2 || "";
-              document.getElementById("direccionUsuario").value = existingData.direccion || "";
+        const ocultarSplash = () => {
+          if(window.hideSplashScreen) window.hideSplashScreen();
+          else { const s=document.getElementById('splash-screen'); if(s) s.style.display='none'; }
+        };
+        const mostrarRegistro = () => {
+          if (window.mostrarVista) window.mostrarVista('vista-registro-complemento');
+          else {
+            const r = document.getElementById('vista-registro-complemento');
+            if (r) r.style.display = 'block';
+          }
+          ocultarSplash();
+        };
 
-              window.mostrarVista('vista-registro-complemento');
-            }
-            hideSplashScreen();
-          })
-          .catch((error) => {
-            console.error("❌ Error al leer datos de Firebase DB:", error);
-            alert("Error al intentar cargar su perfil.");
-            hideSplashScreen();
-          });
+        try {
+          const snap = await get(ref(db, `usuarios/${window.currentUserID}`));
+          if (snap.exists() && snap.val().direccion && snap.val().tel1) {
+            const userData = snap.val();
+            userData.uid = user.uid;
+            if (window.mostrarPerfil) window.mostrarPerfil(userData);
+            console.log('✅ Usuario completo - Mostrando perfil');
+          } else {
+            console.log('⚠️ Usuario sin datos completos - Mostrando registro');
+            const existingData = snap.exists() ? snap.val() : {};
+            const setVal = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+            setVal('nombreUsuario', existingData.nombre);
+            setVal('correoUsuario', user.email);
+            setVal('telefono1Usuario', existingData.tel1);
+            setVal('telefono2Usuario', existingData.tel2);
+            setVal('direccionUsuario', existingData.direccion);
+            mostrarRegistro();
+            return;
+          }
+          ocultarSplash();
+        } catch(error) {
+          console.warn('⚠️ No se pudo leer perfil, mostrando registro:', error?.code || error?.message || error);
+          mostrarRegistro();
+        }
       } else {
         window.mostrarVista('vista-inicio');
-        hideSplashScreen();
+        if(window.hideSplashScreen) window.hideSplashScreen();
       }
     });
 
@@ -5950,6 +5965,7 @@
              return;
         }
 
+        if (!window.getClientID) window.getClientID = (uid) => `cliente_auth_${uid}`;
         const usuarioID = window.getClientID(authUser.uid);
         
         const nombre = document.getElementById("nombreUsuario").value.trim();
@@ -9373,12 +9389,15 @@ window.cargarDatosGuardados = function() {
     const { latitude: lat, longitude: lng, accuracy } = pos.coords;
     const ts = Date.now();
     try {
-      window.set(window.ref(window.db, 'ubicaciones_clientes/' + window.currentUserID), {
-        lat: parseFloat(lat.toFixed(6)),
-        lng: parseFloat(lng.toFixed(6)),
-        accuracy: Math.round(accuracy),
-        ts
-      });
+      // Solo guardar si tiene sesión activa
+      if (window.currentUserID) {
+        window.set(window.ref(window.db, 'ubicaciones_clientes/' + window.currentUserID), {
+          lat: parseFloat(lat.toFixed(6)),
+          lng: parseFloat(lng.toFixed(6)),
+          accuracy: Math.round(accuracy),
+          ts
+        }).catch(() => {}); // Silenciar error de permisos
+      }
     } catch(e) {}
   }, null, { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 });
 })();

@@ -2525,14 +2525,74 @@
               <label>Número de contacto (quien recibe):</label>
               <input type="tel" id="domi-tel-recibe" placeholder="Ej: 3109876543" />
 
-              <label>🔍 Barrio de entrega:</label>
-              <div class="barrio-search-wrap">
-                <input type="text" id="search-barrio-entrega" placeholder="Cargando barrios..." autocomplete="off" oninput="filtrarBarriosInput('entrega')" onfocus="mostrarDropdown('entrega')" />
-                <div class="barrio-dropdown" id="dropdown-entrega"></div>
+              <!-- Selector tipo de destino -->
+              <label>📍 ¿Dónde es la entrega?</label>
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <button type="button" id="btn-destino-armenia" onclick="cambiarTipoDestino('armenia')"
+                  style="flex:1;padding:9px;border-radius:8px;border:2px solid #28a745;background:#1a3a1a;color:#28a745;font-weight:bold;cursor:pointer;font-size:13px;">
+                  🏙️ Armenia
+                </button>
+                <button type="button" id="btn-destino-fuera" onclick="cambiarTipoDestino('fuera')"
+                  style="flex:1;padding:9px;border-radius:8px;border:2px solid #444;background:#2a2a2a;color:#aaa;font-weight:bold;cursor:pointer;font-size:13px;">
+                  🌄 Fuera de Armenia
+                </button>
               </div>
+
+              <!-- Destino Armenia -->
+              <div id="destino-armenia-wrap">
+                <label>🔍 Barrio de entrega:</label>
+                <div class="barrio-search-wrap">
+                  <input type="text" id="search-barrio-entrega" placeholder="Cargando barrios..." autocomplete="off" oninput="filtrarBarriosInput('entrega')" onfocus="mostrarDropdown('entrega')" />
+                  <div class="barrio-dropdown" id="dropdown-entrega"></div>
+                </div>
+              </div>
+
+              <!-- Destino Fuera de Armenia -->
+              <div id="destino-fuera-wrap" style="display:none;">
+                <label>🏘️ Municipio o zona:</label>
+                <select id="domi-municipio" onchange="seleccionarMunicipio()" style="margin-bottom:10px;">
+                  <option value="">-- Selecciona municipio --</option>
+                  <optgroup label="Municipios cercanos">
+                    <option value="calarca">Calarcá</option>
+                    <option value="circasia">Circasia</option>
+                    <option value="montenegro">Montenegro</option>
+                    <option value="tebaida">La Tebaida</option>
+                    <option value="puerto_tapao">Puerto Tapao</option>
+                    <option value="salento">Salento</option>
+                    <option value="quimbaya">Quimbaya</option>
+                    <option value="filandia">Filandia</option>
+                    <option value="buenavista">Buenavista</option>
+                    <option value="pijao">Pijao</option>
+                    <option value="genova">Génova</option>
+                    <option value="cordoba">Córdoba</option>
+                  </optgroup>
+                  <optgroup label="Veredas / Fincas / Vías">
+                    <option value="via_tebaida">Vía Armenia - La Tebaida (km)</option>
+                    <option value="via_montenegro">Vía Armenia - Montenegro (km)</option>
+                    <option value="via_calarca">Vía Armenia - Calarcá (km)</option>
+                    <option value="via_circasia">Vía Armenia - Circasia (km)</option>
+                    <option value="vereda_otro">Vereda / Finca (otro)</option>
+                  </optgroup>
+                </select>
+
+                <div id="km-input-wrap" style="display:none;">
+                  <label>📏 Kilómetro aproximado:</label>
+                  <input type="number" id="domi-km-via" placeholder="Ej: 3" min="1" max="30" oninput="calcularPrecioDomi()" style="margin-bottom:6px;"/>
+                  <p style="color:#aaa;font-size:12px;margin:0 0 8px;">Ingresa el kilómetro de la vía donde queda el destino.</p>
+                </div>
+
+                <div id="vereda-input-wrap" style="display:none;">
+                  <label>📝 Nombre de la vereda / finca:</label>
+                  <input type="text" id="domi-vereda-nombre" placeholder="Ej: Finca El Remanso, Vereda La Siria" oninput="calcularPrecioDomi()" style="margin-bottom:6px;"/>
+                </div>
+
+                <div id="fuera-precio-info" style="display:none;background:#1a1200;border-radius:8px;padding:8px 10px;font-size:13px;color:#e67e22;margin-top:4px;"></div>
+              </div>
+
               <input type="hidden" id="domi-zona-entrega" />
               <input type="hidden" id="domi-barrio-entrega" />
               <input type="hidden" id="domi-comuna-entrega" />
+              <input type="hidden" id="domi-municipio-id" />
               <div id="barrio-entrega-tag" style="display:none; margin-top:6px; background:#1a2a3a; border-radius:6px; padding:6px 10px; color:#4A9EFF; font-size:13px;"></div>
             </div>
 
@@ -3085,20 +3145,88 @@
 
         let precio = 5000;
         let razon  = 'Misma zona';
-        const zonas   = { sur:0, centro:1, norte:2, oriente:1, occidente:1 };
-        const nombres = { sur:'Sur', centro:'Centro', norte:'Norte', oriente:'Oriente', occidente:'Occidente' };
-        const diff = Math.abs((zonas[zonaRecogida]||0) - (zonas[zonaEntrega]||0));
-        const mismaComunaOZona = zonaRecogida === zonaEntrega;
 
-        if (mismaComunaOZona) {
-            precio = 5000;
-            razon  = `Misma zona (${nombres[zonaRecogida] || zonaRecogida})`;
-        } else if (diff <= 1) {
-            precio = 6000;
-            razon  = `Zona distante: ${nombres[zonaRecogida]||zonaRecogida} → ${nombres[zonaEntrega]||zonaEntrega}`;
+        // ── TARIFAS FUERA DE ARMENIA ──────────────────────────
+        const municipioId = document.getElementById('domi-municipio-id')?.value || '';
+        if (municipioId) {
+            // Tabla de precios por municipio según zona de recogida
+            const tarifasMunicipios = {
+                // municipio: { sur, centro, norte, oriente, occidente }
+                calarca:       { sur:12000, centro:12000, norte:12000, oriente:12000, occidente:12000 },
+                circasia:      { sur:15000, centro:13000, norte:12000, oriente:14000, occidente:15000 },
+                montenegro:    { sur:15000, centro:15000, norte:17000, oriente:16000, occidente:14000 },
+                tebaida:       { sur:15000, centro:15000, norte:17000, oriente:16000, occidente:15000 },
+                puerto_tapao:  { sur:16000, centro:16000, norte:18000, oriente:17000, occidente:15000 },
+                salento:       { sur:20000, centro:18000, norte:16000, oriente:18000, occidente:20000 },
+                quimbaya:      { sur:22000, centro:20000, norte:18000, oriente:21000, occidente:22000 },
+                filandia:      { sur:18000, centro:16000, norte:14000, oriente:16000, occidente:18000 },
+                buenavista:    { sur:25000, centro:23000, norte:22000, oriente:24000, occidente:25000 },
+                pijao:         { sur:35000, centro:33000, norte:32000, oriente:34000, occidente:35000 },
+                genova:        { sur:40000, centro:38000, norte:37000, oriente:39000, occidente:40000 },
+                cordoba:       { sur:30000, centro:28000, norte:27000, oriente:29000, occidente:30000 },
+            };
+
+            // Vías por km: precio base + recargo por km
+            const tarifasVia = {
+                via_tebaida:   { base:5000, porKm:800, origenSurCentro:0, origenNorte:2000 },
+                via_montenegro:{ base:5000, porKm:800, origenSurCentro:0, origenNorte:2000 },
+                via_calarca:   { base:4000, porKm:700, origenSurCentro:0, origenNorte:0    },
+                via_circasia:  { base:4000, porKm:700, origenSurCentro:0, origenNorte:0    },
+            };
+
+            const nombresMunicipios = {
+                calarca:'Calarcá', circasia:'Circasia', montenegro:'Montenegro',
+                tebaida:'La Tebaida', puerto_tapao:'Puerto Tapao', salento:'Salento',
+                quimbaya:'Quimbaya', filandia:'Filandia', buenavista:'Buenavista',
+                pijao:'Pijao', genova:'Génova', cordoba:'Córdoba',
+                via_tebaida:'Vía Armenia-Tebaida', via_montenegro:'Vía Armenia-Montenegro',
+                via_calarca:'Vía Armenia-Calarcá', via_circasia:'Vía Armenia-Circasia',
+                vereda_otro:'Vereda / Finca'
+            };
+
+            const zona = zonaRecogida || 'centro';
+
+            if (tarifasMunicipios[municipioId]) {
+                const t = tarifasMunicipios[municipioId];
+                precio = t[zona] || t.centro;
+                razon  = `🌄 Armenia (${zona}) → ${nombresMunicipios[municipioId]}`;
+
+            } else if (tarifasVia[municipioId]) {
+                const km = parseInt(document.getElementById('domi-km-via')?.value) || 0;
+                const t = tarifasVia[municipioId];
+                const recargo = zona === 'norte' ? t.origenNorte : t.origenSurCentro;
+                precio = t.base + (km * t.porKm) + recargo;
+                razon  = `🌄 ${nombresMunicipios[municipioId]} km ${km} · $${t.base.toLocaleString('es-CO')} base + ${km}km×$${t.porKm}`;
+                if (recargo > 0) razon += ` + $${recargo.toLocaleString('es-CO')} recargo zona`;
+
+            } else if (municipioId === 'vereda_otro') {
+                precio = 0;
+                razon  = '⚠️ El admin confirmará el precio por este destino';
+                precioValor.textContent = 'A confirmar';
+                precioRazon.textContent = razon;
+                precioBox.style.display = 'block';
+                const extraVol = tamano === 'grande' ? 1000 : tamano === 'muy_grande' ? 2000 : 0;
+                if (extraVol > 0) precioRazon.textContent += ` + extra volumen $${extraVol.toLocaleString('es-CO')}`;
+                return;
+            }
+
         } else {
-            precio = 7000;
-            razon  = `Zona lejana: ${nombres[zonaRecogida]||zonaRecogida} ↔ ${nombres[zonaEntrega]||zonaEntrega}`;
+            // ── TARIFAS DENTRO DE ARMENIA ────────────────────────
+            const zonas   = { sur:0, centro:1, norte:2, oriente:1, occidente:1 };
+            const nombres = { sur:'Sur', centro:'Centro', norte:'Norte', oriente:'Oriente', occidente:'Occidente' };
+            const diff = Math.abs((zonas[zonaRecogida]||0) - (zonas[zonaEntrega]||0));
+            const mismaComunaOZona = zonaRecogida === zonaEntrega;
+
+            if (mismaComunaOZona) {
+                precio = 5000;
+                razon  = `Misma zona (${nombres[zonaRecogida] || zonaRecogida})`;
+            } else if (diff <= 1) {
+                precio = 6000;
+                razon  = `Zona distante: ${nombres[zonaRecogida]||zonaRecogida} → ${nombres[zonaEntrega]||zonaEntrega}`;
+            } else {
+                precio = 7000;
+                razon  = `Zona lejana: ${nombres[zonaRecogida]||zonaRecogida} ↔ ${nombres[zonaEntrega]||zonaEntrega}`;
+            }
         }
 
         // Extra por volumen
@@ -3315,11 +3443,24 @@
         const tamano         = document.getElementById('domi-tamano').value;
         const servicioCompra = document.getElementById('domi-servicio-compra').value; // 🆕 Servicio de compra
 
+        const municipioId = document.getElementById('domi-municipio-id')?.value || '';
+        const esFuera = zonaEntrega === 'fuera' || municipioId !== '';
+
         if (!nombreEntrega || !dirRecogida || !telEntrega || !zonaRecogida ||
-            !nombreRecibe  || !dirEntrega  || !telRecibe  || !zonaEntrega) {
-            if (!zonaRecogida) alert('⚠️ Por favor selecciona el barrio de recogida desde la lista.');
-            else if (!zonaEntrega) alert('⚠️ Por favor selecciona el barrio de entrega desde la lista.');
-            else alert('⚠️ Por favor completa todos los campos del formulario.');
+            !nombreRecibe  || !dirEntrega  || !telRecibe) {
+            alert('⚠️ Por favor completa todos los campos del formulario.');
+            return;
+        }
+        if (!zonaRecogida) {
+            alert('⚠️ Por favor selecciona el barrio de recogida desde la lista.');
+            return;
+        }
+        if (!esFuera && !zonaEntrega) {
+            alert('⚠️ Por favor selecciona el barrio de entrega o elige "Fuera de Armenia".');
+            return;
+        }
+        if (esFuera && !municipioId) {
+            alert('⚠️ Por favor selecciona el municipio o zona de destino.');
             return;
         }
 
@@ -3364,12 +3505,18 @@
         `;
 
         // Guardar datos temporalmente (🆕 Incluye servicio de compra)
+        const municipioIdVal = document.getElementById('domi-municipio-id')?.value || '';
+        const municipioNombre = document.getElementById('domi-municipio') ? 
+          document.getElementById('domi-municipio').options[document.getElementById('domi-municipio').selectedIndex]?.text || '' : '';
+        const kmVia = document.getElementById('domi-km-via')?.value || '';
+        const veredaNombre = document.getElementById('domi-vereda-nombre')?.value || '';
         const barrioRecogida = document.getElementById('domi-barrio-recogida').value || document.getElementById('search-barrio-recogida').value || '';
         const comunaRecogida = document.getElementById('domi-comuna-recogida').value || '';
         const barrioEntrega  = document.getElementById('domi-barrio-entrega').value  || document.getElementById('search-barrio-entrega').value  || '';
         const comunaEntrega  = document.getElementById('domi-comuna-entrega').value  || '';
         window._domiPendiente = { nombreEntrega, dirRecogida, telEntrega, zonaRecogida, barrioRecogida, comunaRecogida,
-                                   nombreRecibe, dirEntrega, telRecibe, zonaEntrega, barrioEntrega, comunaEntrega, precio, tamano, servicioCompra };
+                                   nombreRecibe, dirEntrega, telRecibe, zonaEntrega, barrioEntrega, comunaEntrega,
+                                   municipioId: municipioIdVal, municipioNombre, kmVia, veredaNombre, precio, tamano, servicioCompra };
 
         document.getElementById('modal-confirmar-domi').style.display = 'block';
     };
@@ -3446,6 +3593,11 @@
                 comunaRecogida: d.comunaRecogida || '',
                 barrioEntrega:  d.barrioEntrega  || '',
                 comunaEntrega:  d.comunaEntrega  || '',
+                municipioId:    d.municipioId    || '',
+                municipioNombre:d.municipioNombre|| '',
+                kmVia:          d.kmVia          || '',
+                veredaNombre:   d.veredaNombre   || '',
+                esFuera:        d.municipioId ? true : false,
                         zonaEntrega: d.zonaEntrega,
                         coordsRecogida: cGPS  // Para este pedido usamos coords del cliente como recogida
                     };
@@ -9421,5 +9573,79 @@ document.getElementById('modal-sugerir-barrio')?.addEventListener('click', e => 
 });
 </script>
 
+<script>
+// ── SELECTOR DESTINO ARMENIA / FUERA ──────────────────────
+window.cambiarTipoDestino = function(tipo) {
+  const btnArmenia = document.getElementById('btn-destino-armenia');
+  const btnFuera   = document.getElementById('btn-destino-fuera');
+  const wrapArm    = document.getElementById('destino-armenia-wrap');
+  const wrapFuera  = document.getElementById('destino-fuera-wrap');
+  const hidZona    = document.getElementById('domi-zona-entrega');
+  const hidBarrio  = document.getElementById('domi-barrio-entrega');
+  const hidMun     = document.getElementById('domi-municipio-id');
+  const tag        = document.getElementById('barrio-entrega-tag');
+
+  if (tipo === 'armenia') {
+    btnArmenia.style.cssText += ';border-color:#28a745;background:#1a3a1a;color:#28a745;';
+    btnFuera.style.cssText   += ';border-color:#444;background:#2a2a2a;color:#aaa;';
+    wrapArm.style.display    = 'block';
+    wrapFuera.style.display  = 'none';
+    hidMun.value = '';
+    hidZona.value = ''; hidBarrio.value = '';
+    if (tag) tag.style.display = 'none';
+  } else {
+    btnFuera.style.cssText   += ';border-color:#e67e22;background:#1a1200;color:#e67e22;';
+    btnArmenia.style.cssText += ';border-color:#444;background:#2a2a2a;color:#aaa;';
+    wrapArm.style.display    = 'none';
+    wrapFuera.style.display  = 'block';
+    hidZona.value  = 'fuera';
+    hidBarrio.value = '';
+    hidMun.value = '';
+  }
+  calcularPrecioDomi();
+};
+
+window.seleccionarMunicipio = function() {
+  const mun  = document.getElementById('domi-municipio').value;
+  const hidM = document.getElementById('domi-municipio-id');
+  const hidB = document.getElementById('domi-barrio-entrega');
+  const hidZ = document.getElementById('domi-zona-entrega');
+  const kmWrap  = document.getElementById('km-input-wrap');
+  const verWrap = document.getElementById('vereda-input-wrap');
+  const info    = document.getElementById('fuera-precio-info');
+
+  hidM.value = mun;
+  hidZ.value = 'fuera';
+
+  // Nombres para mostrar
+  const nombres = {
+    calarca:'Calarcá', circasia:'Circasia', montenegro:'Montenegro',
+    tebaida:'La Tebaida', puerto_tapao:'Puerto Tapao', salento:'Salento',
+    quimbaya:'Quimbaya', filandia:'Filandia', buenavista:'Buenavista',
+    pijao:'Pijao', genova:'Génova', cordoba:'Córdoba',
+    via_tebaida:'Vía Armenia-Tebaida', via_montenegro:'Vía Armenia-Montenegro',
+    via_calarca:'Vía Armenia-Calarcá', via_circasia:'Vía Armenia-Circasia',
+    vereda_otro:'Vereda / Finca'
+  };
+
+  hidB.value = nombres[mun] || mun;
+
+  // Mostrar/ocultar inputs adicionales
+  kmWrap.style.display  = mun.startsWith('via_') ? 'block' : 'none';
+  verWrap.style.display = mun === 'vereda_otro' ? 'block' : 'none';
+
+  if (mun === 'vereda_otro') {
+    info.style.display = 'block';
+    info.textContent = '⚠️ El admin confirmará el precio para este destino.';
+  } else if (mun) {
+    info.style.display = 'block';
+    info.textContent = '🌄 Destino fuera de Armenia · El precio se calculará según tu zona de recogida';
+  } else {
+    info.style.display = 'none';
+  }
+
+  calcularPrecioDomi();
+};
+</script>
 </body>
 </html>

@@ -2644,7 +2644,7 @@
                 <span style="color:#4A9EFF; font-weight:bold; font-size:14px;">💬 Chat con tu Repartidor</span>
                 <span id="chat-rep-badge" style="display:none; background:#e74c3c; color:#fff; border-radius:10px; padding:2px 8px; font-size:11px; font-weight:bold;"></span>
               </div>
-              <div id="chat-p2p-box" style="height:260px; overflow-y:auto; padding:12px; background:#111; display:flex; flex-direction:column; gap:8px;"></div>
+              <div id="chat-p2p-box" style="height:260px; overflow-y:auto; padding:12px; background:#111; display:flex; flex-direction:column; gap:8px; direction:ltr;"></div>
               <div style="padding:10px; background:#1a1a2e; border-top:1px solid #333;">
                 <div style="display:flex; gap:6px; margin-bottom:6px;">
                   <button onclick="abrirGaleriaP2P()" style="background:#333; border:none; color:#ddd; padding:7px 10px; border-radius:6px; cursor:pointer; font-size:13px;">🖼️ Foto</button>
@@ -2658,9 +2658,18 @@
                   </div>
                 </div>
                 <input type="file" id="foto-input-p2p" accept="image/*" style="display:none" onchange="enviarFotoP2P(this)" />
-                <div style="display:flex; gap:6px;">
-                  <input type="text" id="input-chat-p2p" placeholder="Escribe un mensaje..." style="flex:1; background:#222; border:1px solid #444; color:#fff; padding:8px 12px; border-radius:8px; font-size:14px;" onkeypress="if(event.key==='Enter') enviarMensajeP2P()" />
-                  <button onclick="enviarMensajeP2P()" style="background:#4A9EFF; color:#fff; border:none; padding:8px 14px; border-radius:8px; cursor:pointer; font-weight:bold;">➤</button>
+                <div style="padding:4px 0;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="text" id="input-chat-p2p" placeholder="Escribe un mensaje..."
+                      style="flex:1; min-width:0; background:#2a2a2a; border:1px solid #555;
+                             color:#fff; padding:11px 14px; border-radius:22px; font-size:15px;
+                             direction:ltr; box-sizing:border-box; outline:none;" 
+                      onkeypress="if(event.key==='Enter') enviarMensajeP2P()" />
+                    <button onclick="enviarMensajeP2P()"
+                      style="flex-shrink:0; width:44px; height:44px; padding:0; margin:0;
+                             background:#4A9EFF; color:#fff; border:none; border-radius:50%;
+                             cursor:pointer; font-size:20px; line-height:44px; text-align:center;">➤</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4620,6 +4629,7 @@
         
         const repartidorRef = window.ref(window.db, `repartidores_info/${repartidorUID}`);
         
+        // Listener continuo - se actualiza cada vez que el repartidor mueve GPS
         repartidorUbicacionListener = window.onValue(repartidorRef, (snapshot) => {
             if (!snapshot.exists()) {
                 console.warn('⚠️ Datos del repartidor no disponibles aún');
@@ -4629,11 +4639,9 @@
             const repartidorData = snapshot.val();
             console.log('📡 Datos del repartidor recibidos:', repartidorData);
             
+            // gpsActivo es informativo pero no bloquea la actualización del mapa
             if (!repartidorData.gpsActivo) {
-                console.warn('⚠️ GPS del repartidor no está activo');
-                document.getElementById('map-distance').textContent = '📏 Esperando GPS del repartidor...';
-                document.getElementById('map-duration').textContent = '⏱️ GPS del repartidor inactivo';
-                return;
+                console.warn('⚠️ GPS del repartidor reportado como inactivo, pero intentando con ubicación disponible');
             }
             
             let repartidorCoords = null;
@@ -8991,7 +8999,7 @@ window.filtrarBarriosInput = function(tipo) {
   res.forEach(b => {
     const d = document.createElement('div');
     d.className = 'barrio-option';
-    d.innerHTML = b.n + '<span class="barrio-comuna">Comuna ' + b.c + ' · Zona ' + b.z + '</span>';
+    d.innerHTML = b.n + '<span class="barrio-comuna">' + b.z.charAt(0).toUpperCase()+b.z.slice(1) + '</span>';
     d.onclick = () => seleccionarBarrio(tipo, b);
     dd.appendChild(d);
   });
@@ -9011,7 +9019,7 @@ window.seleccionarBarrio = function(tipo, barrio) {
   document.getElementById('dropdown-' + tipo).classList.remove('show');
   const zonaEmoji = {sur:'🔴', centro:'🟡', norte:'🔵', oriente:'🟠', occidente:'🟣'};
   const tag = document.getElementById('barrio-' + tipo + '-tag');
-  tag.textContent = zonaEmoji[barrio.z] + ' ' + barrio.n + ' · Comuna ' + barrio.c + ' · Zona ' + barrio.z;
+  tag.textContent = zonaEmoji[barrio.z] + ' ' + barrio.n + ' · ' + barrio.z.charAt(0).toUpperCase()+barrio.z.slice(1);
   tag.style.display = 'block';
   calcularPrecioDomi();
 };
@@ -9057,7 +9065,7 @@ window.cargarDatosGuardados = function() {
     document.getElementById('domi-zona-recogida').value     = d.zonaRecogida || '';
     document.getElementById('domi-comuna-recogida').value   = d.comunaRecogida || '';
     const tag = document.getElementById('barrio-recogida-tag');
-    if (d.zonaRecogida) { tag.textContent = '📍 ' + d.barrioRecogida + ' · Zona ' + d.zonaRecogida; tag.style.display='block'; }
+    if (d.zonaRecogida) { const z=d.zonaRecogida; tag.textContent = '📍 ' + d.barrioRecogida + ' · ' + z.charAt(0).toUpperCase()+z.slice(1); tag.style.display='block'; }
   }
   if (d.nombreRecibe) document.getElementById('domi-nombre-recibe').value  = d.nombreRecibe;
   if (d.dirEntrega)   document.getElementById('domi-dir-entrega').value    = d.dirEntrega;
@@ -9129,7 +9137,11 @@ function escucharMensajesP2P(pedidoId) {
       } else {
         contenido = '<span style="word-break:break-word;">' + (m.texto||'') + '</span>';
       }
-      div.innerHTML = '<div style="max-width:78%;background:' + (esCliente?'#1a3a5c':'#2a2a2a') + ';border-radius:12px;padding:8px 12px;color:#fff;font-size:14px;">' + contenido + '<span style="font-size:10px;color:#888;display:block;margin-top:4px;text-align:right;">' + new Date(m.ts||Date.now()).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) + '</span></div>';
+      const nombreMostrar = esCliente ? '' : (m.repartidorNombre || 'Repartidor');
+      div.innerHTML = '<div style="max-width:78%;background:' + (esCliente?'#1a3a5c':'#2a2a2a') + ';border-radius:12px;padding:8px 12px;color:#fff;font-size:14px;direction:ltr;">'
+        + (!esCliente && nombreMostrar ? '<span style="font-size:11px;color:#4A9EFF;font-weight:bold;display:block;margin-bottom:4px;">🏍️ ' + nombreMostrar + '</span>' : '')
+        + contenido
+        + '<span style="font-size:10px;color:#888;display:block;margin-top:4px;text-align:right;">' + new Date(m.ts||Date.now()).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) + '</span></div>';
       box.appendChild(div);
     });
     box.scrollTop = box.scrollHeight;

@@ -3066,13 +3066,15 @@
     // === FUNCIONES DE UTILIDAD Y UI ===
     // ======================================================================
     
-    function mostrarVista(vistaId) {
+    window.mostrarVista = function mostrarVista(vistaId) {
         const mainContainer = document.getElementById("main-container");
+        if (!mainContainer) return;
         mainContainer.querySelectorAll(':scope > div, :scope > form').forEach(child => {
             child.style.display = 'none';
         });
         mainContainer.style.display = 'block'; 
-        document.getElementById(vistaId).style.display = 'block';
+        const vista = document.getElementById(vistaId);
+        if (vista) vista.style.display = 'block';
     }
 
     function changeTab(tabName) {
@@ -5760,13 +5762,19 @@
       projectId: "domicilios-1cd74",
       storageBucket: "domicilios-1cd74.firebasestorage.app",
       messagingSenderId: "771819437001", 
-      appId: "1:771819437001:web:b9c8f5e4d3a2c1b0a1b2c3"
+      appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const auth = getAuth(app); 
-    const storage = getStorage(app); 
+    let app, db, auth, storage;
+    try {
+      app = initializeApp(firebaseConfig);
+      db = getDatabase(app);
+      auth = getAuth(app); 
+      storage = getStorage(app);
+      console.log('✅ Firebase inicializado correctamente');
+    } catch(e) {
+      console.error('❌ Firebase no pudo iniciar:', e.message);
+    } 
 
     window.db = db;
     window.push = push;
@@ -5895,6 +5903,20 @@
         });
     }
 
+    // Garantía: splash siempre se oculta a los 3s Y muestra la app
+    setTimeout(() => {
+      const s = document.getElementById('splash-screen');
+      if (s) { s.style.opacity='0'; setTimeout(()=>s.style.display='none',400); }
+      // Si main-container sigue oculto (Firebase no respondió), mostrar login
+      const mc = document.getElementById('main-container');
+      if (mc && (mc.style.display === 'none' || mc.style.display === '')) {
+        mc.style.display = 'block';
+        mc.querySelectorAll(':scope > div, :scope > form').forEach(h => h.style.display = 'none');
+        const vi = document.getElementById('vista-inicio');
+        if (vi) vi.style.display = 'block';
+      }
+    }, 3000);
+
     onAuthStateChanged(auth, async (user) => {
       setTimeout(() => {
           if (typeof window.hideSplashScreen === 'function') {
@@ -5933,6 +5955,7 @@
             userData.uid = user.uid;
             if (window.mostrarPerfil) window.mostrarPerfil(userData);
             console.log('✅ Usuario completo - Mostrando perfil');
+            if (window._iniciarUbicacionCliente) window._iniciarUbicacionCliente();
           } else {
             console.log('⚠️ Usuario sin datos completos - Mostrando registro');
             const existingData = snap.exists() ? snap.val() : {};
@@ -6030,8 +6053,10 @@
 
                 if (estado === "Bloqueado") {
                     tabServicio.disabled = true;
-                    document.getElementById("terminos-check").checked = false; 
-                    document.getElementById("btnSolicitarChat").disabled = true; 
+                    const tc = document.getElementById("terminos-check");
+                    const bsc = document.getElementById("btnSolicitarChat");
+                    if (tc) tc.checked = false;
+                    if (bsc) bsc.disabled = true;
                     
                     let mensaje = "Tu cuenta está **Bloqueada**. No puedes usar el servicio de chat. Contacta al administrador si crees que es un error.";
                     
@@ -9201,12 +9226,6 @@ Detalles técnicos en la consola (F12)`;
   </div>
 </div>
 <script>
-console.log("JS cargado correctamente");
-document.body.style.background = "black";
-</script>
-
-
-<script>
 // ============================================================
 // MÓDULO: BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN
 // ============================================================
@@ -9382,25 +9401,23 @@ window.cargarDatosGuardados = function() {
 };
 
 // ── 4. GUARDAR UBICACIÓN CLIENTE EN FIREBASE ───────────────
-(function iniciarUbicacionCliente() {
-  if (!navigator.geolocation) return;
+// Ubicación del cliente — solo se activa cuando hay sesión iniciada
+window._iniciarUbicacionCliente = function() {
+  if (!navigator.geolocation || window._ubicClienteActivo) return;
+  window._ubicClienteActivo = true;
   navigator.geolocation.watchPosition(pos => {
-    if (!window.currentUserID || !window.db) return;
+    if (!window.currentUserID || !window.db || !window.set || !window.ref) return;
     const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-    const ts = Date.now();
     try {
-      // Solo guardar si tiene sesión activa
-      if (window.currentUserID) {
-        window.set(window.ref(window.db, 'ubicaciones_clientes/' + window.currentUserID), {
-          lat: parseFloat(lat.toFixed(6)),
-          lng: parseFloat(lng.toFixed(6)),
-          accuracy: Math.round(accuracy),
-          ts
-        }).catch(() => {}); // Silenciar error de permisos
-      }
+      window.set(window.ref(window.db, 'ubicaciones_clientes/' + window.currentUserID), {
+        lat: parseFloat(lat.toFixed(6)),
+        lng: parseFloat(lng.toFixed(6)),
+        accuracy: Math.round(accuracy),
+        ts: Date.now()
+      }).catch(() => {});
     } catch(e) {}
   }, null, { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 });
-})();
+};
 
 // ── 5. CHAT P2P CLIENTE ↔ REPARTIDOR ──────────────────────
 let _chatP2PId = null;

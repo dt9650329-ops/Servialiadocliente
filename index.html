@@ -3521,9 +3521,7 @@
         const nombres = { sur:'Sur', centro:'Centro', norte:'Norte', oriente:'Oriente', occidente:'Occidente' };
         const tamanoLabels = { normal: 'Normal (sin extra)', grande: 'Grande (+$1.000)', muy_grande: 'Muy grande (+$2.000)' };
 
-        // Construir resumen en modal
-        const municipioId = document.getElementById('domi-municipio-id')?.value || '';
-        const esFuera = zonaEntrega === 'fuera' || municipioId !== '';
+        // Construir resumen en modal (municipioId y esFuera ya definidos arriba)
         const kmVia = document.getElementById('domi-km-via')?.value || '';
         const veredaNombre = document.getElementById('domi-vereda-nombre')?.value || '';
         const resumen = document.getElementById('modal-domi-resumen');
@@ -3562,15 +3560,15 @@
         const municipioIdVal = document.getElementById('domi-municipio-id')?.value || '';
         const municipioNombre = document.getElementById('domi-municipio') ? 
           document.getElementById('domi-municipio').options[document.getElementById('domi-municipio').selectedIndex]?.text || '' : '';
-        const kmVia = document.getElementById('domi-km-via')?.value || '';
-        const veredaNombre = document.getElementById('domi-vereda-nombre')?.value || '';
+        const kmVia2 = document.getElementById('domi-km-via')?.value || '';
+        const veredaNombre2 = document.getElementById('domi-vereda-nombre')?.value || '';
         const barrioRecogida = document.getElementById('domi-barrio-recogida').value || document.getElementById('search-barrio-recogida').value || '';
         const comunaRecogida = document.getElementById('domi-comuna-recogida').value || '';
         const barrioEntrega  = document.getElementById('domi-barrio-entrega').value  || document.getElementById('search-barrio-entrega').value  || '';
         const comunaEntrega  = document.getElementById('domi-comuna-entrega').value  || '';
         window._domiPendiente = { nombreEntrega, dirRecogida, telEntrega, zonaRecogida, barrioRecogida, comunaRecogida,
                                    nombreRecibe, dirEntrega, telRecibe, zonaEntrega, barrioEntrega, comunaEntrega,
-                                   municipioId: municipioIdVal, municipioNombre, kmVia, veredaNombre, precio, tamano, servicioCompra };
+                                   municipioId: municipioIdVal, municipioNombre, kmVia: kmVia2, veredaNombre: veredaNombre2, precio, tamano, servicioCompra };
 
         document.getElementById('modal-confirmar-domi').style.display = 'block';
     };

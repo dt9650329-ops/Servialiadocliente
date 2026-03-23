@@ -1,0 +1,35 @@
+# ══════════════════════════════════════════════════════════════
+#  netlify.toml — Configuración de Netlify para Servi Aliados
+# ══════════════════════════════════════════════════════════════
+
+[build]
+  # Carpeta donde está tu index.html
+  publish = "."
+
+  # Carpeta donde están las functions
+  functions = "netlify/functions"
+
+# ── Redireccionar /api/ai-chat al proxy ───────────────────────
+[[redirects]]
+  from   = "/api/ai-chat"
+  to     = "/.netlify/functions/ai-proxy"
+  status = 200
+
+# ── Caché para archivos estáticos ─────────────────────────────
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+# ── Headers de seguridad ──────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"

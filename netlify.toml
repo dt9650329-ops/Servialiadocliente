@@ -9,6 +9,14 @@
   # Carpeta donde están las functions
   functions = "netlify/functions"
 
+# ── Node.js 18 (necesario para fetch nativo en functions) ─────
+[build.environment]
+  NODE_VERSION = "18"
+
+# ── Bundler moderno para functions ───────────────────────────
+[functions]
+  node_bundler = "esbuild"
+
 # ── Redireccionar /api/ai-chat al proxy ───────────────────────
 [[redirects]]
   from   = "/api/ai-chat"

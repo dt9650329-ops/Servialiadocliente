@@ -56,7 +56,8 @@ exports.handler = async function (event, context) {
         });
     }
 
-    const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
+    // ✅ Cambiado de gemini-2.0-flash a gemini-1.5-flash (más cuota gratuita)
+    const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey;
 
     try {
         const response = await fetch(GEMINI_URL, {

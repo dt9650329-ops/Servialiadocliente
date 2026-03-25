@@ -42,21 +42,24 @@ exports.handler = async function (event, context) {
                  body: JSON.stringify({ error: 'GEMINI_API_KEY no configurada' }) };
     }
 
+    // ✅ Fix: Construir historial con alternancia estricta user->model
     const geminiContents = [];
-
-    if (system) {
-        geminiContents.push({ role: 'user',  parts: [{ text: '[INSTRUCCIONES]\n' + system }] });
-        geminiContents.push({ role: 'model', parts: [{ text: 'Entendido, seguiré esas instrucciones.' }] });
-    }
-
     for (const msg of messages.slice(-14)) {
-        geminiContents.push({
-            role : msg.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: msg.content }]
-        });
+        const role = msg.role === 'assistant' ? 'model' : 'user';
+        const last = geminiContents[geminiContents.length - 1];
+        if (last && last.role === role) {
+            // Fusionar mensajes del mismo rol en lugar de duplicar
+            last.parts[0].text += '\n' + msg.content;
+        } else {
+            geminiContents.push({ role, parts: [{ text: msg.content }] });
+        }
     }
 
-    // gemini-2.5-flash-preview-04-17
+    // Asegurar que el último mensaje sea del usuario
+    while (geminiContents.length > 0 && geminiContents[geminiContents.length - 1].role !== 'user') {
+        geminiContents.pop();
+    }
+
     const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey;
 
     try {
@@ -64,6 +67,8 @@ exports.handler = async function (event, context) {
             method : 'POST',
             headers: { 'Content-Type': 'application/json' },
             body   : JSON.stringify({
+                // ✅ Fix: system prompt como systemInstruction (no como mensaje)
+                systemInstruction: system ? { parts: [{ text: system }] } : undefined,
                 contents: geminiContents,
                 generationConfig: {
                     temperature    : 0.7,

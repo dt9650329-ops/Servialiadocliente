@@ -56,7 +56,7 @@ exports.handler = async function (event, context) {
         });
     }
 
-    // ✅ Cambiado de gemini-2.0-flash a gemini-1.5-flash (más cuota gratuita)
+    // gemini-2.5-flash-preview-04-17
     const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey;
 
     try {

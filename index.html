@@ -10852,6 +10852,11 @@ const BARRIOS_LOCAL_FMT = BARRIOS_LOCAL.map(b => ({
 
 let BARRIOS_ARMENIA = [...BARRIOS_LOCAL_FMT]; // precargado con datos locales
 
+// Inicializar BARRIOS_LISTA con datos locales (se actualiza cuando llega Firebase)
+window.BARRIOS_LISTA = BARRIOS_LOCAL_FMT.map(b => ({
+  nombre: b.n, zona: b.z, comuna: b.c
+}));
+
 function actualizarPlaceholders() {
   const sr = document.getElementById('search-barrio-recogida');
   const se = document.getElementById('search-barrio-entrega');
@@ -10883,6 +10888,10 @@ function cargarBarriosDesdeFirebase() {
         const soloLocales = BARRIOS_LOCAL_FMT.filter(b => !nombres.has(b.n.toLowerCase()));
         BARRIOS_ARMENIA = [...deFirebase, ...soloLocales]
           .sort((a, b) => a.n.localeCompare(b.n, 'es'));
+        // Sincronizar window.BARRIOS_LISTA (usado por filtrarBarriosInputPro)
+        window.BARRIOS_LISTA = BARRIOS_ARMENIA.map(b => ({
+          nombre: b.n, zona: b.z, comuna: b.c
+        }));
         console.log('✅ Barrios: ' + deFirebase.length + ' de Firebase + ' + soloLocales.length + ' locales = ' + BARRIOS_ARMENIA.length + ' total');
       }
       actualizarPlaceholders();

@@ -4140,15 +4140,77 @@
                 razon  = `🌄 ${nombresMunicipios[municipioId]} km ${km} · $${t.base.toLocaleString('es-CO')} base + ${km}km×$${t.porKm}`;
                 if (recargo > 0) razon += ` + $${recargo.toLocaleString('es-CO')} recargo zona`;
 
-            } else if (municipioId === 'vereda_otro') {
-                precio = 0;
-                razon  = '⚠️ El admin confirmará el precio por este destino';
-                precioValor.textContent = 'A confirmar';
-                precioRazon.textContent = razon;
+            } else if (municipioId === 'vereda_otro' || municipioId.startsWith('gps:') || municipioId === 'otra_ubicacion') {
+                // ── CÁLCULO AUTOMÁTICO POR KM (OSRM) ──────────────────
+                precioValor.textContent = '⏳ Calculando...';
+                precioRazon.textContent = 'Obteniendo distancia real por ruta...';
                 precioBox.style.display = 'block';
-                const extraVol = tamano === 'grande' ? 1000 : tamano === 'muy_grande' ? 2000 : 0;
-                if (extraVol > 0) precioRazon.textContent += ` + extra volumen $${extraVol.toLocaleString('es-CO')}`;
-                return;
+
+                try {
+                    // Punto de recogida: centro aproximado de Armenia por zona
+                    const coordsRecogida = {
+                        sur:      [4.5175, -75.6814],
+                        norte:    [4.5580, -75.6670],
+                        centro:   [4.5339, -75.6811],
+                        oriente:  [4.5350, -75.6600],
+                        occidente:[4.5339, -75.7000]
+                    };
+                    const [latR, lngR] = coordsRecogida[zonaRecogida] || coordsRecogida.centro;
+
+                    // Punto de entrega: GPS capturado o geocodificar dirección manual
+                    let latE = null, lngE = null;
+
+                    if (municipioId.startsWith('gps:')) {
+                        const [, coords] = municipioId.split('gps:');
+                        [latE, lngE] = coords.split(',').map(Number);
+                    } else {
+                        // Intentar geocodificar la dirección/ciudad ingresada manualmente
+                        const ciudad = (document.getElementById('domi-ciudad-fuera')?.value || '').trim();
+                        const referencia = (document.getElementById('domi-referencia-fuera')?.value || '').trim();
+                        const query = [referencia, ciudad, 'Colombia'].filter(Boolean).join(', ');
+                        if (query.length > 5) {
+                            const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&accept-language=es`);
+                            if (geoResp.ok) {
+                                const geoData = await geoResp.json();
+                                if (geoData.length > 0) {
+                                    latE = parseFloat(geoData[0].lat);
+                                    lngE = parseFloat(geoData[0].lon);
+                                }
+                            }
+                        }
+                    }
+
+                    if (latE && lngE) {
+                        // Calcular ruta real con OSRM (gratuito, sin API key)
+                        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${lngR},${latR};${lngE},${latE}?overview=false`;
+                        const osrmResp = await fetch(osrmUrl);
+                        if (osrmResp.ok) {
+                            const osrmData = await osrmResp.json();
+                            const distanciaM = osrmData.routes?.[0]?.distance || 0;
+                            const distanciaKm = distanciaM / 1000;
+
+                            // Fórmula: $10.000 base + $2.000 por cada 1.5km
+                            const BASE = 10000;
+                            const TARIFA = 2000;
+                            const CADA_KM = 1.5;
+                            const tramos = Math.ceil(distanciaKm / CADA_KM);
+                            precio = BASE + (tramos * TARIFA);
+                            razon = `📍 Ruta ~${distanciaKm.toFixed(1)} km · $${BASE.toLocaleString('es-CO')} base + ${tramos} tramo(s)×$${TARIFA.toLocaleString('es-CO')}`;
+                        } else {
+                            throw new Error('OSRM no disponible');
+                        }
+                    } else {
+                        throw new Error('No se pudo geolocalizar el destino');
+                    }
+                } catch(e) {
+                    // Fallback: el admin confirma
+                    precioValor.textContent = 'A confirmar';
+                    precioRazon.textContent = '⚠️ No se pudo calcular la distancia · El admin confirmará el precio';
+                    precioBox.style.display = 'block';
+                    const extraVol2 = tamano === 'grande' ? 1000 : tamano === 'muy_grande' ? 2000 : 0;
+                    if (extraVol2 > 0) precioRazon.textContent += ` + extra volumen $${extraVol2.toLocaleString('es-CO')}`;
+                    return;
+                }
             }
 
         } else {
@@ -10851,6 +10913,11 @@ const BARRIOS_LOCAL_FMT = BARRIOS_LOCAL.map(b => ({
 })).sort((a, b) => a.n.localeCompare(b.n, 'es'));
 
 let BARRIOS_ARMENIA = [...BARRIOS_LOCAL_FMT]; // precargado con datos locales
+
+// Inicializar BARRIOS_LISTA con datos locales (se actualiza cuando llega Firebase)
+window.BARRIOS_LISTA = BARRIOS_LOCAL_FMT.map(b => ({
+  nombre: b.n, zona: b.z, comuna: b.c
+}));
 
 // Inicializar BARRIOS_LISTA con datos locales (se actualiza cuando llega Firebase)
 window.BARRIOS_LISTA = BARRIOS_LOCAL_FMT.map(b => ({

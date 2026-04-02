@@ -3387,15 +3387,95 @@
               <label>Número de contacto (quien entrega):</label>
               <input type="tel" id="domi-tel-entrega" placeholder="Ej: 3001234567" />
 
-              <label>🔍 Barrio de recogida:</label>
-              <div class="barrio-search-wrap">
-                <input type="text" id="search-barrio-recogida" placeholder="Cargando barrios..." autocomplete="off" oninput="filtrarBarriosInput('recogida')" onfocus="mostrarDropdown('recogida')" />
-                <div class="barrio-dropdown" id="dropdown-recogida"></div>
+              <!-- Selector tipo de recogida -->
+              <label>📍 ¿Dónde se recoge?</label>
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <button type="button" id="btn-recogida-armenia" onclick="cambiarTipoRecogida('armenia')"
+                  style="flex:1;padding:9px;border-radius:8px;border:2px solid #FFC300;background:#1a1500;color:#FFC300;font-weight:bold;cursor:pointer;font-size:13px;">
+                  🏙️ Armenia
+                </button>
+                <button type="button" id="btn-recogida-fuera" onclick="cambiarTipoRecogida('fuera')"
+                  style="flex:1;padding:9px;border-radius:8px;border:2px solid #444;background:#2a2a2a;color:#aaa;font-weight:bold;cursor:pointer;font-size:13px;">
+                  🌄 Fuera de Armenia
+                </button>
               </div>
+
+              <!-- Recogida dentro de Armenia -->
+              <div id="recogida-armenia-wrap">
+                <label>🔍 Barrio de recogida:</label>
+                <div class="barrio-search-wrap">
+                  <input type="text" id="search-barrio-recogida" placeholder="Cargando barrios..." autocomplete="off" oninput="filtrarBarriosInput('recogida')" onfocus="mostrarDropdown('recogida')" />
+                  <div class="barrio-dropdown" id="dropdown-recogida"></div>
+                </div>
+                <div id="barrio-recogida-tag" style="display:none; margin-top:6px; background:#1a3a1a; border-radius:6px; padding:6px 10px; color:#28a745; font-size:13px;"></div>
+              </div>
+
+              <!-- Recogida fuera de Armenia -->
+              <div id="recogida-fuera-wrap" style="display:none;">
+                <label>🏘️ Municipio o zona de recogida:</label>
+                <select id="domi-municipio-recogida" onchange="seleccionarMunicipioRecogida()" style="margin-bottom:10px;">
+                  <option value="">-- Selecciona municipio --</option>
+                  <optgroup label="Municipios cercanos">
+                    <option value="calarca">Calarcá</option>
+                    <option value="circasia">Circasia</option>
+                    <option value="montenegro">Montenegro</option>
+                    <option value="tebaida">La Tebaida</option>
+                    <option value="puerto_tapao">Puerto Tapao</option>
+                    <option value="salento">Salento</option>
+                    <option value="quimbaya">Quimbaya</option>
+                    <option value="filandia">Filandia</option>
+                    <option value="buenavista">Buenavista</option>
+                    <option value="pijao">Pijao</option>
+                    <option value="genova">Génova</option>
+                    <option value="cordoba">Córdoba</option>
+                  </optgroup>
+                  <optgroup label="Veredas / Fincas / Vías">
+                    <option value="via_tebaida">Vía Armenia - La Tebaida (km)</option>
+                    <option value="via_montenegro">Vía Armenia - Montenegro (km)</option>
+                    <option value="via_calarca">Vía Armenia - Calarcá (km)</option>
+                    <option value="via_circasia">Vía Armenia - Circasia (km)</option>
+                    <option value="via_puerto_tapao">Vía Armenia - Puerto Tapao (km)</option>
+                    <option value="vereda_otro">Vereda / Finca (otro)</option>
+                  </optgroup>
+                  <optgroup label="Otra ubicación">
+                    <option value="otra_ubicacion_r">📍 Mi ubicación no está en la lista</option>
+                  </optgroup>
+                </select>
+
+                <div id="km-input-recogida-wrap" style="display:none;">
+                  <label>📏 Kilómetro aproximado:</label>
+                  <input type="number" id="domi-km-via-recogida" placeholder="Ej: 3" min="1" max="30" oninput="calcularPrecioDomi()" style="margin-bottom:6px;"/>
+                  <p style="color:#aaa;font-size:12px;margin:0 0 8px;">Ingresa el kilómetro de la vía donde queda el punto de recogida.</p>
+                </div>
+
+                <div id="vereda-recogida-wrap" style="display:none;">
+                  <label>📝 Nombre de la vereda / finca:</label>
+                  <input type="text" id="domi-vereda-recogida" placeholder="Ej: Finca El Remanso, Vereda La Siria" oninput="calcularPrecioDomi()" style="margin-bottom:6px;"/>
+                </div>
+
+                <!-- GPS / ubicación manual de recogida -->
+                <div id="otra-recogida-wrap" style="display:none; background:#1a1a2e; border:1px solid #FFC300; border-radius:10px; padding:14px; margin-top:6px;">
+                  <p style="color:#FFC300; font-weight:bold; margin-bottom:10px; font-size:14px;">📍 Indicar ubicación de recogida</p>
+                  <button type="button" id="btn-capturar-ubicacion-recogida" onclick="capturarUbicacionRecogida()"
+                    style="width:100%; background:linear-gradient(135deg,#7c5c00,#a07800); color:#fff; padding:12px; border-radius:8px; border:none; font-weight:bold; font-size:14px; cursor:pointer; margin-bottom:10px;">
+                    📡 Capturar mi ubicación actual (GPS)
+                  </button>
+                  <div id="ubicacion-recogida-info" style="display:none; background:#1a1500; border-radius:8px; padding:10px; margin-bottom:10px; font-size:13px;">
+                    <p style="color:#FFC300; font-weight:bold; margin:0 0 4px;">✅ Ubicación capturada</p>
+                    <p id="ubicacion-recogida-coords" style="color:#aaa; margin:0; font-size:12px;"></p>
+                    <p id="ubicacion-recogida-addr" style="color:#f0f0f0; margin:4px 0 0; font-size:13px;"></p>
+                  </div>
+                  <label style="color:#f0f0f0; font-size:13px;">🏙️ Ciudad / referencia:</label>
+                  <input type="text" id="domi-ciudad-recogida" placeholder="Ej: Calarcá, Quindío" style="margin-bottom:6px;" oninput="calcularPrecioDomi()"/>
+                </div>
+
+                <div id="recogida-fuera-info" style="display:none;background:#1a1200;border-radius:8px;padding:8px 10px;font-size:13px;color:#e67e22;margin-top:4px;"></div>
+              </div>
+
               <input type="hidden" id="domi-zona-recogida" />
               <input type="hidden" id="domi-barrio-recogida" />
               <input type="hidden" id="domi-comuna-recogida" />
-              <div id="barrio-recogida-tag" style="display:none; margin-top:6px; background:#1a3a1a; border-radius:6px; padding:6px 10px; color:#28a745; font-size:13px;"></div>
+              <input type="hidden" id="domi-municipio-recogida-id" />
             </div>
 
             <!-- ===== QUIEN RECIBE ===== -->
@@ -4076,9 +4156,12 @@
             tamanoNota.style.display = 'none';
         }
 
-        const municipioIdCalc = document.getElementById('domi-municipio-id')?.value || '';
-        const esFueraCalc = zonaEntrega === 'fuera' || municipioIdCalc !== '';
-        if (!zonaRecogida || (!zonaEntrega && !esFueraCalc)) {
+        const municipioIdCalc    = document.getElementById('domi-municipio-id')?.value || '';
+        const municipioRecogida  = document.getElementById('domi-municipio-recogida-id')?.value || '';
+        const esFueraEntrega = zonaEntrega === 'fuera' || municipioIdCalc !== '';
+        const esFueraRecogida = zonaRecogida === 'fuera_recogida' || municipioRecogida !== '';
+
+        if (!zonaRecogida || (!zonaEntrega && !esFueraEntrega && !esFueraRecogida)) {
             precioBox.style.display = 'none';
             return;
         }
@@ -4141,30 +4224,24 @@
                 if (recargo > 0) razon += ` + $${recargo.toLocaleString('es-CO')} recargo zona`;
 
             } else if (municipioId === 'vereda_otro' || municipioId.startsWith('gps:') || municipioId === 'otra_ubicacion') {
-                // ── CÁLCULO AUTOMÁTICO POR KM (OSRM) ──────────────────
+                // ── CÁLCULO AUTOMÁTICO POR KM (OSRM) — ENTREGA FUERA ──
                 precioValor.textContent = '⏳ Calculando...';
                 precioRazon.textContent = 'Obteniendo distancia real por ruta...';
                 precioBox.style.display = 'block';
-
                 try {
-                    // Punto de recogida: centro aproximado de Armenia por zona
-                    const coordsRecogida = {
-                        sur:      [4.5175, -75.6814],
-                        norte:    [4.5580, -75.6670],
-                        centro:   [4.5339, -75.6811],
-                        oriente:  [4.5350, -75.6600],
-                        occidente:[4.5339, -75.7000]
-                    };
-                    const [latR, lngR] = coordsRecogida[zonaRecogida] || coordsRecogida.centro;
-
-                    // Punto de entrega: GPS capturado o geocodificar dirección manual
-                    let latE = null, lngE = null;
-
-                    if (municipioId.startsWith('gps:')) {
-                        const [, coords] = municipioId.split('gps:');
-                        [latE, lngE] = coords.split(',').map(Number);
+                    const coordsZona = { sur:[4.5175,-75.6814], norte:[4.5580,-75.6670], centro:[4.5339,-75.6811], oriente:[4.5350,-75.6600], occidente:[4.5339,-75.7000] };
+                    let latR, lngR;
+                    const munRecId = document.getElementById('domi-municipio-recogida-id')?.value || '';
+                    if (munRecId.startsWith('gps_r:')) {
+                        const coords = munRecId.split('gps_r:')[1].split(',').map(Number);
+                        [latR, lngR] = coords;
                     } else {
-                        // Intentar geocodificar la dirección/ciudad ingresada manualmente
+                        [latR, lngR] = coordsZona[zonaRecogida] || coordsZona.centro;
+                    }
+                    let latE = null, lngE = null;
+                    if (municipioId.startsWith('gps:')) {
+                        [latE, lngE] = municipioId.split('gps:')[1].split(',').map(Number);
+                    } else {
                         const ciudad = (document.getElementById('domi-ciudad-fuera')?.value || '').trim();
                         const referencia = (document.getElementById('domi-referencia-fuera')?.value || '').trim();
                         const query = [referencia, ciudad, 'Colombia'].filter(Boolean).join(', ');
@@ -4172,45 +4249,61 @@
                             const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&accept-language=es`);
                             if (geoResp.ok) {
                                 const geoData = await geoResp.json();
-                                if (geoData.length > 0) {
-                                    latE = parseFloat(geoData[0].lat);
-                                    lngE = parseFloat(geoData[0].lon);
-                                }
+                                if (geoData.length > 0) { latE = parseFloat(geoData[0].lat); lngE = parseFloat(geoData[0].lon); }
                             }
                         }
                     }
-
                     if (latE && lngE) {
-                        // Calcular ruta real con OSRM (gratuito, sin API key)
-                        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${lngR},${latR};${lngE},${latE}?overview=false`;
-                        const osrmResp = await fetch(osrmUrl);
+                        const osrmResp = await fetch(`https://router.project-osrm.org/route/v1/driving/${lngR},${latR};${lngE},${latE}?overview=false`);
                         if (osrmResp.ok) {
                             const osrmData = await osrmResp.json();
-                            const distanciaM = osrmData.routes?.[0]?.distance || 0;
-                            const distanciaKm = distanciaM / 1000;
-
-                            // Fórmula: $10.000 base + $2.000 por cada 1.5km
-                            const BASE = 10000;
-                            const TARIFA = 2000;
-                            const CADA_KM = 1.5;
-                            const tramos = Math.ceil(distanciaKm / CADA_KM);
-                            precio = BASE + (tramos * TARIFA);
-                            razon = `📍 Ruta ~${distanciaKm.toFixed(1)} km · $${BASE.toLocaleString('es-CO')} base + ${tramos} tramo(s)×$${TARIFA.toLocaleString('es-CO')}`;
-                        } else {
-                            throw new Error('OSRM no disponible');
-                        }
-                    } else {
-                        throw new Error('No se pudo geolocalizar el destino');
-                    }
+                            const distKm = (osrmData.routes?.[0]?.distance || 0) / 1000;
+                            const tramos = Math.ceil(distKm / 1.5);
+                            precio = 10000 + (tramos * 2000);
+                            razon = `📍 Ruta ~${distKm.toFixed(1)} km · $10.000 base + ${tramos} tramo(s)×$2.000`;
+                        } else { throw new Error('OSRM no disponible'); }
+                    } else { throw new Error('No se pudo geolocalizar el destino'); }
                 } catch(e) {
-                    // Fallback: el admin confirma
                     precioValor.textContent = 'A confirmar';
-                    precioRazon.textContent = '⚠️ No se pudo calcular la distancia · El admin confirmará el precio';
+                    precioRazon.textContent = '⚠️ No se pudo calcular · El admin confirmará el precio';
                     precioBox.style.display = 'block';
-                    const extraVol2 = tamano === 'grande' ? 1000 : tamano === 'muy_grande' ? 2000 : 0;
-                    if (extraVol2 > 0) precioRazon.textContent += ` + extra volumen $${extraVol2.toLocaleString('es-CO')}`;
                     return;
                 }
+            }
+
+        } else if (esFueraRecogida) {
+            // ── RECOGIDA FUERA DE ARMENIA (con entrega dentro) ────
+            precioValor.textContent = '⏳ Calculando...';
+            precioRazon.textContent = 'Obteniendo distancia real por ruta...';
+            precioBox.style.display = 'block';
+            try {
+                let latR = null, lngR = null;
+                if (municipioRecogida.startsWith('gps_r:')) {
+                    [latR, lngR] = municipioRecogida.split('gps_r:')[1].split(',').map(Number);
+                } else {
+                    const ciudad = (document.getElementById('domi-ciudad-recogida')?.value || '').trim();
+                    if (ciudad.length > 3) {
+                        const geoR = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(ciudad+', Colombia')}&format=json&limit=1&accept-language=es`);
+                        if (geoR.ok) { const gd = await geoR.json(); if (gd.length>0) { latR=parseFloat(gd[0].lat); lngR=parseFloat(gd[0].lon); } }
+                    }
+                }
+                const coordsZona = { sur:[4.5175,-75.6814], norte:[4.5580,-75.6670], centro:[4.5339,-75.6811], oriente:[4.5350,-75.6600], occidente:[4.5339,-75.7000] };
+                const [latE, lngE] = coordsZona[zonaEntrega] || coordsZona.centro;
+                if (latR && lngR) {
+                    const osrmResp = await fetch(`https://router.project-osrm.org/route/v1/driving/${lngR},${latR};${lngE},${latE}?overview=false`);
+                    if (osrmResp.ok) {
+                        const osrmData = await osrmResp.json();
+                        const distKm = (osrmData.routes?.[0]?.distance || 0) / 1000;
+                        const tramos = Math.ceil(distKm / 1.5);
+                        precio = 10000 + (tramos * 2000);
+                        razon = `📍 Ruta ~${distKm.toFixed(1)} km · $10.000 base + ${tramos} tramo(s)×$2.000`;
+                    } else { throw new Error('OSRM no disponible'); }
+                } else { throw new Error('No se pudo geolocalizar la recogida'); }
+            } catch(e) {
+                precioValor.textContent = 'A confirmar';
+                precioRazon.textContent = '⚠️ No se pudo calcular · El admin confirmará el precio';
+                precioBox.style.display = 'block';
+                return;
             }
 
         } else {
@@ -10919,11 +11012,6 @@ window.BARRIOS_LISTA = BARRIOS_LOCAL_FMT.map(b => ({
   nombre: b.n, zona: b.z, comuna: b.c
 }));
 
-// Inicializar BARRIOS_LISTA con datos locales (se actualiza cuando llega Firebase)
-window.BARRIOS_LISTA = BARRIOS_LOCAL_FMT.map(b => ({
-  nombre: b.n, zona: b.z, comuna: b.c
-}));
-
 function actualizarPlaceholders() {
   const sr = document.getElementById('search-barrio-recogida');
   const se = document.getElementById('search-barrio-entrega');
@@ -11387,6 +11475,130 @@ document.getElementById('modal-sugerir-barrio')?.addEventListener('click', e => 
 </script>
 
 <script>
+// ── SELECTOR RECOGIDA ARMENIA / FUERA ─────────────────────
+window.cambiarTipoRecogida = function(tipo) {
+  const btnArm  = document.getElementById('btn-recogida-armenia');
+  const btnFuera = document.getElementById('btn-recogida-fuera');
+  const wrapArm  = document.getElementById('recogida-armenia-wrap');
+  const wrapFuera = document.getElementById('recogida-fuera-wrap');
+  const hidZona  = document.getElementById('domi-zona-recogida');
+  const hidBarrio = document.getElementById('domi-barrio-recogida');
+  const hidMun   = document.getElementById('domi-municipio-recogida-id');
+  const tag      = document.getElementById('barrio-recogida-tag');
+
+  if (tipo === 'armenia') {
+    btnArm.style.cssText   += ';border-color:#FFC300;background:#1a1500;color:#FFC300;';
+    btnFuera.style.cssText += ';border-color:#444;background:#2a2a2a;color:#aaa;';
+    wrapArm.style.display   = 'block';
+    wrapFuera.style.display = 'none';
+    hidMun.value = '';
+    hidZona.value = ''; hidBarrio.value = '';
+    if (tag) tag.style.display = 'none';
+  } else {
+    btnFuera.style.cssText += ';border-color:#e67e22;background:#1a1200;color:#e67e22;';
+    btnArm.style.cssText   += ';border-color:#444;background:#2a2a2a;color:#aaa;';
+    wrapArm.style.display   = 'none';
+    wrapFuera.style.display = 'block';
+    hidZona.value  = 'fuera_recogida';
+    hidBarrio.value = '';
+    hidMun.value = '';
+  }
+  calcularPrecioDomi();
+};
+
+window.seleccionarMunicipioRecogida = function() {
+  const mun  = document.getElementById('domi-municipio-recogida').value;
+  const hidM = document.getElementById('domi-municipio-recogida-id');
+  const hidB = document.getElementById('domi-barrio-recogida');
+  const hidZ = document.getElementById('domi-zona-recogida');
+  const kmWrap   = document.getElementById('km-input-recogida-wrap');
+  const verWrap  = document.getElementById('vereda-recogida-wrap');
+  const otraWrap = document.getElementById('otra-recogida-wrap');
+  const info     = document.getElementById('recogida-fuera-info');
+
+  hidM.value = mun;
+  hidZ.value = 'fuera_recogida';
+
+  const nombres = {
+    calarca:'Calarcá', circasia:'Circasia', montenegro:'Montenegro',
+    tebaida:'La Tebaida', puerto_tapao:'Puerto Tapao', salento:'Salento',
+    quimbaya:'Quimbaya', filandia:'Filandia', buenavista:'Buenavista',
+    pijao:'Pijao', genova:'Génova', cordoba:'Córdoba',
+    via_tebaida:'Vía Armenia-Tebaida', via_montenegro:'Vía Armenia-Montenegro',
+    via_calarca:'Vía Armenia-Calarcá', via_circasia:'Vía Armenia-Circasia',
+    vereda_otro:'Vereda / Finca', otra_ubicacion_r:'Otra ubicación'
+  };
+  hidB.value = nombres[mun] || mun;
+
+  kmWrap.style.display   = mun.startsWith('via_') ? 'block' : 'none';
+  verWrap.style.display  = mun === 'vereda_otro' ? 'block' : 'none';
+  otraWrap.style.display = mun === 'otra_ubicacion_r' ? 'block' : 'none';
+
+  info.style.display = mun ? 'block' : 'none';
+  info.textContent = mun === 'otra_ubicacion_r' || mun === 'vereda_otro'
+    ? '📍 Recogida fuera de Armenia · El precio incluirá el desplazamiento'
+    : mun ? '🌄 Recogida fuera de Armenia · ' + (nombres[mun] || mun) : '';
+
+  calcularPrecioDomi();
+};
+
+window.capturarUbicacionRecogida = function() {
+  const btn      = document.getElementById('btn-capturar-ubicacion-recogida');
+  const infoDiv  = document.getElementById('ubicacion-recogida-info');
+  const coordsEl = document.getElementById('ubicacion-recogida-coords');
+  const addrEl   = document.getElementById('ubicacion-recogida-addr');
+  const ciudadInput = document.getElementById('domi-ciudad-recogida');
+
+  if (!navigator.geolocation) {
+    alert('Tu navegador no soporta geolocalización. Por favor escribe la dirección manualmente.');
+    return;
+  }
+  btn.textContent = '⏳ Obteniendo ubicación...';
+  btn.disabled = true;
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const lat = position.coords.latitude.toFixed(6);
+      const lng = position.coords.longitude.toFixed(6);
+
+      document.getElementById('domi-municipio-recogida-id').value = `gps_r:${lat},${lng}`;
+      document.getElementById('domi-barrio-recogida').value = `Ubicación GPS (${lat}, ${lng})`;
+      document.getElementById('domi-zona-recogida').value = 'fuera_recogida';
+
+      coordsEl.textContent = `📡 Coords: ${lat}, ${lng}`;
+      infoDiv.style.display = 'block';
+      btn.textContent = '🔄 Actualizar ubicación';
+      btn.disabled = false;
+
+      try {
+        addrEl.textContent = '🔍 Buscando dirección...';
+        const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=es`);
+        if (resp.ok) {
+          const data = await resp.json();
+          addrEl.textContent = '📍 ' + (data.display_name || '');
+          const city = data.address?.city || data.address?.town || data.address?.village || '';
+          if (city) ciudadInput.value = city;
+          ciudadInput.dispatchEvent(new Event('input'));
+        } else {
+          addrEl.textContent = '(No se pudo obtener la dirección automáticamente)';
+        }
+      } catch(e) {
+        addrEl.textContent = '(Geocodificación no disponible)';
+      }
+      calcularPrecioDomi();
+    },
+    (error) => {
+      btn.textContent = '📡 Capturar mi ubicación actual (GPS)';
+      btn.disabled = false;
+      let msg = 'No se pudo obtener tu ubicación.';
+      if (error.code === 1) msg = 'Permiso de ubicación denegado.';
+      else if (error.code === 2) msg = 'No se pudo determinar tu posición. Verifica el GPS.';
+      alert('⚠️ ' + msg + '\n\nEscribe la dirección manualmente en el campo de abajo.');
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+};
+
 // ── SELECTOR DESTINO ARMENIA / FUERA ──────────────────────
 window.cambiarTipoDestino = function(tipo) {
   const btnArmenia = document.getElementById('btn-destino-armenia');

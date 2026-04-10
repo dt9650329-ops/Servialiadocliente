@@ -10,19 +10,31 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
   
   <style>
-    /* ------------------- COLORES BASE (Inspirados en Servi Aliados Logo) ------------------- */
+    /* ------------------- COLORES BASE — Deep Navy + Amber (igual que admin) ------------------- */
     :root {
-        --color-primary: #FFD700;
-        --color-secondary: #000000;
-        --color-background: #1a1a1a;
-        --color-card: #333333;
-        --color-text-light: #f0f0f0;
-        --color-text-dark: #cccccc;
-        --color-chat-user: #555555;
-        --color-chat-user-text: #f0f0f0;
-        --color-success: #28a745;
-        --color-date-separator: #666; 
-        --color-link: #4A9EFF;
+        --color-primary:        #F59E0B;
+        --color-primary-h:      #FCD34D;
+        --color-secondary:      #060B17;
+        --color-background:     #060B17;
+        --color-surface:        #0D1526;
+        --color-surface2:       #131F36;
+        --color-surface3:       #1A2845;
+        --color-border:         #1F3055;
+        --color-border2:        #2A3F6A;
+        --color-card:           #0D1526;
+        --color-text-light:     #E2E8F0;
+        --color-text-dark:      #94A3B8;
+        --color-text-3:         #64748B;
+        --color-chat-user:      #1A2845;
+        --color-chat-user-text: #E2E8F0;
+        --color-success:        #10B981;
+        --color-date-separator: #2A3F6A;
+        --color-link:           #3B82F6;
+        --color-danger:         #EF4444;
+        --color-warning:        #F97316;
+        --accent-dim:           rgba(245,158,11,0.15);
+        --accent-glow:          0 0 20px rgba(245,158,11,0.3);
+        --shadow:               0 4px 20px rgba(0,0,0,0.5);
     }
     
     /* ------------------- ESTILOS GENERALES ------------------- */
@@ -39,7 +51,7 @@
     }
     
     body { 
-        background: linear-gradient(135deg, var(--color-background), var(--color-secondary)); 
+        background: var(--color-background);
         display: flex; 
         align-items: flex-start; 
         justify-content: center; 
@@ -49,7 +61,7 @@
     }
     
     .container { 
-        background: var(--color-card); 
+        background: var(--color-surface); 
         border-radius: 0;
         box-shadow: none;
         padding: 20px; 
@@ -67,33 +79,38 @@
         margin-top: 10px; 
         border: none; 
         border-radius: 8px; 
-        background-color: var(--color-primary); 
+        background: linear-gradient(135deg, var(--color-primary), #E08B00);
         color: var(--color-secondary); 
         font-weight: bold;
         font-size: 16px; 
         cursor: pointer; 
-        transition: background 0.3s; 
+        transition: all 0.2s ease; 
     }
-    button:hover:not(:disabled) { background-color: #ffaa00; }
-    button:disabled { background-color: #555; cursor: not-allowed; color: #999; }
+    button:hover:not(:disabled) { background: linear-gradient(135deg, var(--color-primary-h), var(--color-primary)); box-shadow: var(--accent-glow); }
+    button:disabled { background: var(--color-surface3); cursor: not-allowed; color: var(--color-text-3); }
     
     form { margin-top: 20px; text-align: left; }
     label { display: block; margin-top: 10px; font-weight: bold; color: var(--color-text-light);}
     input[type="text"], input[type="tel"], input[type="file"], input[type="email"], input[type="password"], select, textarea { 
         width: 100%; 
         padding: 10px; 
-        border: 1px solid #555; 
+        border: 1px solid var(--color-border2); 
         border-radius: 6px; 
         margin-top: 5px; 
-        background-color: #444; 
-        color: #FFFFFF; 
+        background-color: var(--color-surface3); 
+        color: var(--color-text-light); 
+    }
+    input:focus, select:focus, textarea:focus {
+        border-color: var(--color-primary);
+        outline: none;
+        box-shadow: 0 0 0 3px var(--accent-dim);
     }
     textarea {
         min-height: 80px;
         resize: vertical;
     }
-    .back-btn { background-color: #444; color: var(--color-text-light); margin-top: 20px; }
-    .back-btn:hover { background-color: #666; }
+    .back-btn { background: var(--color-surface3); color: var(--color-text-light); margin-top: 20px; border: 1px solid var(--color-border2); }
+    .back-btn:hover { background: var(--color-surface2); }
 
     /* ------------------- ESTILOS TIENDA ESTILO RAPPI ------------------- */
     .store-grid {
@@ -104,19 +121,19 @@
     }
     
     .store-card {
-        background: linear-gradient(135deg, #2a2a2a, #1f1f1f);
+        background: linear-gradient(135deg, var(--color-surface2), var(--color-surface));
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         transition: transform 0.3s, box-shadow 0.3s;
         cursor: pointer;
-        border: 1px solid #444;
+        border: 1px solid var(--color-border);
         position: relative;
     }
     
     .store-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(255, 215, 0, 0.2);
+        box-shadow: 0 8px 25px rgba(245,158,11,0.2);
         border-color: var(--color-primary);
     }
     
@@ -210,7 +227,7 @@
     
     .store-category {
         font-size: 11px;
-        background: #444;
+        background: var(--color-surface3);
         padding: 4px 10px;
         border-radius: 12px;
         color: var(--color-text-light);
@@ -556,13 +573,13 @@
 
     /* === BUSCADOR DE BARRIOS === */
     .barrio-search-wrap { position: relative; margin-bottom: 6px; }
-    .barrio-search-wrap input[type="text"] { width:100%; padding:10px 12px; background:#333; border:1px solid #555; border-radius:8px; color:#fff; font-size:14px; box-sizing:border-box; }
-    .barrio-search-wrap input[type="text"]:focus { border-color:#FFC300; outline:none; }
-    .barrio-dropdown { position:absolute; top:100%; left:0; right:0; background:#2a2a2a; border:1px solid #555; border-radius:0 0 8px 8px; max-height:200px; overflow-y:auto; z-index:999; display:none; }
+    .barrio-search-wrap input[type="text"] { width:100%; padding:10px 12px; background:var(--color-surface3); border:1px solid var(--color-border2); border-radius:8px; color:var(--color-text-light); font-size:14px; box-sizing:border-box; }
+    .barrio-search-wrap input[type="text"]:focus { border-color:var(--color-primary); outline:none; box-shadow: 0 0 0 3px var(--accent-dim); }
+    .barrio-dropdown { position:absolute; top:100%; left:0; right:0; background:var(--color-surface2); border:1px solid var(--color-border2); border-radius:0 0 8px 8px; max-height:200px; overflow-y:auto; z-index:999; display:none; }
     .barrio-dropdown.show { display:block; }
-    .barrio-option { padding:9px 12px; cursor:pointer; font-size:13px; color:#ddd; border-bottom:1px solid #333; }
-    .barrio-option:hover { background:#3a3a3a; color:#FFC300; }
-    .barrio-option .barrio-comuna { font-size:11px; color:#888; display:block; }
+    .barrio-option { padding:9px 12px; cursor:pointer; font-size:13px; color:var(--color-text-dark); border-bottom:1px solid var(--color-border); }
+    .barrio-option:hover { background:var(--color-surface3); color:var(--color-primary); }
+    .barrio-option .barrio-comuna { font-size:11px; color:var(--color-text-3); display:block; }
     /* === FIN BUSCADOR === */
     .chat-solicitud { color: var(--color-text-dark); }
     #aviso-chat { padding: 15px; background-color: #383838; border: 1px solid #555; border-radius: 8px; text-align: left; margin-top: 15px; display: none; color: var(--color-text-light); }
@@ -928,14 +945,14 @@
     .menu-ham-container {
         position: fixed;
         top: 20px;
-        right: 20px;
+        left: 20px;
         z-index: 10000;
     }
 
     .menu-ham-btn {
         width: 50px;
         height: 50px;
-        background: var(--color-primary);
+        background: linear-gradient(135deg, var(--color-primary), #E08B00);
         border: none;
         border-radius: 12px;
         cursor: pointer;
@@ -945,14 +962,14 @@
         justify-content: center;
         gap: 6px;
         padding: 10px;
-        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+        box-shadow: var(--accent-glow);
         transition: all 0.3s ease;
     }
 
     .menu-ham-btn:hover {
-        background: #ffaa00;
+        background: linear-gradient(135deg, var(--color-primary-h), var(--color-primary));
         transform: scale(1.05);
-        box-shadow: 0 6px 16px rgba(255, 215, 0, 0.5);
+        box-shadow: 0 6px 16px rgba(245,158,11,0.5);
     }
 
     .menu-ham-btn:active {
@@ -1001,48 +1018,53 @@
     .menu-lateral {
         position: fixed;
         top: 0;
-        right: -350px;
-        width: 320px;
+        left: -350px;
+        width: 280px;
         max-width: 90vw;
         height: 100vh;
-        background: var(--color-card);
-        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+        background: var(--color-surface);
+        border-right: 1px solid var(--color-border);
+        box-shadow: 4px 0 24px rgba(0,0,0,0.5);
         z-index: 9999;
-        transition: right 0.3s ease;
+        transition: left 0.3s ease;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
     }
 
     .menu-lateral.active {
-        right: 0;
+        left: 0;
     }
 
     .menu-header {
-        background: linear-gradient(135deg, var(--color-primary), #ffaa00);
-        padding: 20px;
+        background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, transparent 100%);
+        border-bottom: 1px solid var(--color-border);
+        padding: 20px 16px 18px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         position: sticky;
         top: 0;
         z-index: 10;
+        flex-shrink: 0;
     }
 
     .menu-header h3 {
         margin: 0;
-        color: var(--color-secondary);
-        font-size: 20px;
+        color: var(--color-text-light);
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: -0.3px;
     }
 
     .menu-close-btn {
-        background: rgba(0, 0, 0, 0.2);
-        border: none;
-        color: var(--color-secondary);
-        width: 35px;
-        height: 35px;
-        border-radius: 50%;
-        font-size: 24px;
+        background: var(--color-surface3);
+        border: 1px solid var(--color-border2);
+        color: var(--color-text-dark);
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        font-size: 18px;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -1051,87 +1073,84 @@
     }
 
     .menu-close-btn:hover {
-        background: rgba(0, 0, 0, 0.4);
-        transform: rotate(90deg);
+        background: var(--color-surface2);
+        color: var(--color-primary);
+        transform: none;
     }
 
     .menu-content {
-        padding: 20px;
+        padding: 12px 10px;
         flex: 1;
     }
 
     .menu-section {
-        margin-bottom: 25px;
+        margin-bottom: 8px;
     }
 
     .menu-section-title {
-        color: var(--color-primary);
-        font-size: 14px;
-        text-transform: uppercase;
+        font-size: 10px;
+        font-weight: 700;
         letter-spacing: 1px;
-        margin-bottom: 15px;
-        padding-bottom: 8px;
-        border-bottom: 2px solid #555;
+        text-transform: uppercase;
+        color: var(--color-text-3);
+        padding: 14px 6px 6px;
     }
 
     .menu-item {
-        background: #2a2a2a;
-        border-radius: 10px;
-        padding: 15px;
-        margin-bottom: 12px;
+        background: transparent;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 2px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         transition: all 0.2s;
-        border: 1px solid #444;
+        border: none;
+        border-left: 3px solid transparent;
     }
 
     .menu-item:hover {
-        background: #333;
-        border-color: var(--color-primary);
-        transform: translateX(-3px);
+        background: rgba(255,255,255,0.05);
+        border-left-color: var(--color-primary);
     }
 
     .menu-item-info {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         flex: 1;
     }
 
     .menu-item-icon {
-        font-size: 24px;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255, 215, 0, 0.1);
-        border-radius: 8px;
+        font-size: 16px;
+        width: 22px;
+        text-align: center;
+        flex-shrink: 0;
     }
 
     .menu-item-text {
         display: flex;
         flex-direction: column;
-        gap: 3px;
+        gap: 2px;
     }
 
     .menu-item-text strong {
-        color: var(--color-text-light);
-        font-size: 14px;
+        color: var(--color-text-dark);
+        font-size: 13px;
+        font-weight: 600;
     }
 
     .menu-item-text small {
-        color: var(--color-text-dark);
-        font-size: 12px;
+        color: var(--color-text-3);
+        font-size: 11px;
     }
 
     .menu-item-btn {
-        padding: 8px 16px;
+        padding: 6px 14px;
         border: none;
         border-radius: 6px;
-        background: var(--color-primary);
-        color: var(--color-secondary);
+        background: var(--accent-dim);
+        color: var(--color-primary);
         font-weight: bold;
         font-size: 12px;
         cursor: pointer;
@@ -1140,25 +1159,26 @@
     }
 
     .menu-item-btn:hover {
-        background: #ffaa00;
+        background: var(--color-primary);
+        color: var(--color-secondary);
         transform: scale(1.05);
     }
 
     .menu-item-btn:disabled {
-        background: #555;
-        color: #999;
+        background: var(--color-surface3);
+        color: var(--color-text-3);
         cursor: not-allowed;
         transform: none;
     }
 
     .menu-item-btn.granted {
-        background: var(--color-success);
-        color: white;
+        background: rgba(16,185,129,0.15);
+        color: var(--color-success);
     }
 
     .menu-item-btn.denied {
-        background: #dc3545;
-        color: white;
+        background: rgba(239,68,68,0.15);
+        color: var(--color-danger);
     }
 
     .status-granted {
@@ -1166,23 +1186,23 @@
     }
 
     .status-denied {
-        color: #dc3545 !important;
+        color: var(--color-danger) !important;
     }
 
     .status-prompt {
-        color: #ffa500 !important;
+        color: var(--color-warning) !important;
     }
 
     @media (max-width: 768px) {
         .menu-lateral {
             width: 100%;
             max-width: 100%;
-            right: -100%;
+            left: -100%;
         }
         
         .menu-ham-container {
             top: 15px;
-            right: 15px;
+            left: 15px;
         }
         
         .menu-ham-btn {
@@ -1196,20 +1216,20 @@
     }
 
     .menu-lateral::-webkit-scrollbar {
-        width: 8px;
+        width: 6px;
     }
 
     .menu-lateral::-webkit-scrollbar-track {
-        background: #1a1a1a;
+        background: var(--color-surface);
     }
 
     .menu-lateral::-webkit-scrollbar-thumb {
-        background: var(--color-primary);
-        border-radius: 4px;
+        background: var(--color-border2);
+        border-radius: 3px;
     }
 
     .menu-lateral::-webkit-scrollbar-thumb:hover {
-        background: #ffaa00;
+        background: var(--color-text-3);
     }
 
     .custom-marker-cliente {
@@ -2268,15 +2288,15 @@
     #ai-fab {
         position: fixed;
         bottom: 22px;
-        right: 18px;
+        left: 18px;
         width: 58px !important;
         height: 58px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #FFD700, #ff9800);
-        color: #111;
+        background: linear-gradient(135deg, #F59E0B, #E08B00);
+        color: #060B17;
         font-size: 26px;
         border: none;
-        box-shadow: 0 4px 18px rgba(255,193,7,0.55);
+        box-shadow: 0 4px 18px rgba(245,158,11,0.55);
         cursor: pointer;
         z-index: 10100;
         display: flex;
@@ -2286,7 +2306,7 @@
         padding: 0;
         margin: 0;
     }
-    #ai-fab:hover { transform: scale(1.1); box-shadow: 0 6px 22px rgba(255,193,7,0.7); }
+    #ai-fab:hover { transform: scale(1.1); box-shadow: 0 6px 22px rgba(245,158,11,0.7); }
     #ai-fab .ai-notif-dot {
         position: absolute;
         top: 4px; right: 4px;
@@ -2299,10 +2319,10 @@
     #ai-chat-panel {
         position: fixed;
         bottom: 90px;
-        right: 14px;
+        left: 14px;
         width: min(370px, calc(100vw - 28px));
         max-height: 520px;
-        background: #1e1e1e;
+        background: var(--color-surface);
         border-radius: 16px;
         box-shadow: 0 8px 32px rgba(0,0,0,0.65);
         z-index: 10099;
@@ -2441,6 +2461,55 @@
       </div>
       
       <div class="menu-content">
+          <!-- 🆕 SECCIÓN DE NAVEGACIÓN PRINCIPAL -->
+          <div class="menu-section">
+              <h4 class="menu-section-title">📌 Navegación</h4>
+              
+              <div class="menu-item" onclick="changeTab('tienda'); toggleMenu();" style="cursor:pointer;">
+                  <div class="menu-item-info">
+                      <span class="menu-item-icon">🏪</span>
+                      <div class="menu-item-text">
+                          <strong>Tienda</strong>
+                          <small>Negocios y productos</small>
+                      </div>
+                  </div>
+                  <span style="color:var(--color-primary); font-size:18px;">›</span>
+              </div>
+              
+              <div class="menu-item" onclick="changeTab('perfil'); toggleMenu();" style="cursor:pointer;">
+                  <div class="menu-item-info">
+                      <span class="menu-item-icon">👤</span>
+                      <div class="menu-item-text">
+                          <strong>Perfil</strong>
+                          <small>Mi cuenta y contacto</small>
+                      </div>
+                  </div>
+                  <span style="color:var(--color-primary); font-size:18px;">›</span>
+              </div>
+              
+              <div class="menu-item" onclick="changeTab('servicio'); toggleMenu();" style="cursor:pointer;">
+                  <div class="menu-item-info">
+                      <span class="menu-item-icon">📦</span>
+                      <div class="menu-item-text">
+                          <strong>Servicio</strong>
+                          <small>Solicitar domicilio</small>
+                      </div>
+                  </div>
+                  <span style="color:var(--color-primary); font-size:18px;">›</span>
+              </div>
+              
+              <div class="menu-item" onclick="changeTab('tracking'); toggleMenu();" style="cursor:pointer;">
+                  <div class="menu-item-info">
+                      <span class="menu-item-icon">📍</span>
+                      <div class="menu-item-text">
+                          <strong>Seguir Pedido</strong>
+                          <small>Rastreo en tiempo real</small>
+                      </div>
+                  </div>
+                  <span style="color:var(--color-primary); font-size:18px;">›</span>
+              </div>
+          </div>
+
           <div class="menu-section">
               <h4 class="menu-section-title">🔒 Permisos</h4>
               
@@ -2577,7 +2646,8 @@
 
    <div id="vista-cliente" style="display:none;">
       
-      <div class="tabs-container">
+      <!-- Tabs ocultos — navegación movida al menú hamburguesa ☰ -->
+      <div class="tabs-container" style="display:none;">
           <button id="tab-tienda" class="tab-button active-tab" onclick="changeTab('tienda')">🏪 Tienda</button>
           <button id="tab-perfil" class="tab-button" onclick="changeTab('perfil')">👤 Perfil</button>
           <button id="tab-servicio" class="tab-button" onclick="changeTab('servicio')">📦 Servicio</button>
@@ -2659,20 +2729,104 @@
               <label>Número de contacto (quien entrega):</label>
               <input type="tel" id="domi-tel-entrega" placeholder="Ej: 3001234567" />
 
-              <label>🔍 Barrio de recogida:</label>
-              <div class="barrio-search-wrap">
+              <label>📍 ¿Dónde es la recogida?</label>
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <button type="button" id="btn-recogida-armenia" onclick="cambiarTipoRecogida('armenia')"
+                  style="flex:1;padding:9px;border-radius:8px;border:2px solid var(--color-primary);background:var(--accent-dim);color:var(--color-primary);font-weight:bold;cursor:pointer;font-size:13px;">
+                  🏙️ Armenia
+                </button>
+                <button type="button" id="btn-recogida-fuera" onclick="cambiarTipoRecogida('fuera')"
+                  style="flex:1;padding:9px;border-radius:8px;border:2px solid var(--color-border2);background:var(--color-surface3);color:var(--color-text-3);font-weight:bold;cursor:pointer;font-size:13px;">
+                  🌄 Fuera de Armenia
+                </button>
+              </div>
+
+              <!-- Recogida en Armenia -->
+              <div id="recogida-armenia-wrap">
+                <label>🔍 Barrio de recogida:</label>
+                <div class="barrio-search-wrap">
                 <input type="text" id="search-barrio-recogida" placeholder="Cargando barrios..." autocomplete="off" oninput="filtrarBarriosInput('recogida')" onfocus="mostrarDropdown('recogida')" />
                 <div class="barrio-dropdown" id="dropdown-recogida"></div>
               </div>
               <input type="hidden" id="domi-zona-recogida" />
               <input type="hidden" id="domi-barrio-recogida" />
               <input type="hidden" id="domi-comuna-recogida" />
-              <div id="barrio-recogida-tag" style="display:none; margin-top:6px; background:#1a3a1a; border-radius:6px; padding:6px 10px; color:#28a745; font-size:13px;"></div>
+              <div id="barrio-recogida-tag" style="display:none; margin-top:6px; background:rgba(16,185,129,0.12); border-radius:6px; padding:6px 10px; color:var(--color-success); font-size:13px;"></div>
+              </div>
+
+              <!-- Recogida Fuera de Armenia -->
+              <div id="recogida-fuera-wrap" style="display:none;">
+                <!-- 🆕 BOTÓN GPS PARA RECOGIDA FUERA DE ARMENIA -->
+                <div style="background:rgba(33,150,243,0.1); border:1px solid #2196F3; border-radius:8px; padding:10px; margin-bottom:10px;">
+                  <p style="color:#4A9EFF; font-size:13px; font-weight:bold; margin-bottom:8px;">📡 Calcular distancia automáticamente</p>
+                  <p style="color:#aaa; font-size:12px; margin-bottom:8px;">Toca el botón para detectar tu ubicación y calcular el precio del servicio.</p>
+                  <button type="button" onclick="calcularDistanciaGPS('recogida')"
+                    style="width:100%; padding:10px; background:linear-gradient(135deg,#1565C0,#1976D2); color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:14px; cursor:pointer;">
+                    📍 Ingresar dirección por GPS
+                  </button>
+                  <div id="gps-recogida-result" style="display:none; margin-top:8px; background:rgba(21,101,192,0.15); border-radius:6px; padding:8px; font-size:13px; color:#4A9EFF;"></div>
+                </div>
+                <label>🏘️ Municipio o zona de recogida:</label>
+                <select id="domi-municipio-recogida" onchange="seleccionarMunicipioRecogida()" style="margin-bottom:10px;">
+                  <option value="">-- Selecciona municipio --</option>
+                  <optgroup label="Municipios cercanos">
+                    <option value="calarca">Calarcá</option>
+                    <option value="circasia">Circasia</option>
+                    <option value="montenegro">Montenegro</option>
+                    <option value="tebaida">La Tebaida</option>
+                    <option value="puerto_tapao">Puerto Tapao</option>
+                    <option value="salento">Salento</option>
+                    <option value="quimbaya">Quimbaya</option>
+                    <option value="filandia">Filandia</option>
+                    <option value="buenavista">Buenavista</option>
+                    <option value="pijao">Pijao</option>
+                    <option value="genova">Génova</option>
+                    <option value="cordoba">Córdoba</option>
+                  </optgroup>
+                  <optgroup label="Veredas / Fincas / Vías">
+                    <option value="via_tebaida">Vía Armenia - La Tebaida (km)</option>
+                    <option value="via_montenegro">Vía Armenia - Montenegro (km)</option>
+                    <option value="via_calarca">Vía Armenia - Calarcá (km)</option>
+                    <option value="via_circasia">Vía Armenia - Circasia (km)</option>
+                    <option value="via_puerto_tapao">Vía Armenia - Puerto Tapao (km)</option>
+                    <option value="vereda_otro">Vereda / Finca (otro)</option>
+                  </optgroup>
+                </select>
+                <div id="km-recogida-wrap" style="display:none;">
+                  <label>📏 Kilómetro aproximado (recogida):</label>
+                  <input type="number" id="domi-km-via-recogida" placeholder="Ej: 3" min="1" max="30" oninput="calcularPrecioDomi()" style="margin-bottom:6px;"/>
+                </div>
+                <div id="vereda-recogida-wrap" style="display:none;">
+                  <label>📝 Nombre de la vereda / finca (recogida):</label>
+                  <input type="text" id="domi-vereda-recogida" placeholder="Ej: Finca El Remanso, Vereda La Siria" oninput="calcularPrecioDomi()" style="margin-bottom:6px;"/>
+                </div>
+                <input type="hidden" id="domi-municipio-recogida-id" />
+                <div id="recogida-fuera-info" style="display:none;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--color-primary);margin-top:4px;"></div>
+              </div>
             </div>
 
             <!-- ===== QUIEN RECIBE ===== -->
             <div style="background:#2a2a2a; border-radius:10px; padding:14px; margin-bottom:14px; border-left:3px solid #28a745;">
               <p style="color:#28a745; font-weight:bold; margin-bottom:10px;">🏠 ¿Quién recibe? (Punto B - Entrega)</p>
+
+              <!-- 🆕 BOTÓN PARA ESCANEAR DIRECCIÓN CON FOTO -->
+              <div style="background:rgba(40,167,69,0.1); border:1px solid rgba(40,167,69,0.3); border-radius:8px; padding:10px; margin-bottom:12px;">
+                <p style="color:#28a745; font-size:13px; font-weight:bold; margin-bottom:6px;">📷 ¿Tienes muchos pedidos? ¡Toma una foto!</p>
+                <p style="color:#aaa; font-size:12px; margin-bottom:8px;">Sube una foto con los datos del destinatario y la IA los llenará automáticamente.</p>
+                <input type="file" id="foto-direccion-ocr" accept="image/*" style="display:none;" onchange="procesarFotoDireccion(this)" />
+                <button type="button" onclick="document.getElementById('foto-direccion-ocr').click()"
+                  style="width:100%; padding:10px; background:linear-gradient(135deg,#1a5c2a,#28a745); color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:14px; cursor:pointer;">
+                  📸 Subir foto con datos del destinatario
+                </button>
+                <div id="ocr-loading" style="display:none; text-align:center; padding:8px; color:#28a745; font-size:13px; margin-top:6px;">
+                  🤖 Analizando imagen con IA...
+                </div>
+                <div id="ocr-preview" style="display:none; margin-top:8px; text-align:center;">
+                  <img id="ocr-img-preview" style="max-width:100%; max-height:150px; border-radius:8px; border:1px solid #28a745;" />
+                  <p style="color:#aaa; font-size:11px; margin-top:4px;">📎 Esta imagen será visible para el repartidor</p>
+                </div>
+                <div id="ocr-status" style="display:none; margin-top:6px; background:rgba(40,167,69,0.12); border-radius:6px; padding:8px; font-size:12px; color:#28a745;"></div>
+              </div>
 
               <label>Nombre de quien recibe:</label>
               <input type="text" id="domi-nombre-recibe" placeholder="Ej: María López" />
@@ -2707,6 +2861,16 @@
 
               <!-- Destino Fuera de Armenia -->
               <div id="destino-fuera-wrap" style="display:none;">
+                <!-- 🆕 BOTÓN GPS PARA CALCULAR DISTANCIA Y PRECIO AUTOMÁTICAMENTE -->
+                <div style="background:rgba(33,150,243,0.1); border:1px solid #2196F3; border-radius:8px; padding:10px; margin-bottom:10px;">
+                  <p style="color:#4A9EFF; font-size:13px; font-weight:bold; margin-bottom:8px;">📡 Calcular distancia automáticamente</p>
+                  <p style="color:#aaa; font-size:12px; margin-bottom:8px;">Toca el botón para detectar tu ubicación y calcular el precio del servicio.</p>
+                  <button type="button" onclick="calcularDistanciaGPS('destino')"
+                    style="width:100%; padding:10px; background:linear-gradient(135deg,#1565C0,#1976D2); color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:14px; cursor:pointer;">
+                    📍 Ingresar dirección por GPS
+                  </button>
+                  <div id="gps-destino-result" style="display:none; margin-top:8px; background:rgba(21,101,192,0.15); border-radius:6px; padding:8px; font-size:13px; color:#4A9EFF;"></div>
+                </div>
                 <label>🏘️ Municipio o zona:</label>
                 <select id="domi-municipio" onchange="seleccionarMunicipio()" style="margin-bottom:10px;">
                   <option value="">-- Selecciona municipio --</option>
@@ -2846,6 +3010,10 @@
                   <div class="legend-icon legend-repartidor"></div>
                   <span>🏍️ Repartidor</span>
               </div>
+              <div class="legend-item">
+                  <div style="background-color:#e74c3c; width:20px; height:20px; border-radius:50%; border:2px solid white;"></div>
+                  <span>🏠 Entrega</span>
+              </div>
           </div>
 
           <div id="map-info" class="map-info-box" style="display:none;">
@@ -2856,8 +3024,8 @@
           
           <div id="tracking-result"></div>
 
-          <!-- === CHAT P2P CLIENTE-REPARTIDOR === -->
-          <div id="chat-repartidor-container" style="display:none; margin-top:16px;">
+          <!-- === CHAT P2P CLIENTE-REPARTIDOR (siempre visible) === -->
+          <div id="chat-repartidor-container" style="margin-top:16px;">
             <div style="background:#1a1a2e; border:1px solid #4A9EFF; border-radius:12px; overflow:hidden;">
               <div style="background:#16213e; padding:12px 16px; display:flex; align-items:center; justify-content:space-between;">
                 <span style="color:#4A9EFF; font-weight:bold; font-size:14px;">💬 Chat con tu Repartidor</span>
@@ -3411,6 +3579,196 @@
     };
 
     // ═══════════════════════════════════════════════════════════════════
+    // 📍 FUNCIÓN GPS: Calcular distancia desde Armenia y precio automático
+    //    Tarifa fuera de Armenia: $10.000 mínimo + $1.000 por km
+    // ═══════════════════════════════════════════════════════════════════
+    window.calcularDistanciaGPS = function(tipo) {
+        const resultDiv = document.getElementById(`gps-${tipo}-result`);
+        const btn = resultDiv ? resultDiv.previousElementSibling : null;
+
+        if (!navigator.geolocation) {
+            alert('❌ Tu dispositivo no soporta GPS');
+            return;
+        }
+
+        if (resultDiv) {
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '📡 Obteniendo tu ubicación GPS...';
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                // Centro de Armenia, Quindío, Colombia
+                const ARMENIA_LAT = 4.5339;
+                const ARMENIA_LNG = -75.6811;
+
+                // Fórmula Haversine para calcular distancia en km
+                function haversine(lat1, lon1, lat2, lon2) {
+                    const R = 6371;
+                    const dLat = (lat2 - lat1) * Math.PI / 180;
+                    const dLon = (lon2 - lon1) * Math.PI / 180;
+                    const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+                              Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
+                              Math.sin(dLon/2)*Math.sin(dLon/2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                    return R * c;
+                }
+
+                const distanciaKm = haversine(ARMENIA_LAT, ARMENIA_LNG, lat, lng);
+                const distanciaRedondeada = Math.round(distanciaKm * 10) / 10;
+
+                // Tarifa: $10.000 base + $1.000 por km (mínimo $10.000)
+                const precioGPS = Math.max(10000, Math.round(10000 + (distanciaKm * 1000)));
+                const coordsText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+
+                // Llenar el campo de dirección con las coordenadas GPS
+                if (tipo === 'destino') {
+                    const dirInput = document.getElementById('domi-dir-entrega');
+                    if (dirInput && !dirInput.value) {
+                        dirInput.value = `📍 GPS: ${coordsText}`;
+                    }
+                    // Guardar precio GPS para el pedido
+                    window._gpsPrecioDestino = precioGPS;
+                    window._gpsDistanciaDestino = distanciaRedondeada;
+                    window._gpsCoordsDestino = { lat, lng };
+
+                    // Mostrar precio en el box de precio
+                    const precioBox   = document.getElementById('domi-precio-box');
+                    const precioValor = document.getElementById('domi-precio-valor');
+                    const precioRazon = document.getElementById('domi-precio-razon');
+                    if (precioBox && precioValor && precioRazon) {
+                        precioBox.style.display = 'block';
+                        precioValor.textContent = `$${precioGPS.toLocaleString('es-CO')}`;
+                        precioRazon.textContent  = `📍 GPS: ${distanciaRedondeada} km desde Armenia · $10.000 base + $1.000/km`;
+                    }
+                } else {
+                    const dirInput = document.getElementById('domi-dir-recogida');
+                    if (dirInput && !dirInput.value) {
+                        dirInput.value = `📍 GPS: ${coordsText}`;
+                    }
+                    window._gpsPrecioRecogida = precioGPS;
+                    window._gpsDistanciaRecogida = distanciaRedondeada;
+                    window._gpsCoordsRecogida = { lat, lng };
+                }
+
+                if (resultDiv) {
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                      ✅ <strong>Ubicación detectada</strong><br>
+                      📏 Distancia desde Armenia: <strong>${distanciaRedondeada} km</strong><br>
+                      💰 Precio estimado del servicio: <strong>$${precioGPS.toLocaleString('es-CO')}</strong><br>
+                      <span style="font-size:11px; color:#aaa;">($10.000 mínimo + $1.000/km)</span><br>
+                      <a href="${mapsUrl}" target="_blank" style="color:#4A9EFF; font-size:11px;">📍 Ver en Google Maps</a>
+                    `;
+                }
+            },
+            function(error) {
+                const msgs = {
+                    1: 'Permiso de ubicación denegado. Ve al menú ☰ → Permisos → Activar Ubicación GPS.',
+                    2: 'No se pudo obtener tu ubicación. Intenta en exteriores.',
+                    3: 'Tiempo de espera agotado. Intenta de nuevo.'
+                };
+                if (resultDiv) {
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `❌ ${msgs[error.code] || 'Error de GPS'}`;
+                    resultDiv.style.color = '#e74c3c';
+                }
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+    };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 📷 FUNCIÓN OCR: Leer foto de dirección con IA y autocompletar campos
+    // ═══════════════════════════════════════════════════════════════════
+    window.procesarFotoDireccion = async function(input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+
+        const loading = document.getElementById('ocr-loading');
+        const preview = document.getElementById('ocr-preview');
+        const imgEl   = document.getElementById('ocr-img-preview');
+        const status  = document.getElementById('ocr-status');
+
+        // Mostrar preview de la imagen
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const base64Full = e.target.result; // data:image/jpeg;base64,...
+            const base64Data = base64Full.split(',')[1];
+            const mimeType   = file.type || 'image/jpeg';
+
+            // Mostrar preview
+            imgEl.src = base64Full;
+            preview.style.display = 'block';
+            loading.style.display = 'block';
+            status.style.display  = 'none';
+
+            // Guardar imagen para el pedido (para mostrarla al repartidor)
+            window._fotoDestinatarioBase64 = base64Full;
+
+            try {
+                // Llamar al proxy de IA (mismo endpoint que el chatbot)
+                const response = await fetch('/api/ai-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        system: `Eres un extractor de datos de domicilios. El usuario te envía una imagen con datos de un destinatario (nombre, dirección, teléfono). 
+Extrae esa información y responde SOLO con este formato JSON exacto (sin markdown, sin explicaciones):
+{"nombre":"...","direccion":"...","telefono":"...","barrio":"..."}
+Si no encuentras algún campo déjalo como cadena vacía "".`,
+                        messages: [{
+                            role: 'user',
+                            content: [
+                                { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64Data } },
+                                { type: 'text',  text: 'Extrae nombre, dirección, teléfono y barrio de esta imagen.' }
+                            ]
+                        }],
+                        max_tokens: 300
+                    })
+                });
+
+                const data = await response.json();
+                const rawText = (data.content || []).map(b => b.text || '').join('').trim();
+
+                // Parsear JSON de la respuesta
+                const cleaned = rawText.replace(/```json|```/g, '').trim();
+                const parsed  = JSON.parse(cleaned);
+
+                // Autocompletar campos
+                if (parsed.nombre    && document.getElementById('domi-nombre-recibe'))
+                    document.getElementById('domi-nombre-recibe').value = parsed.nombre;
+                if (parsed.direccion && document.getElementById('domi-dir-entrega'))
+                    document.getElementById('domi-dir-entrega').value = parsed.direccion;
+                if (parsed.telefono  && document.getElementById('domi-tel-recibe'))
+                    document.getElementById('domi-tel-recibe').value = parsed.telefono;
+                if (parsed.barrio    && document.getElementById('search-barrio-entrega'))
+                    document.getElementById('search-barrio-entrega').value = parsed.barrio;
+
+                loading.style.display = 'none';
+                status.style.display  = 'block';
+                status.innerHTML = `✅ <strong>Datos detectados:</strong><br>
+                  👤 ${parsed.nombre || '—'}<br>
+                  📍 ${parsed.direccion || '—'}<br>
+                  📞 ${parsed.telefono || '—'}<br>
+                  🏘️ ${parsed.barrio || '—'}<br>
+                  <span style="color:#aaa; font-size:11px;">Revisa y corrige si es necesario ↑</span>`;
+
+            } catch (err) {
+                loading.style.display = 'none';
+                status.style.display  = 'block';
+                status.innerHTML = '⚠️ No se pudo leer la imagen. Verifica que la foto sea legible e intenta de nuevo.';
+                status.style.color = '#e74c3c';
+                console.error('OCR error:', err);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // ═══════════════════════════════════════════════════════════════════
     // 🛒 FUNCIÓN: Verificar servicio de compra y abrir chat con admin
     // ═══════════════════════════════════════════════════════════════════
     window.verificarServicioCompra = function() {
@@ -3610,15 +3968,21 @@
         const servicioCompra = document.getElementById('domi-servicio-compra').value; // 🆕 Servicio de compra
 
         const municipioId = document.getElementById('domi-municipio-id')?.value || '';
+        const municipioRecogidaId = document.getElementById('domi-municipio-recogida-id')?.value || '';
         const esFuera = zonaEntrega === 'fuera' || municipioId !== '';
+        const esFueraRecogida = zonaRecogida === 'fuera' || municipioRecogidaId !== '';
 
-        if (!nombreEntrega || !dirRecogida || !telEntrega || !zonaRecogida ||
+        if (!nombreEntrega || !dirRecogida || !telEntrega ||
             !nombreRecibe  || !dirEntrega  || !telRecibe) {
             alert('⚠️ Por favor completa todos los campos del formulario.');
             return;
         }
-        if (!zonaRecogida) {
+        if (!esFueraRecogida && !zonaRecogida) {
             alert('⚠️ Por favor selecciona el barrio de recogida desde la lista.');
+            return;
+        }
+        if (esFueraRecogida && !municipioRecogidaId) {
+            alert('⚠️ Por favor selecciona el municipio o zona de recogida.');
             return;
         }
         if (!esFuera && !zonaEntrega) {
@@ -3630,7 +3994,7 @@
             return;
         }
 
-        // Calcular precio con volumen
+                // Calcular precio con volumen
         const extraVolumen = tamano === 'grande' ? 1000 : tamano === 'muy_grande' ? 2000 : 0;
         let precio = 5000;
 
@@ -3676,41 +4040,52 @@
         }
 
         precio += extraVolumen;
+        // 🆕 Si se usó GPS para calcular precio fuera de Armenia, usar ese valor
+        if (esFuera && !municipioId && window._gpsPrecioDestino) {
+            precio = window._gpsPrecioDestino + extraVolumen;
+        }
         const nombres = { sur:'Sur', centro:'Centro', norte:'Norte', oriente:'Oriente', occidente:'Occidente' };
         const tamanoLabels = { normal: 'Normal (sin extra)', grande: 'Grande (+$1.000)', muy_grande: 'Muy grande (+$2.000)' };
 
         // Construir resumen en modal (municipioId y esFuera ya definidos arriba)
         const kmVia = document.getElementById('domi-km-via')?.value || '';
         const veredaNombre = document.getElementById('domi-vereda-nombre')?.value || '';
+        const kmViaRec = document.getElementById('domi-km-via-recogida')?.value || '';
+        const veredaRec = document.getElementById('domi-vereda-recogida')?.value || '';
+        const munRecSel = document.getElementById('domi-municipio-recogida');
+        const munRecNombre = munRecSel ? (munRecSel.options[munRecSel.selectedIndex]?.text || '') : '';
         const resumen = document.getElementById('modal-domi-resumen');
         resumen.innerHTML = `
-            <div style="background:#1e1e1e; border-radius:8px; padding:10px; margin-bottom:8px;">
+            <div style="background:var(--color-surface2); border-radius:8px; padding:10px; margin-bottom:8px; border-left:3px solid var(--color-primary);">
               <p style="color:var(--color-primary); font-weight:bold; margin:0 0 6px 0;">📦 Punto A – Recogida</p>
-              <p style="margin:2px 0; color:#ddd;"><strong>Nombre:</strong> ${nombreEntrega}</p>
-              <p style="margin:2px 0; color:#ddd;"><strong>Dirección:</strong> ${dirRecogida}</p>
-              <p style="margin:2px 0; color:#ddd;"><strong>Teléfono:</strong> ${telEntrega}</p>
-              <p style="margin:2px 0; color:#ddd;"><strong>Zona:</strong> ${nombres[zonaRecogida]}</p>
-            </div>
-            <div style="background:#1e1e1e; border-radius:8px; padding:10px; margin-bottom:8px;">
-              <p style="color:#28a745; font-weight:bold; margin:0 0 6px 0;">🏠 Punto B – Entrega</p>
-              <p style="margin:2px 0; color:#ddd;"><strong>Nombre:</strong> ${nombreRecibe}</p>
-              <p style="margin:2px 0; color:#ddd;"><strong>Dirección:</strong> ${dirEntrega}</p>
-              <p style="margin:2px 0; color:#ddd;"><strong>Teléfono:</strong> ${telRecibe}</p>
-              ${esFuera && municipioId
-                ? `<p style="margin:2px 0; color:#e67e22;"><strong>🌄 Destino:</strong> ${document.getElementById('domi-municipio')?.options[document.getElementById('domi-municipio')?.selectedIndex]?.text || municipioId}${kmVia ? ' · Km '+kmVia : ''}${veredaNombre ? ' · '+veredaNombre : ''}</p>`
-                : `<p style="margin:2px 0; color:#ddd;"><strong>Zona:</strong> ${nombres[zonaEntrega]||zonaEntrega}</p>`
+              <p style="margin:2px 0; color:var(--color-text-light);"><strong>Nombre:</strong> ${nombreEntrega}</p>
+              <p style="margin:2px 0; color:var(--color-text-light);"><strong>Dirección:</strong> ${dirRecogida}</p>
+              <p style="margin:2px 0; color:var(--color-text-light);"><strong>Teléfono:</strong> ${telEntrega}</p>
+              ${esFueraRecogida && municipioRecogidaId
+                ? `<p style="margin:2px 0; color:var(--color-warning);"><strong>🌄 Zona:</strong> ${munRecNombre}${kmViaRec ? ' · Km '+kmViaRec : ''}${veredaRec ? ' · '+veredaRec : ''}</p>`
+                : `<p style="margin:2px 0; color:var(--color-text-light);"><strong>Zona:</strong> ${nombres[zonaRecogida]||zonaRecogida}</p>`
               }
             </div>
-            ${extraVolumen > 0 ? `<div style="background:#2a1e00; border-radius:8px; padding:8px 10px; margin-bottom:8px; border-left:3px solid #e67e22;">
-              <p style="margin:0; color:#e67e22; font-size:13px;">📏 Paquete: <strong>${tamanoLabels[tamano]}</strong></p>
+            <div style="background:var(--color-surface2); border-radius:8px; padding:10px; margin-bottom:8px; border-left:3px solid var(--color-success);">
+              <p style="color:var(--color-success); font-weight:bold; margin:0 0 6px 0;">🏠 Punto B – Entrega</p>
+              <p style="margin:2px 0; color:var(--color-text-light);"><strong>Nombre:</strong> ${nombreRecibe}</p>
+              <p style="margin:2px 0; color:var(--color-text-light);"><strong>Dirección:</strong> ${dirEntrega}</p>
+              <p style="margin:2px 0; color:var(--color-text-light);"><strong>Teléfono:</strong> ${telRecibe}</p>
+              ${esFuera && municipioId
+                ? `<p style="margin:2px 0; color:var(--color-warning);"><strong>🌄 Destino:</strong> ${document.getElementById('domi-municipio')?.options[document.getElementById('domi-municipio')?.selectedIndex]?.text || municipioId}${kmVia ? ' · Km '+kmVia : ''}${veredaNombre ? ' · '+veredaNombre : ''}</p>`
+                : `<p style="margin:2px 0; color:var(--color-text-light);"><strong>Zona:</strong> ${nombres[zonaEntrega]||zonaEntrega}</p>`
+              }
+            </div>
+            ${extraVolumen > 0 ? `<div style="background:rgba(249,115,22,0.08); border-radius:8px; padding:8px 10px; margin-bottom:8px; border-left:3px solid var(--color-warning);">
+              <p style="margin:0; color:var(--color-warning); font-size:13px;">📏 Paquete: <strong>${tamanoLabels[tamano]}</strong></p>
             </div>` : ''}
-            ${servicioCompra === 'si' ? `<div style="background:#1a2a3a; border-radius:8px; padding:8px 10px; margin-bottom:8px; border-left:3px solid #4A9EFF;">
-              <p style="margin:0; color:#4A9EFF; font-size:13px;">🛒 <strong>Incluye servicio de compra</strong></p>
-              <p style="margin:4px 0 0 0; color:#aaa; font-size:11px;">El admin coordinará los detalles de la compra contigo</p>
+            ${servicioCompra === 'si' ? `<div style="background:rgba(59,130,246,0.1); border-radius:8px; padding:8px 10px; margin-bottom:8px; border-left:3px solid var(--color-link);">
+              <p style="margin:0; color:var(--color-link); font-size:13px;">🛒 <strong>Incluye servicio de compra</strong></p>
+              <p style="margin:4px 0 0 0; color:var(--color-text-dark); font-size:11px;">El admin coordinará los detalles de la compra contigo</p>
             </div>` : ''}
-            <div style="background:#1a3010; border-radius:8px; padding:10px; text-align:center;">
-              <p style="margin:2px 0; color:#aaa; font-size:12px;">Valor del domicilio</p>
-              <p style="margin:2px 0; color:#FFD700; font-size:22px; font-weight:bold;">$${precio.toLocaleString('es-CO')}</p>
+            <div style="background:var(--accent-dim); border:1px solid rgba(245,158,11,0.3); border-radius:8px; padding:10px; text-align:center;">
+              <p style="margin:2px 0; color:var(--color-text-dark); font-size:12px;">Valor del domicilio</p>
+              <p style="margin:2px 0; color:var(--color-primary); font-size:22px; font-weight:bold;">$${precio.toLocaleString('es-CO')}</p>
             </div>
         `;
 
@@ -3724,9 +4099,17 @@
         const comunaRecogida = document.getElementById('domi-comuna-recogida').value || '';
         const barrioEntrega  = document.getElementById('domi-barrio-entrega').value  || document.getElementById('search-barrio-entrega').value  || '';
         const comunaEntrega  = document.getElementById('domi-comuna-entrega').value  || '';
+        // Recogida fuera de Armenia
+        const municipioRecogidaIdVal = document.getElementById('domi-municipio-recogida-id')?.value || '';
+        const municipioRecogidaNombre = document.getElementById('domi-municipio-recogida') ?
+          document.getElementById('domi-municipio-recogida').options[document.getElementById('domi-municipio-recogida').selectedIndex]?.text || '' : '';
+        const kmViaRecogida = document.getElementById('domi-km-via-recogida')?.value || '';
+        const veredaRecogida = document.getElementById('domi-vereda-recogida')?.value || '';
         window._domiPendiente = { nombreEntrega, dirRecogida, telEntrega, zonaRecogida, barrioRecogida, comunaRecogida,
                                    nombreRecibe, dirEntrega, telRecibe, zonaEntrega, barrioEntrega, comunaEntrega,
-                                   municipioId: municipioIdVal, municipioNombre, kmVia: kmVia2, veredaNombre: veredaNombre2, precio, tamano, servicioCompra };
+                                   municipioId: municipioIdVal, municipioNombre, kmVia: kmVia2, veredaNombre: veredaNombre2,
+                                   municipioRecogidaId: municipioRecogidaIdVal, municipioRecogidaNombre, kmViaRecogida, veredaRecogida,
+                                   precio, tamano, servicioCompra };
 
         document.getElementById('modal-confirmar-domi').style.display = 'block';
     };
@@ -3808,6 +4191,11 @@
                 kmVia:          d.kmVia          || '',
                 veredaNombre:   d.veredaNombre   || '',
                 esFuera:        d.municipioId ? true : false,
+                municipioRecogidaId:     d.municipioRecogidaId     || '',
+                municipioRecogidaNombre: d.municipioRecogidaNombre || '',
+                kmViaRecogida:           d.kmViaRecogida           || '',
+                veredaRecogida:          d.veredaRecogida          || '',
+                esFueraRecogida:         d.municipioRecogidaId ? true : false,
                         zonaEntrega: d.zonaEntrega,
                         coordsRecogida: cGPS  // Para este pedido usamos coords del cliente como recogida
                     };
@@ -3990,6 +4378,11 @@
                 kmVia          : d.kmVia          || '',
                 veredaNombre   : d.veredaNombre   || '',
                 esFuera        : esFueraPedido,
+                municipioRecogidaId     : d.municipioRecogidaId     || '',
+                municipioRecogidaNombre : d.municipioRecogidaNombre || '',
+                kmViaRecogida           : d.kmViaRecogida           || '',
+                veredaRecogida          : d.veredaRecogida          || '',
+                esFueraRecogida         : d.municipioRecogidaId ? true : false,
 
                 // Economía
                 montoTotal     : d.precio || 0,
@@ -4014,7 +4407,16 @@
 
                 timestampCreacion  : timestamp,
                 timestampAsignacion: repartidorAsignado ? timestamp : null,
-                fecha              : new Date().toISOString()
+                fecha              : new Date().toISOString(),
+
+                // 🆕 Foto del destinatario (capturada con OCR)
+                fotoDestinatario   : window._fotoDestinatarioBase64 || null,
+
+                // 🆕 Datos GPS fuera de Armenia (si aplica)
+                gpsDestino         : window._gpsCoordsDestino  || null,
+                gpsRecogida        : window._gpsCoordsRecogida || null,
+                gpsPrecioDestino   : window._gpsPrecioDestino  || null,
+                gpsDistanciaKm     : window._gpsDistanciaDestino || null
             };
 
             // ── Guardar en pedidos_historial ──
@@ -4052,6 +4454,18 @@
              'domi-nombre-recibe','domi-dir-entrega','domi-tel-recibe'].forEach(id => {
                 document.getElementById(id).value = '';
             });
+            // 🆕 Limpiar foto y GPS
+            window._fotoDestinatarioBase64 = null;
+            window._gpsCoordsDestino  = null;
+            window._gpsCoordsRecogida = null;
+            window._gpsPrecioDestino  = null;
+            window._gpsPrecioRecogida = null;
+            window._gpsDistanciaDestino  = null;
+            window._gpsDistanciaRecogida = null;
+            const ocrPreview = document.getElementById('ocr-preview'); if(ocrPreview) ocrPreview.style.display='none';
+            const ocrStatus  = document.getElementById('ocr-status');  if(ocrStatus)  ocrStatus.style.display='none';
+            const gpsDestRes = document.getElementById('gps-destino-result'); if(gpsDestRes) gpsDestRes.style.display='none';
+            const gpsRecRes  = document.getElementById('gps-recogida-result'); if(gpsRecRes)  gpsRecRes.style.display='none';
             document.getElementById('domi-zona-recogida').value  = '';
             document.getElementById('domi-zona-entrega').value    = '';
             document.getElementById('domi-barrio-recogida').value = '';
@@ -4062,6 +4476,20 @@
             const seb = document.getElementById('search-barrio-entrega');  if(seb) seb.value='';
             const trb = document.getElementById('barrio-recogida-tag'); if(trb) trb.style.display='none';
             const teb = document.getElementById('barrio-entrega-tag');  if(teb) teb.style.display='none';
+            // Resetear recogida fuera de Armenia
+            const elMunRec = document.getElementById('domi-municipio-recogida'); if(elMunRec) elMunRec.value='';
+            const elMunRecId = document.getElementById('domi-municipio-recogida-id'); if(elMunRecId) elMunRecId.value='';
+            const elKmRec = document.getElementById('domi-km-via-recogida'); if(elKmRec) elKmRec.value='';
+            const elVerRec = document.getElementById('domi-vereda-recogida'); if(elVerRec) elVerRec.value='';
+            const elKmRecWrap = document.getElementById('km-recogida-wrap'); if(elKmRecWrap) elKmRecWrap.style.display='none';
+            const elVerRecWrap = document.getElementById('vereda-recogida-wrap'); if(elVerRecWrap) elVerRecWrap.style.display='none';
+            const elRecFueraInfo = document.getElementById('recogida-fuera-info'); if(elRecFueraInfo) elRecFueraInfo.style.display='none';
+            const elRecArmWrap = document.getElementById('recogida-armenia-wrap'); if(elRecArmWrap) elRecArmWrap.style.display='block';
+            const elRecFuerWrap = document.getElementById('recogida-fuera-wrap'); if(elRecFuerWrap) elRecFuerWrap.style.display='none';
+            const elBtnRecArm = document.getElementById('btn-recogida-armenia');
+            const elBtnRecFue = document.getElementById('btn-recogida-fuera');
+            if(elBtnRecArm) elBtnRecArm.style.cssText += ';border-color:var(--color-primary);background:var(--accent-dim);color:var(--color-primary);';
+            if(elBtnRecFue) elBtnRecFue.style.cssText += ';border-color:#2A3F6A;background:#1A2845;color:#64748B;';
             document.getElementById('domi-tamano').value        = 'normal';
             document.getElementById('domi-servicio-compra').value = 'no'; // 🆕 Resetear servicio de compra
             document.getElementById('domi-tamano-nota').style.display = 'none';
@@ -4800,6 +5228,88 @@
         console.log('✅ Marcador del repartidor actualizado');
     }
 
+    // 🆕 MARCADOR DEL PUNTO DE ENTREGA (barrio / zona destino)
+    let entregaMarker = null;
+
+    function agregarMarcadorEntrega(pedido) {
+        if (!map) return;
+
+        // Coordenadas aproximadas por zona de Armenia
+        const ZONA_COORDS = {
+            sur       : { lat: 4.5155, lng: -75.6780 },
+            centro    : { lat: 4.5339, lng: -75.6811 },
+            norte     : { lat: 4.5510, lng: -75.6750 },
+            oriente   : { lat: 4.5340, lng: -75.6640 },
+            occidente : { lat: 4.5330, lng: -75.6960 }
+        };
+
+        let lat = null, lng = null;
+        let popupText = '🏠 Punto de Entrega';
+
+        // Prioridad 1: GPS real guardado en el pedido
+        if (pedido.gpsDestino && pedido.gpsDestino.lat && pedido.gpsDestino.lng) {
+            lat = pedido.gpsDestino.lat;
+            lng = pedido.gpsDestino.lng;
+            popupText = `🏠 Punto de Entrega (GPS)<br><small>${pedido.direccionCliente || ''}</small>`;
+
+        // Prioridad 2: Zona de entrega conocida
+        } else {
+            const zonaKey = (pedido.zonaEntrega || '').toLowerCase();
+            const match = Object.keys(ZONA_COORDS).find(k => zonaKey.includes(k));
+            if (match) {
+                lat = ZONA_COORDS[match].lat;
+                lng = ZONA_COORDS[match].lng;
+                // Pequeño desplazamiento aleatorio para evitar superposición exacta
+                lat += (Math.random() - 0.5) * 0.002;
+                lng += (Math.random() - 0.5) * 0.002;
+                popupText = `🏠 Barrio de Entrega<br><small>${pedido.barrioEntrega || pedido.zonaEntrega || ''}</small>`;
+            }
+        }
+
+        if (!lat || !lng) return; // No hay suficiente info
+
+        if (entregaMarker) {
+            map.removeLayer(entregaMarker);
+        }
+
+        const iconEntrega = L.divIcon({
+            className: 'custom-marker-entrega',
+            html: '<div style="background-color:#e74c3c; width:38px; height:38px; border-radius:50%; border:3px solid white; box-shadow:0 2px 10px rgba(231,76,60,0.6); display:flex; align-items:center; justify-content:center; font-size:20px;">🏠</div>',
+            iconSize: [38, 38],
+            iconAnchor: [19, 19]
+        });
+
+        entregaMarker = L.marker([lat, lng], { icon: iconEntrega, zIndexOffset: 600 })
+            .addTo(map)
+            .bindPopup(popupText)
+            .openPopup();
+
+        // Ajustar el mapa para mostrar cliente + punto de entrega juntos
+        setTimeout(() => {
+            if (clienteCoords && clienteCoords.lat) {
+                const bounds = L.latLngBounds(
+                    [clienteCoords.lat, clienteCoords.lng],
+                    [lat, lng]
+                );
+                // Si hay repartidor también, incluirlo
+                if (entregaMarker && repartidorMarker) {
+                    bounds.extend(repartidorMarker.getLatLng());
+                }
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+            }
+        }, 800);
+
+        console.log('✅ Marcador de entrega agregado en:', lat, lng);
+    }
+
+    // Limpiar marcador de entrega al resetear mapa
+    function limpiarMarcadorEntrega() {
+        if (entregaMarker && map) {
+            map.removeLayer(entregaMarker);
+            entregaMarker = null;
+        }
+    }
+
     // 🔥 FUNCIÓN MEJORADA PARA TRAZAR RUTAS
     function trazarRuta(clienteCoords, repartidorCoords) {
         console.log('');
@@ -5189,6 +5699,7 @@
         mapInfo.style.display = 'none';
         
         detenerSeguimientoUbicacion();
+        limpiarMarcadorEntrega();
 
         try {
             const usuariosRef = window.ref(window.db, 'usuarios');
@@ -5502,6 +6013,7 @@
                     // Detener seguimiento de ubicación
                     detenerSeguimientoUbicacion();
                     detenerEnvioUbicacionCliente();
+                    limpiarMarcadorEntrega();
                     // Ocultar chat P2P
                     const chatCont = document.getElementById('chat-repartidor-container');
                     if (chatCont) chatCont.style.display = 'none';
@@ -5592,7 +6104,10 @@
                 agregarMarcadorCliente(coords, true); // ✅ Centrar mapa la primera vez
                 console.log('✅ Marcador del cliente agregado');
                 console.log('');
-                
+
+                // 🆕 PASO 3b: Agregar marcador del punto de entrega (barrio destino)
+                agregarMarcadorEntrega(pedido);
+
                 console.log('📍 PASO 4: Iniciando seguimiento continuo...');
                 iniciarSeguimientoContinuoCliente();
                 console.log('✅ Seguimiento continuo iniciado');
@@ -9949,6 +10464,78 @@ window.seleccionarMunicipio = function() {
     info.style.display = 'none';
   }
 
+  calcularPrecioDomi();
+};
+
+// ── SELECTOR RECOGIDA ARMENIA / FUERA ──────────────────────
+window.cambiarTipoRecogida = function(tipo) {
+  const btnArm    = document.getElementById('btn-recogida-armenia');
+  const btnFuera  = document.getElementById('btn-recogida-fuera');
+  const wrapArm   = document.getElementById('recogida-armenia-wrap');
+  const wrapFuera = document.getElementById('recogida-fuera-wrap');
+  const hidZona   = document.getElementById('domi-zona-recogida');
+  const hidBarrio = document.getElementById('domi-barrio-recogida');
+  const hidMunId  = document.getElementById('domi-municipio-recogida-id');
+  const tag       = document.getElementById('barrio-recogida-tag');
+
+  if (tipo === 'armenia') {
+    btnArm.style.cssText   += ';border-color:var(--color-primary);background:var(--accent-dim);color:var(--color-primary);';
+    btnFuera.style.cssText += ';border-color:#2A3F6A;background:#1A2845;color:#64748B;';
+    wrapArm.style.display   = 'block';
+    wrapFuera.style.display = 'none';
+    if (hidMunId) hidMunId.value = '';
+    if (hidZona)  hidZona.value  = '';
+    if (hidBarrio) hidBarrio.value = '';
+    if (tag) tag.style.display = 'none';
+  } else {
+    btnFuera.style.cssText += ';border-color:#F59E0B;background:rgba(245,158,11,0.08);color:#F59E0B;';
+    btnArm.style.cssText   += ';border-color:#2A3F6A;background:#1A2845;color:#64748B;';
+    wrapArm.style.display   = 'none';
+    wrapFuera.style.display = 'block';
+    if (hidZona)  hidZona.value  = 'fuera';
+    if (hidBarrio) hidBarrio.value = '';
+    if (hidMunId) hidMunId.value = '';
+  }
+  calcularPrecioDomi();
+};
+
+window.seleccionarMunicipioRecogida = function() {
+  const mun    = document.getElementById('domi-municipio-recogida').value;
+  const hidMun = document.getElementById('domi-municipio-recogida-id');
+  const hidZ   = document.getElementById('domi-zona-recogida');
+  const hidB   = document.getElementById('domi-barrio-recogida');
+  const kmWrap  = document.getElementById('km-recogida-wrap');
+  const verWrap = document.getElementById('vereda-recogida-wrap');
+  const info    = document.getElementById('recogida-fuera-info');
+
+  const nombres = {
+    calarca:'Calarcá', circasia:'Circasia', montenegro:'Montenegro',
+    tebaida:'La Tebaida', puerto_tapao:'Puerto Tapao', salento:'Salento',
+    quimbaya:'Quimbaya', filandia:'Filandia', buenavista:'Buenavista',
+    pijao:'Pijao', genova:'Génova', cordoba:'Córdoba',
+    via_tebaida:'Vía Armenia-Tebaida', via_montenegro:'Vía Armenia-Montenegro',
+    via_calarca:'Vía Armenia-Calarcá', via_circasia:'Vía Armenia-Circasia',
+    via_puerto_tapao:'Vía Armenia-Pto Tapao', vereda_otro:'Vereda / Finca'
+  };
+
+  if (hidMun) hidMun.value = mun;
+  if (hidZ)   hidZ.value   = 'fuera';
+  if (hidB)   hidB.value   = nombres[mun] || mun;
+
+  if (kmWrap)  kmWrap.style.display  = mun.startsWith('via_') ? 'block' : 'none';
+  if (verWrap) verWrap.style.display = mun === 'vereda_otro'  ? 'block' : 'none';
+
+  if (info) {
+    if (mun === 'vereda_otro') {
+      info.style.display = 'block';
+      info.textContent = '⚠️ El admin confirmará el precio para este punto de recogida.';
+    } else if (mun) {
+      info.style.display = 'block';
+      info.textContent = '🌄 Recogida fuera de Armenia · El precio incluirá el traslado desde este punto.';
+    } else {
+      info.style.display = 'none';
+    }
+  }
   calcularPrecioDomi();
 };
 </script>

@@ -615,8 +615,12 @@
         transition: opacity 0.5s ease-out;
     }
     #splash-logo {
-        max-width: 80%;
-        height: auto;
+        width: 220px;
+        height: 220px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 3px solid rgba(245,158,11,0.4);
+        box-shadow: 0 0 30px rgba(245,158,11,0.25);
     }
     #btn-activar-notif {
         width: 100%;
@@ -2299,7 +2303,7 @@
         box-shadow: 0 4px 18px rgba(245,158,11,0.55);
         cursor: pointer;
         z-index: 10100;
-        display: flex;
+        display: none !important;
         align-items: center;
         justify-content: center;
         transition: transform 0.2s, box-shadow 0.2s;
@@ -2446,7 +2450,7 @@
 </head>
 <body>
   <!-- MENÚ HAMBURGUESA -->
-  <div id="menu-hamburguesa" class="menu-ham-container">
+  <div id="menu-hamburguesa" class="menu-ham-container" style="display:none;">
       <button id="btn-menu" class="menu-ham-btn" onclick="toggleMenu()">
           <span class="menu-ham-line"></span>
           <span class="menu-ham-line"></span>
@@ -2457,7 +2461,7 @@
   <div id="menu-lateral" class="menu-lateral">
       <div class="menu-header">
           <h3>⚙️ Ajustes</h3>
-          <button class="menu-close-btn" onclick="toggleMenu()">✕</button>
+          <button class="menu-close-btn" onclick="toggleMenu()" title="Cerrar">✕</button>
       </div>
       
       <div class="menu-content">
@@ -2504,6 +2508,28 @@
                       <div class="menu-item-text">
                           <strong>Seguir Pedido</strong>
                           <small>Rastreo en tiempo real</small>
+                      </div>
+                  </div>
+                  <span style="color:var(--color-primary); font-size:18px;">›</span>
+              </div>
+
+              <div class="menu-item" onclick="changeTab('premios'); toggleMenu();" style="cursor:pointer;">
+                  <div class="menu-item-info">
+                      <span class="menu-item-icon">🎰</span>
+                      <div class="menu-item-text">
+                          <strong>Premios</strong>
+                          <small>Ruleta de descuentos</small>
+                      </div>
+                  </div>
+                  <span style="color:var(--color-primary); font-size:18px;">›</span>
+              </div>
+
+              <div class="menu-item" onclick="toggleMenu(); setTimeout(toggleAIChat,150);" style="cursor:pointer;">
+                  <div class="menu-item-info">
+                      <span class="menu-item-icon">🤖</span>
+                      <div class="menu-item-text">
+                          <strong>ServiBot</strong>
+                          <small>Asistente virtual IA</small>
                       </div>
                   </div>
                   <span style="color:var(--color-primary); font-size:18px;">›</span>
@@ -2607,22 +2633,33 @@
   <div class="container" id="main-container" style="display:none;">
 
     <div id="vista-inicio">
-      <h2>Bienvenido</h2>
-      <p style="color:var(--color-text-dark);">Inicia sesión o regístrate con tu correo y contraseña:</p>
-      
-      <div class="auth-group">
-          <label for="email-input">Correo Electrónico:</label>
-          <input type="email" id="email-input" placeholder="tu.correo@ejemplo.com" required>
+      <div style="text-align:center; padding:30px 0 10px;">
+        <img src="https://i.ibb.co/hJCtmHsf/1761849436845.png" alt="Servi Aliados"
+             style="width:90px; border-radius:16px; margin-bottom:14px; box-shadow:0 4px 16px rgba(0,0,0,0.4);">
+        <h2 style="margin-bottom:6px; color:var(--color-primary);">Servi Aliados</h2>
+        <p style="color:var(--color-text-dark); font-size:14px; margin-bottom:28px;">
+          Servicio de domicilios en Armenia, Colombia 🛵
+        </p>
       </div>
-      <div class="auth-group">
-          <label for="password-input">Contraseña:</label>
-          <input type="password" id="password-input" required>
-      </div>
-      
-      <div id="auth-status"></div>
-      
-      <button onclick="registrarConCorreo()">Registrarse (Crear Cuenta)</button>
-      <button onclick="iniciarSesionConCorreo()">Iniciar Sesión</button>
+
+      <!-- Botón Google -->
+      <button onclick="signInWithGoogle()" style="
+          background:#ffffff; color:#333; border:1px solid #dadce0;
+          display:flex; align-items:center; justify-content:center;
+          gap:12px; width:100%; padding:14px 20px; border-radius:10px;
+          font-size:16px; font-weight:600; cursor:pointer;
+          box-shadow:0 2px 10px rgba(0,0,0,0.25); margin-bottom:14px;
+          transition: box-shadow 0.2s;">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+             style="width:22px; height:22px; flex-shrink:0;">
+        Continuar con Google (Gmail)
+      </button>
+
+      <div id="auth-status" style="text-align:center; margin-top:8px; font-size:14px;"></div>
+
+      <!-- Inputs ocultos — requeridos por funciones internas, no eliminar -->
+      <input type="email"    id="email-input"    style="display:none">
+      <input type="password" id="password-input" style="display:none">
     </div>
 
     <form id="vista-registro-complemento" style="display:none;">
@@ -2638,7 +2675,17 @@
       <label>Teléfono secundario (opcional):</label>
       <input type="tel" id="telefono2Usuario">
       <label>Dirección de residencia: <span style="color:var(--color-primary);">*</span></label>
-      <input type="text" id="direccionUsuario" required>
+      <input type="text" id="direccionUsuario" required placeholder="Ej: Cra 15 #20-10, Barrio El Centro">
+
+      <!-- 📍 Botón para detectar dirección por GPS -->
+      <button type="button" onclick="usarUbicacionEnRegistro()" style="
+          background:linear-gradient(135deg,#1565C0,#1976D2); color:#fff;
+          border:none; border-radius:8px; padding:11px; width:100%;
+          font-size:13px; font-weight:bold; cursor:pointer; margin-top:6px;">
+        📍 Detectar mi dirección por GPS
+      </button>
+      <div id="gps-registro-status" style="display:none; margin-top:6px; font-size:12px;
+           background:rgba(33,150,243,0.1); border-radius:6px; padding:8px; color:#4A9EFF;"></div>
 
       <button type="button" onclick="registrarUsuarioComplemento()">Guardar y Continuar</button>
       <button type="button" class="back-btn" onclick="signOutUser()">Cerrar Sesión</button>
@@ -2652,6 +2699,7 @@
           <button id="tab-perfil" class="tab-button" onclick="changeTab('perfil')">👤 Perfil</button>
           <button id="tab-servicio" class="tab-button" onclick="changeTab('servicio')">📦 Servicio</button>
           <button id="tab-tracking" class="tab-button tracking-btn" onclick="changeTab('tracking')">📍 Seguir</button>
+          <button id="tab-premios" class="tab-button" onclick="changeTab('premios')">🎁 Premios</button>
       </div>
 
       <!-- ========== TAB TIENDA ========== -->
@@ -2676,6 +2724,46 @@
       </div>
 
       <div id="content-perfil" class="tab-content">
+
+          <!-- ══ TARJETA DE NIVEL ══ -->
+          <div id="perfil-nivel-card" style="background:linear-gradient(135deg,#0f0c29,#302b63); border:1px solid rgba(167,139,250,0.4); border-radius:18px; padding:18px; margin-bottom:18px; position:relative; overflow:hidden;">
+            
+            <!-- Brillo decorativo -->
+            <div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:radial-gradient(circle,rgba(167,139,250,0.2),transparent);border-radius:50%;"></div>
+
+            <div style="display:flex; align-items:center; gap:14px; margin-bottom:14px;">
+              <!-- Avatar / Rango emoji -->
+              <div id="perfil-nivel-badge" style="width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#6366f1,#a855f7); display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0; box-shadow:0 4px 14px rgba(99,102,241,0.5); border:2px solid rgba(167,139,250,0.6);">🌱</div>
+              <div style="flex:1; min-width:0;">
+                <div style="color:#9ca3af; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px;">Nivel actual</div>
+                <div id="perfil-nivel-nombre" style="color:#e0d7ff; font-size:18px; font-weight:900; line-height:1.2;">Novato</div>
+                <div id="perfil-nivel-num" style="color:#818cf8; font-size:12px; font-weight:600;">Nivel 1 · 0 domicilios</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="color:#6b7280; font-size:10px;">Siguiente nivel</div>
+                <div id="perfil-nivel-siguiente" style="color:#a78bfa; font-size:13px; font-weight:700;">Explorador</div>
+                <div id="perfil-xp-faltante" style="color:#4b5563; font-size:11px;">5 más</div>
+              </div>
+            </div>
+
+            <!-- Barra XP -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <span style="color:#818cf8; font-size:11px; font-weight:700;">Experiencia</span>
+                <span id="perfil-xp-label" style="color:#c4b5fd; font-size:11px; font-weight:700;">0 / 5 XP</span>
+              </div>
+              <div style="background:#1e1b4b; border-radius:99px; height:10px; overflow:hidden; position:relative;">
+                <div id="perfil-xp-fill" style="background:linear-gradient(90deg,#6366f1,#a78bfa,#e879f9); height:100%; width:0%; border-radius:99px; transition:width 0.8s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 0 10px rgba(167,139,250,0.7);"></div>
+              </div>
+            </div>
+
+            <!-- Beneficios del nivel actual -->
+            <div id="perfil-nivel-beneficios" style="margin-top:12px; background:rgba(255,255,255,0.04); border-radius:10px; padding:10px 12px;">
+              <div style="color:#6b7280; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">Beneficios activos</div>
+              <div id="perfil-beneficios-lista" style="color:#9ca3af; font-size:12px; line-height:1.7;">🎁 Acumula puntos por cada pedido</div>
+            </div>
+          </div>
+
           <h3 style="color:var(--color-text-light);">Información del Cliente</h3>
           <div class="dato">
             <strong>Nombre:</strong> <span id="nombrePerfil"></span>
@@ -2725,6 +2813,15 @@
 
               <label>Dirección de recogida:</label>
               <input type="text" id="domi-dir-recogida" placeholder="Ej: Cra 10 #15-30, Barrio Centro" />
+              <!-- 📍 Botón GPS tipo Rappi -->
+              <button type="button" onclick="usarUbicacionEnRecogida()" style="
+                  background:linear-gradient(135deg,#1565C0,#1976D2); color:#fff;
+                  border:none; border-radius:8px; padding:9px; width:100%;
+                  font-size:12px; font-weight:bold; cursor:pointer; margin-top:4px; margin-bottom:6px;">
+                📍 Usar mi ubicación actual como dirección de recogida
+              </button>
+              <div id="gps-recogida-mismatch" style="display:none; background:#2a1a00; border:1px solid #e67e22;
+                   border-radius:8px; padding:10px; margin-bottom:8px; font-size:13px; color:#f0f0f0;"></div>
 
               <label>Número de contacto (quien entrega):</label>
               <input type="tel" id="domi-tel-entrega" placeholder="Ej: 3001234567" />
@@ -3024,8 +3121,8 @@
           
           <div id="tracking-result"></div>
 
-          <!-- === CHAT P2P CLIENTE-REPARTIDOR (siempre visible) === -->
-          <div id="chat-repartidor-container" style="margin-top:16px;">
+          <!-- === CHAT P2P CLIENTE-REPARTIDOR (solo visible después de buscar pedido) === -->
+          <div id="chat-repartidor-container" style="margin-top:16px; display:none;">
             <div style="background:#1a1a2e; border:1px solid #4A9EFF; border-radius:12px; overflow:hidden;">
               <div style="background:#16213e; padding:12px 16px; display:flex; align-items:center; justify-content:space-between;">
                 <span style="color:#4A9EFF; font-weight:bold; font-size:14px;">💬 Chat con tu Repartidor</span>
@@ -3063,6 +3160,229 @@
           </div>
           <!-- === FIN CHAT P2P === -->
       </div>
+
+      <!-- ========== TAB PREMIOS ========== -->
+      <div id="content-premios" class="tab-content">
+        <div style="padding:0 4px;">
+
+          <!-- ── ENCABEZADO ── -->
+          <div style="text-align:center; padding:24px 0 8px;">
+            <div style="font-size:48px; line-height:1;">🎁</div>
+            <h3 style="margin:8px 0 4px; color:var(--color-text-light);">Premios Servi Aliados</h3>
+            <p style="color:var(--color-text-dark); font-size:13px; margin:0;">
+              Fidelidad que se recompensa
+            </p>
+          </div>
+
+          <!-- ══════════════════════════════════════════════════════
+               SECCIÓN A: DÍA BOMBA (Lunes y Martes)
+               Solo desbloqueado para clientes con 20+ servicios/semana
+          ═══════════════════════════════════════════════════════════ -->
+          <div id="card-dia-bomba" style="background:linear-gradient(135deg,#1a2a1a,#0d1f0d); border:1px solid #22c55e44; border-radius:14px; padding:18px; margin:16px 0;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+              <span style="font-size:28px;">💥</span>
+              <div>
+                <div style="color:#22c55e; font-weight:700; font-size:16px;">Día Bomba — Lunes y Martes</div>
+                <div style="color:#a3e635; font-size:12px;">Reventamos el volumen con tarifas especiales</div>
+              </div>
+            </div>
+
+            <p style="color:#d1fae5; font-size:13px; line-height:1.6; margin:0 0 12px;">
+              Los <strong style="color:#22c55e;">lunes y martes</strong> son los días más tranquilos de la semana.
+              Para aprovecharlos y generar más pedidos, ese día los domicilios <em>dentro de Armenia</em>
+              bajan a precios especiales — aunque la ganancia por servicio sea menor,
+              el volumen compensa.
+            </p>
+
+            <!-- Tarifas de ejemplo -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
+              <div style="background:#052e16; border-radius:10px; padding:12px; text-align:center;">
+                <div style="color:#86efac; font-size:11px; margin-bottom:4px;">🏘️ Barrio cercano / mismo</div>
+                <div style="color:#22c55e; font-size:22px; font-weight:800;">$3.000</div>
+                <div style="color:#4ade80; font-size:11px;">Barrios contiguos</div>
+              </div>
+              <div style="background:#052e16; border-radius:10px; padding:12px; text-align:center;">
+                <div style="color:#86efac; font-size:11px; margin-bottom:4px;">🗺️ Barrio distante</div>
+                <div style="color:#22c55e; font-size:22px; font-weight:800;">$4.000</div>
+                <div style="color:#4ade80; font-size:11px;">Cualquier zona Armenia</div>
+              </div>
+            </div>
+
+            <!-- Candado / estado del beneficio -->
+            <div id="bomba-bloqueado" style="background:#1c1c1c; border:1px dashed #555; border-radius:10px; padding:14px; text-align:center;">
+              <div style="font-size:24px; margin-bottom:6px;">🔒</div>
+              <div style="color:#9ca3af; font-size:13px; font-weight:600;">Beneficio bloqueado</div>
+              <div style="color:#6b7280; font-size:12px; margin-top:4px;">
+                Necesitas <strong style="color:#facc15;">20 servicios en la semana</strong> para desbloquear
+                las tarifas bomba de lunes y martes.
+              </div>
+              <div style="margin-top:10px;">
+                <div id="bomba-progreso-bar" style="background:#2d2d2d; border-radius:99px; height:8px; overflow:hidden;">
+                  <div id="bomba-progreso-fill" style="background:linear-gradient(90deg,#22c55e,#a3e635); height:100%; width:0%; border-radius:99px; transition:width 0.5s;"></div>
+                </div>
+                <div id="bomba-progreso-texto" style="color:#6b7280; font-size:11px; margin-top:5px;">0 / 20 servicios esta semana</div>
+              </div>
+            </div>
+
+            <div id="bomba-desbloqueado" style="display:none; background:#052e16; border:1px solid #22c55e; border-radius:10px; padding:14px; text-align:center;">
+              <div style="font-size:28px; margin-bottom:6px;">🎉</div>
+              <div style="color:#22c55e; font-size:14px; font-weight:700;">¡Beneficio activo!</div>
+              <div style="color:#a3e635; font-size:12px; margin-top:4px;">
+                Los <strong>lunes y martes</strong> tus domicilios en Armenia salen con tarifa bomba.
+                El sistema aplica el descuento automáticamente al solicitar.
+              </div>
+            </div>
+
+            <p style="color:#4b5563; font-size:11px; margin:10px 0 0; text-align:center;">
+              * Válido solo dentro de Armenia · El admin puede activar o pausar el día bomba
+            </p>
+          </div>
+
+          <!-- ══════════════════════════════════════════════════════
+               SECCIÓN B: RULETA DE DESCUENTOS
+          ═══════════════════════════════════════════════════════════ -->
+          <div style="background:linear-gradient(160deg,#0f0c29,#302b63,#24243e); border:1px solid rgba(99,102,241,0.3); border-radius:20px; padding:20px 16px 24px; margin:16px 0 24px; position:relative; overflow:hidden;">
+            
+            <!-- Fondo decorativo de estrellas -->
+            <div style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;">
+              <div style="position:absolute;top:8%;left:10%;width:3px;height:3px;background:#a78bfa;border-radius:50%;opacity:0.6;"></div>
+              <div style="position:absolute;top:20%;left:85%;width:2px;height:2px;background:#f59e0b;border-radius:50%;opacity:0.8;"></div>
+              <div style="position:absolute;top:50%;left:5%;width:2px;height:2px;background:#818cf8;border-radius:50%;opacity:0.5;"></div>
+              <div style="position:absolute;top:75%;left:90%;width:3px;height:3px;background:#e879f9;border-radius:50%;opacity:0.6;"></div>
+              <div style="position:absolute;top:90%;left:30%;width:2px;height:2px;background:#fbbf24;border-radius:50%;opacity:0.7;"></div>
+            </div>
+
+            <!-- Título -->
+            <div style="text-align:center; margin-bottom:18px; position:relative;">
+              <div style="font-size:36px; line-height:1; margin-bottom:6px;">🎰</div>
+              <div style="color:#e0d7ff; font-weight:800; font-size:20px; letter-spacing:-0.5px;">Ruleta de Descuentos</div>
+              <div style="color:#818cf8; font-size:12px; margin-top:3px;">Gira cada 3 pedidos completados</div>
+            </div>
+
+            <!-- Casillas de premios -->
+            <div style="margin-bottom:20px;">
+              <div style="color:#9ca3af; font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; text-align:center;">Premios posibles</div>
+              <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:6px;">
+                
+                <div style="background:linear-gradient(135deg,#1e1b4b,#312e81); border:1.5px solid #4338ca; border-radius:12px; padding:10px 4px; text-align:center; position:relative; overflow:hidden;">
+                  <div style="position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,#4f46e5,#818cf8);"></div>
+                  <div style="font-size:16px; margin-bottom:2px;">🎫</div>
+                  <div style="color:#a5b4fc; font-size:16px; font-weight:900; line-height:1;">10%</div>
+                  <div style="color:#6366f1; font-size:9px; margin-top:2px; font-weight:600;">desc.</div>
+                  <div style="color:#4338ca; font-size:9px;">40% prob.</div>
+                </div>
+
+                <div style="background:linear-gradient(135deg,#2e1065,#4c1d95); border:1.5px solid #7c3aed; border-radius:12px; padding:10px 4px; text-align:center; position:relative; overflow:hidden;">
+                  <div style="position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,#7c3aed,#a78bfa);"></div>
+                  <div style="font-size:16px; margin-bottom:2px;">🎟️</div>
+                  <div style="color:#c4b5fd; font-size:16px; font-weight:900; line-height:1;">15%</div>
+                  <div style="color:#8b5cf6; font-size:9px; margin-top:2px; font-weight:600;">desc.</div>
+                  <div style="color:#6d28d9; font-size:9px;">30% prob.</div>
+                </div>
+
+                <div style="background:linear-gradient(135deg,#3b0764,#6b21a8); border:1.5px solid #9333ea; border-radius:12px; padding:10px 4px; text-align:center; position:relative; overflow:hidden;">
+                  <div style="position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,#9333ea,#e879f9);"></div>
+                  <div style="font-size:16px; margin-bottom:2px;">💜</div>
+                  <div style="color:#e879f9; font-size:16px; font-weight:900; line-height:1;">50%</div>
+                  <div style="color:#a855f7; font-size:9px; margin-top:2px; font-weight:600;">desc.</div>
+                  <div style="color:#7e22ce; font-size:9px;">15% prob.</div>
+                </div>
+
+                <div style="background:linear-gradient(135deg,#4a044e,#831843); border:1.5px solid #db2777; border-radius:12px; padding:10px 4px; text-align:center; position:relative; overflow:hidden;">
+                  <div style="position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,#db2777,#f472b6);"></div>
+                  <div style="font-size:16px; margin-bottom:2px;">💎</div>
+                  <div style="color:#f9a8d4; font-size:16px; font-weight:900; line-height:1;">75%</div>
+                  <div style="color:#ec4899; font-size:9px; margin-top:2px; font-weight:600;">desc.</div>
+                  <div style="color:#9d174d; font-size:9px;">10% prob.</div>
+                </div>
+
+                <div style="background:linear-gradient(135deg,#431407,#7c2d12); border:2px solid #f59e0b; border-radius:12px; padding:10px 4px; text-align:center; position:relative; overflow:hidden; box-shadow:0 0 10px rgba(245,158,11,0.3);">
+                  <div style="position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,#f59e0b,#fcd34d);"></div>
+                  <div style="font-size:16px; margin-bottom:2px;">👑</div>
+                  <div style="color:#fcd34d; font-size:14px; font-weight:900; line-height:1;">100%</div>
+                  <div style="color:#f59e0b; font-size:8px; margin-top:2px; font-weight:700;">¡GRATIS!</div>
+                  <div style="color:#92400e; font-size:9px;">5% prob.</div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Ruleta canvas con marco decorativo -->
+            <div style="text-align:center; margin-bottom:20px; position:relative;">
+              <!-- Anillo exterior decorativo -->
+              <div style="position:relative; display:inline-block;">
+                <div style="position:absolute; inset:-8px; border-radius:50%; background:conic-gradient(#4f46e5,#7c3aed,#9333ea,#db2777,#f59e0b,#4f46e5); padding:4px; border-radius:50%;">
+                  <div style="width:100%; height:100%; background:#0f0c29; border-radius:50%;"></div>
+                </div>
+                <!-- Pin indicador superior -->
+                <div style="position:absolute; top:-22px; left:50%; transform:translateX(-50%); z-index:10; filter:drop-shadow(0 2px 6px rgba(245,158,11,0.8));">
+                  <svg width="24" height="28" viewBox="0 0 24 28">
+                    <polygon points="12,28 0,0 24,0" fill="#f59e0b"/>
+                    <polygon points="12,22 4,4 20,4" fill="#fcd34d"/>
+                  </svg>
+                </div>
+                <canvas id="ruleta-canvas" width="260" height="260" style="display:block; position:relative; z-index:1; border-radius:50%;"></canvas>
+              </div>
+            </div>
+
+            <!-- Contador de giros + barra de progreso -->
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(99,102,241,0.3); border-radius:14px; padding:14px; margin-bottom:14px;">
+              
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div>
+                  <div style="color:#c4b5fd; font-size:12px; font-weight:600;">Giros disponibles</div>
+                  <div id="ruleta-giros-display" style="color:#a78bfa; font-size:24px; font-weight:900; line-height:1.1;">
+                    <span id="ruleta-giros-count">0</span> 🎯
+                  </div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="color:#6b7280; font-size:11px;">Progreso siguiente giro</div>
+                  <div id="ruleta-prog-texto" style="color:#818cf8; font-size:12px; font-weight:700;">0 / 3 pedidos</div>
+                </div>
+              </div>
+
+              <div style="background:#1e1b4b; border-radius:99px; height:8px; overflow:hidden; position:relative;">
+                <div id="ruleta-prog-fill" style="background:linear-gradient(90deg,#6366f1,#a78bfa,#e879f9); height:100%; width:0%; border-radius:99px; transition:width 0.6s ease; box-shadow:0 0 8px rgba(167,139,250,0.6);"></div>
+              </div>
+
+            </div>
+
+            <!-- Resultado del giro -->
+            <div id="ruleta-resultado" style="display:none; background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(168,85,247,0.15)); border:1.5px solid #a78bfa; border-radius:14px; padding:16px; text-align:center; margin-bottom:14px; animation: ruletaGlow 1.5s ease-in-out infinite alternate;">
+              <div style="font-size:32px; margin-bottom:6px;">🎊</div>
+              <div id="ruleta-resultado-texto" style="color:#e0d7ff; font-size:17px; font-weight:800;"></div>
+              <div id="ruleta-cupon-codigo" style="color:#fbbf24; font-size:13px; margin-top:6px; background:rgba(245,158,11,0.1); border:1px dashed #f59e0b; border-radius:8px; padding:6px 10px; display:inline-block;"></div>
+              <div style="color:#6b7280; font-size:11px; margin-top:8px;">Muéstrale este código al admin al hacer tu próximo pedido</div>
+            </div>
+
+            <!-- Botón girar -->
+            <button id="btn-girar-ruleta" onclick="girarRuleta()"
+              style="width:100%; padding:16px; background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7); color:#fff; border:none; border-radius:14px; font-size:16px; font-weight:800; cursor:pointer; letter-spacing:0.5px; box-shadow:0 4px 20px rgba(99,102,241,0.5); transition:all 0.2s; text-shadow:0 1px 3px rgba(0,0,0,0.3);">
+              🎰 ¡Girar Ruleta!
+            </button>
+
+            <p style="color:#374151; font-size:11px; margin:10px 0 0; text-align:center;">
+              * Los descuentos se validan con el admin al pagar · Probabilidades configurables
+            </p>
+          </div>
+
+          <style>
+            @keyframes ruletaGlow {
+              from { box-shadow: 0 0 8px rgba(167,139,250,0.3); }
+              to   { box-shadow: 0 0 20px rgba(167,139,250,0.7); }
+            }
+            #btn-girar-ruleta:hover:not(:disabled) {
+              transform: translateY(-2px);
+              box-shadow: 0 8px 28px rgba(99,102,241,0.7) !important;
+            }
+            #btn-girar-ruleta:active:not(:disabled) {
+              transform: translateY(0px);
+            }
+          </style>
+
+        </div>
+      </div>
+      <!-- ========== FIN TAB PREMIOS ========== -->
       
     </div>
   </div>
@@ -3401,6 +3721,15 @@
         mainContainer.style.display = 'block'; 
         const vista = document.getElementById(vistaId);
         if (vista) vista.style.display = 'block';
+
+        // Menú hamburguesa solo visible cuando hay sesión iniciada
+        const esLogueado = (vistaId === 'vista-cliente');
+        const menuHam = document.getElementById('menu-hamburguesa');
+        const aiFab   = document.getElementById('ai-fab');
+        const aiPanel = document.getElementById('ai-chat-panel');
+        if (menuHam) menuHam.style.display = esLogueado ? 'block' : 'none';
+        if (aiFab)   aiFab.style.display   = 'none'; // siempre oculto, ServiBot está en el menú ☰
+        if (aiPanel && !esLogueado) aiPanel.classList.remove('open');
     }
 
     function changeTab(tabName) {
@@ -3432,6 +3761,16 @@
             // El tab de servicio ahora usa el formulario de domicilios
         }
         
+        if (tabName === 'premios') {
+            // Inicializar UI de premios al entrar
+            if (typeof window.initPremiosUI === 'function') window.initPremiosUI();
+        }
+
+        if (tabName === 'perfil') {
+            // Actualizar barra de nivel al entrar al perfil
+            if (typeof window.actualizarNivelPerfil === 'function') window.actualizarNivelPerfil();
+        }
+
         if (tabName === 'tracking') {
             document.getElementById('tracking-status-message').textContent = '';
             document.getElementById('tracking-result').style.display = 'none';
@@ -3546,20 +3885,76 @@
 
         } else {
             // ── TARIFAS DENTRO DE ARMENIA ────────────────────────
+            // 📍 Grupos de barrios cercanos (mismo o contiguo = tarifa mínima $3.500)
+            // Cambia estos grupos o agrega más según la realidad del mapa de Armenia
+            const GRUPOS_BARRIOS_CERCANOS = [
+                // Sur
+                ['virginia', 'santa rita', 'puerto espejo', 'la cecilia', 'el bosque'],
+                ['bosques de pinares', 'pinares', 'el edén', 'la pradera', 'villa del sur'],
+                ['la patria', 'san jose', 'san josé', 'el limonar', 'villa olimpica', 'villa olímpica'],
+                ['los quindos', 'quindos', 'la clarita', 'el castillo'],
+                // Centro
+                ['el centro', 'centro', 'la rebeca', 'la estrella', 'los sauces'],
+                ['simon bolivar', 'simón bolívar', 'santa teresita', 'el portal', 'piamonte'],
+                ['el nogal', 'los cerezos', 'la pola', 'el paraiso', 'el paraíso'],
+                // Norte
+                ['las colinas', 'el parque', 'el jardin', 'el jardín', 'chapines'],
+                ['bella vista', 'bellavista', 'la florida', 'el bosque norte'],
+                ['el progreso', 'la union', 'la unión', 'terminal', 'el terminal'],
+                // Oriente
+                ['la miranda', 'miranda', 'el cairo', 'la nubia', 'boquía'],
+                ['la pizarra', 'el alvernia', 'alvernia', 'la granja'],
+                // Occidente
+                ['ciudadela del cafe', 'ciudadela del café', 'el caimo', 'santa barbara', 'santa bárbara'],
+                ['la america', 'la américa', 'el vergel', 'guayaquil'],
+            ];
+
+            const brRec = (document.getElementById('domi-barrio-recogida')?.value || '').toLowerCase().trim();
+            const brEnt = (document.getElementById('domi-barrio-entrega')?.value || '').toLowerCase().trim();
+
+            // Función: ¿dos barrios están en el mismo grupo o grupos adyacentes?
+            function sonBarriosCercanos(b1, b2) {
+                if (!b1 || !b2) return false;
+                if (b1 === b2) return true; // mismo barrio
+                for (const grupo of GRUPOS_BARRIOS_CERCANOS) {
+                    if (grupo.some(x => b1.includes(x) || x.includes(b1)) &&
+                        grupo.some(x => b2.includes(x) || x.includes(b2))) {
+                        return true; // mismo grupo
+                    }
+                }
+                return false;
+            }
+
             const zonas   = { sur:0, centro:1, norte:2, oriente:1, occidente:1 };
             const nombres = { sur:'Sur', centro:'Centro', norte:'Norte', oriente:'Oriente', occidente:'Occidente' };
             const diff = Math.abs((zonas[zonaRecogida]||0) - (zonas[zonaEntrega]||0));
             const mismaComunaOZona = zonaRecogida === zonaEntrega;
 
-            if (mismaComunaOZona) {
-                precio = 5000;
-                razon  = `Misma zona (${nombres[zonaRecogida] || zonaRecogida})`;
+            // ── Verificar si es día bomba activo (lunes=1, martes=2) ──
+            const hoy = new Date().getDay(); // 0=dom,1=lun,2=mar,...
+            const esDiaBomba = (hoy === 1 || hoy === 2) && (window._clienteDiaBombaActivo === true);
+
+            if (sonBarriosCercanos(brRec, brEnt)) {
+                // Mismo barrio o barrios del mismo grupo
+                precio = esDiaBomba ? 3000 : 3500;
+                razon  = esDiaBomba
+                    ? `💥 Día Bomba · Barrios cercanos (${brRec || zonaRecogida} → ${brEnt || zonaEntrega})`
+                    : `🏘️ Barrios cercanos (${brRec || zonaRecogida} → ${brEnt || zonaEntrega})`;
+            } else if (mismaComunaOZona) {
+                precio = esDiaBomba ? 3000 : 3000;
+                razon  = esDiaBomba
+                    ? `💥 Día Bomba · Misma zona (${nombres[zonaRecogida] || zonaRecogida})`
+                    : `Misma zona (${nombres[zonaRecogida] || zonaRecogida})`;
             } else if (diff <= 1) {
-                precio = 6000;
-                razon  = `Zona distante: ${nombres[zonaRecogida]||zonaRecogida} → ${nombres[zonaEntrega]||zonaEntrega}`;
+                precio = esDiaBomba ? 4000 : 6000;
+                razon  = esDiaBomba
+                    ? `💥 Día Bomba · ${nombres[zonaRecogida]||zonaRecogida} → ${nombres[zonaEntrega]||zonaEntrega}`
+                    : `Zona distante: ${nombres[zonaRecogida]||zonaRecogida} → ${nombres[zonaEntrega]||zonaEntrega}`;
             } else {
-                precio = 7000;
-                razon  = `Zona lejana: ${nombres[zonaRecogida]||zonaRecogida} ↔ ${nombres[zonaEntrega]||zonaEntrega}`;
+                precio = esDiaBomba ? 4000 : 7000;
+                razon  = esDiaBomba
+                    ? `💥 Día Bomba · ${nombres[zonaRecogida]||zonaRecogida} ↔ ${nombres[zonaEntrega]||zonaEntrega}`
+                    : `Zona lejana: ${nombres[zonaRecogida]||zonaRecogida} ↔ ${nombres[zonaEntrega]||zonaEntrega}`;
             }
         }
 
@@ -3716,15 +4111,22 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        system: `Eres un extractor de datos de domicilios. El usuario te envía una imagen con datos de un destinatario (nombre, dirección, teléfono). 
-Extrae esa información y responde SOLO con este formato JSON exacto (sin markdown, sin explicaciones):
+                        system: `Eres un extractor de datos para domicilios. El usuario te envía una imagen que puede ser una captura de WhatsApp, una nota escrita o cualquier imagen con datos de un destinatario.
+Tu única tarea es encontrar estos campos:
+1. Nombre completo del destinatario
+2. Dirección de entrega (calle, carrera, número, conjunto, etc.)
+3. Número de teléfono (solo dígitos, sin espacios ni guiones)
+4. Barrio o sector de entrega
+
+Responde SOLO con este JSON exacto, sin markdown, sin explicaciones, sin texto adicional:
 {"nombre":"...","direccion":"...","telefono":"...","barrio":"..."}
-Si no encuentras algún campo déjalo como cadena vacía "".`,
+Si no encuentras un campo déjalo como "".
+Ignora saludos, conversaciones, emojis y cualquier información que no sean datos del destinatario.`,
                         messages: [{
                             role: 'user',
                             content: [
                                 { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64Data } },
-                                { type: 'text',  text: 'Extrae nombre, dirección, teléfono y barrio de esta imagen.' }
+                                { type: 'text',  text: 'Extrae nombre, dirección, teléfono y barrio del destinatario de esta imagen. Devuelve SOLO el JSON.' }
                             ]
                         }],
                         max_tokens: 300
@@ -4111,7 +4513,10 @@ Si no encuentras algún campo déjalo como cadena vacía "".`,
                                    municipioRecogidaId: municipioRecogidaIdVal, municipioRecogidaNombre, kmViaRecogida, veredaRecogida,
                                    precio, tamano, servicioCompra };
 
-        document.getElementById('modal-confirmar-domi').style.display = 'block';
+        // 🆕 VERIFICAR SI GPS DIFIERE DE LA DIRECCIÓN INGRESADA
+        await verificarGPSvsDireccion(dirRecogida, function() {
+            document.getElementById('modal-confirmar-domi').style.display = 'block';
+        });
     };
 
     // Confirmar y enviar pedido a Firebase + asignar repartidor
@@ -5105,13 +5510,14 @@ Si no encuentras algún campo déjalo como cadena vacía "".`,
             menuOverlay.classList.add('active');
             btnMenu.classList.add('active');
             document.body.style.overflow = 'hidden';
-            
+            document.getElementById('menu-hamburguesa').style.display = 'none';
             verificarEstadosPermisos();
         } else {
             menuLateral.classList.remove('active');
             menuOverlay.classList.remove('active');
             btnMenu.classList.remove('active');
             document.body.style.overflow = '';
+            document.getElementById('menu-hamburguesa').style.display = 'block';
         }
     }
 
@@ -5838,16 +6244,16 @@ Si no encuentras algún campo déjalo como cadena vacía "".`,
             
             <p id="estado-descripcion-display" style="text-align: center; color: var(--color-text-dark); margin-bottom: 20px;">${estadoDescripcion}</p>
             
-            ${(pedido.pedidosEnColaRepartidor > 0) ? `
-            <div style="background:#2a1a00; border:1px solid #e67e22; border-radius:10px; padding:12px; margin-bottom:14px;">
+            <div id="info-cola-repartidor" style="background:#2a1a00; border:1px solid #e67e22; border-radius:10px; padding:12px; margin-bottom:14px; display:${(pedido.pedidosEnColaRepartidor > 0) ? 'block' : 'none'};">
               <p style="color:#e67e22; font-weight:bold; margin:0 0 6px 0;">🛵 Información del repartidor</p>
-              <p style="color:#f0f0f0; font-size:13px; margin:0 0 4px 0;">
+              <p id="info-cola-texto" style="color:#f0f0f0; font-size:13px; margin:0 0 4px 0;">
                 El repartidor lleva <strong style="color:#FFD700;">${pedido.pedidosEnColaRepartidor} servicio${pedido.pedidosEnColaRepartidor > 1 ? 's' : ''} activo${pedido.pedidosEnColaRepartidor > 1 ? 's' : ''}</strong> antes del tuyo.
               </p>
               <p style="color:#aaa; font-size:12px; margin:0;">
                 📍 Pasará a recogerte y entregará en el orden de la ruta. Puedes ver su ubicación en tiempo real en el mapa de arriba.
               </p>
-            </div>` : ''}
+            </div>
+
 
             ${(pedido.tiempoEstimadoRecogida || pedido.tiempoEstimadoEntrega) ? `
             <div style="background:#1a2a1a; border:1px solid #28a745; border-radius:10px; padding:12px; margin-bottom:14px;">
@@ -6031,6 +6437,31 @@ Si no encuentras algún campo déjalo como cadena vacía "".`,
         
         console.log('👂 Listener del pedido iniciado para detectar cambios de estado');
         
+        // 🆕 LISTENER EN TIEMPO REAL PARA COLA DEL REPARTIDOR
+        const repUID = pedido.repartidorUID || pedido.repartidorId || pedido.repartidorIdAsignado;
+        if (repUID && window.db) {
+            if (window.repartidorInfoListener) {
+                try { window.repartidorInfoListener(); } catch(e) {}
+                window.repartidorInfoListener = null;
+            }
+            const repInfoRef = window.ref(window.db, `repartidores_info/${repUID}`);
+            window.repartidorInfoListener = window.onValue(repInfoRef, (snap) => {
+                const colaDiv  = document.getElementById('info-cola-repartidor');
+                const colaText = document.getElementById('info-cola-texto');
+                if (!colaDiv) return;
+                const pedidosActivos = snap.exists() ? (snap.val().pedidosActivos || 0) : 0;
+                // pedidosActivos incluye este pedido, así que "antes del tuyo" = pedidosActivos - 1
+                const otros = Math.max(0, pedidosActivos - 1);
+                if (otros === 0) {
+                    colaDiv.style.display = 'none';
+                } else {
+                    colaDiv.style.display = 'block';
+                    if (colaText) colaText.innerHTML =
+                        `El repartidor lleva <strong style="color:#FFD700;">${otros} servicio${otros > 1 ? 's' : ''} activo${otros > 1 ? 's' : ''}</strong> antes del tuyo.`;
+                }
+            });
+        };
+        
         // 🔥 DEBUG: Mostrar información completa del pedido en consola
         console.log('');
         console.log('═══════════════════════════════════════════════════════════');
@@ -6041,7 +6472,7 @@ Si no encuentras algún campo déjalo como cadena vacía "".`,
         console.log('🆔 repartidorId:', pedido.repartidorId || 'N/A');
         console.log('👤 repartidorNombre:', pedido.repartidorNombre || 'N/A');
         console.log('🔑 repartidorUID:', pedido.repartidorUID || 'N/A');
-        console.log('📋 Campos disponibles:', Object.keys(pedido));
+        console.log('?? Campos disponibles:', Object.keys(pedido));
         console.log('🎯 Estado en estadosActivos?', ['pendiente', 'aceptado', 'esperando pedido', 'en camino', 'completado', 'entregado'].includes(estado.toLowerCase()));
         console.log('🎯 Tiene repartidorIdAsignado?', !!pedido.repartidorIdAsignado);
         console.log('═══════════════════════════════════════════════════════════');
@@ -6073,13 +6504,13 @@ Si no encuentras algún campo déjalo como cadena vacía "".`,
             return; // 🚨 IMPORTANTE: Salir de la función aquí
         }
         
-        if (estadosActivos.includes(estado.toLowerCase()) && tieneRepartidor) {
+        if (estadosActivos.includes(estado.toLowerCase())) {
             console.log('');
             console.log('═══════════════════════════════════════════════════════════');
             console.log('🗺️ INICIANDO SISTEMA DE SEGUIMIENTO EN TIEMPO REAL');
             console.log('═══════════════════════════════════════════════════════════');
             console.log('✅ Pedido activo detectado');
-            console.log('🏍️ Repartidor asignado:', tieneRepartidor);
+            console.log('🏍️ Repartidor asignado:', tieneRepartidor || 'Pendiente');
             console.log('');
             
             mapContainer.style.display = 'block';
@@ -6113,22 +6544,32 @@ Si no encuentras algún campo déjalo como cadena vacía "".`,
                 console.log('✅ Seguimiento continuo iniciado');
                 console.log('');
                 
-                console.log('⏳ PASO 5: Esperando 1 segundo para estabilizar...');
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                console.log('✅ Sistema estabilizado');
-                console.log('');
-                
-                console.log('🔍 PASO 6: Verificación final de clienteCoords...');
-                if (!clienteCoords || !clienteCoords.lat || !clienteCoords.lng) {
-                    throw new Error('⚠️ clienteCoords no está definida correctamente');
+                // PASO 5: Solo iniciar seguimiento del repartidor si ya está asignado
+                if (tieneRepartidor) {
+                    console.log('⏳ PASO 5: Esperando 1 segundo para estabilizar...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    console.log('✅ Sistema estabilizado');
+                    console.log('');
+                    
+                    console.log('🔍 PASO 6: Verificación final de clienteCoords...');
+                    if (!clienteCoords || !clienteCoords.lat || !clienteCoords.lng) {
+                        throw new Error('⚠️ clienteCoords no está definida correctamente');
+                    }
+                    console.log('✅ Verificación exitosa:');
+                    console.log('   Lat:', clienteCoords.lat);
+                    console.log('   Lng:', clienteCoords.lng);
+                    console.log('');
+                    
+                    console.log('📍 PASO 7: Iniciando seguimiento del repartidor...');
+                    iniciarSeguimientoUbicacion(tieneRepartidor, pedido.id);
+                } else {
+                    console.log('ℹ️ Pedido pendiente — mapa muestra tu ubicación y punto de entrega. El repartidor aparecerá cuando sea asignado.');
+                    // Actualizar info del mapa para estado pendiente
+                    const mapDist = document.getElementById('map-distance');
+                    const mapDur  = document.getElementById('map-duration');
+                    if (mapDist) mapDist.textContent = '📍 Tu ubicación y punto de entrega marcados';
+                    if (mapDur)  mapDur.textContent  = '⏳ Esperando asignación de repartidor...';
                 }
-                console.log('✅ Verificación exitosa:');
-                console.log('   Lat:', clienteCoords.lat);
-                console.log('   Lng:', clienteCoords.lng);
-                console.log('');
-                
-                console.log('📍 PASO 7: Iniciando seguimiento del repartidor...');
-                iniciarSeguimientoUbicacion(tieneRepartidor, pedido.id);
                 
                 console.log('');
                 console.log('✅ SISTEMA DE SEGUIMIENTO COMPLETAMENTE INICIADO');
@@ -6415,6 +6856,8 @@ Si no encuentras algún campo déjalo como cadena vacía "".`,
         getAuth, 
         createUserWithEmailAndPassword, 
         signInWithEmailAndPassword, 
+        signInWithPopup,
+        GoogleAuthProvider,
         signOut, 
         onAuthStateChanged 
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"; 
@@ -6559,6 +7002,12 @@ Si no encuentras algún campo déjalo como cadena vacía "".`,
         detenerSeguimientoUbicacion();
         detenerEnvioUbicacionCliente();
         
+        // Limpiar listener de cola del repartidor
+        if (window.repartidorInfoListener) {
+            try { window.repartidorInfoListener(); } catch(e) {}
+            window.repartidorInfoListener = null;
+        }
+        
         off(ref(db, `chats/${window.currentUserID}`));
         
         signOut(auth).then(() => {
@@ -6573,6 +7022,35 @@ Si no encuentras algún campo déjalo como cadena vacía "".`,
             console.error("Error al cerrar sesión:", error);
         });
     }
+
+    // ══════════════════════════════════════════════════════
+    // 🔐 INICIAR SESIÓN CON GOOGLE (Gmail)
+    // ══════════════════════════════════════════════════════
+    window.signInWithGoogle = function() {
+        const statusDiv = document.getElementById('auth-status');
+        if (statusDiv) {
+            statusDiv.textContent = '⏳ Conectando con Google...';
+            statusDiv.style.color = 'var(--color-primary)';
+        }
+        const provider = new GoogleAuthProvider();
+        signInWithPopup(auth, provider)
+            .then(() => {
+                if (statusDiv) statusDiv.textContent = '✅ ¡Sesión iniciada!';
+            })
+            .catch((error) => {
+                if (statusDiv) {
+                    if (error.code === 'auth/popup-closed-by-user') {
+                        statusDiv.textContent = '⚠️ Cerraste la ventana de Google. Intenta de nuevo.';
+                    } else if (error.code === 'auth/popup-blocked') {
+                        statusDiv.textContent = '⚠️ El navegador bloqueó la ventana. Permite pop-ups e intenta de nuevo.';
+                    } else {
+                        statusDiv.textContent = '❌ Error: ' + (error.message || error.code);
+                    }
+                    statusDiv.style.color = '#dc3545';
+                }
+                console.error('❌ Error Google Sign-In:', error);
+            });
+    };
 
     // Garantía: splash siempre se oculta a los 3s Y muestra la app
     setTimeout(() => {
@@ -6631,7 +7109,7 @@ Si no encuentras algún campo déjalo como cadena vacía "".`,
             console.log('⚠️ Usuario sin datos completos - Mostrando registro');
             const existingData = snap.exists() ? snap.val() : {};
             const setVal = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
-            setVal('nombreUsuario', existingData.nombre);
+            setVal('nombreUsuario', existingData.nombre || user.displayName || '');
             setVal('correoUsuario', user.email);
             setVal('telefono1Usuario', existingData.tel1);
             setVal('telefono2Usuario', existingData.tel2);
@@ -9982,6 +10460,342 @@ if (window.db) {
   setTimeout(cargarBarriosDesdeFirebase, 1500);
 }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎁 SECCIÓN PREMIOS — Día Bomba + Ruleta de Descuentos
+    // ═══════════════════════════════════════════════════════════════════
+
+    // ── Colores y premios de la ruleta ──────────────────────────────────
+    const RULETA_PREMIOS = [
+        { label: '10%',   color: '#4f46e5', probabilidad: 40 },
+        { label: '15%',   color: '#7c3aed', probabilidad: 30 },
+        { label: '50%',   color: '#9333ea', probabilidad: 15 },
+        { label: '75%',   color: '#a21caf', probabilidad: 10 },
+        { label: '100%',  color: '#d97706', probabilidad: 5  },
+    ];
+
+    // ── Estado persistido en localStorage ──────────────────────────────
+    function _premiosGetEstado() {
+        try {
+            const raw = localStorage.getItem('servi_premios');
+            return raw ? JSON.parse(raw) : { pedidosAcum: 0, girosDisp: 0, serviciosSemana: 0, semanaISO: '' };
+        } catch(e) { return { pedidosAcum: 0, girosDisp: 0, serviciosSemana: 0, semanaISO: '' }; }
+    }
+    function _premiosSetEstado(est) {
+        try { localStorage.setItem('servi_premios', JSON.stringify(est)); } catch(e) {}
+    }
+
+    // ── Semana ISO (YYYY-WNN) para resetear contador semanal ────────────
+    function _semanaActual() {
+        const d = new Date();
+        const jan1 = new Date(d.getFullYear(), 0, 1);
+        const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+        return `${d.getFullYear()}-W${String(week).padStart(2,'0')}`;
+    }
+
+    // ── Inicializar pantalla de Premios ─────────────────────────────────
+    window.initPremiosUI = function() {
+        const est = _premiosGetEstado();
+        const semanaHoy = _semanaActual();
+
+        // Resetear contador semanal si cambió la semana
+        if (est.semanaISO !== semanaHoy) {
+            est.serviciosSemana = 0;
+            est.semanaISO = semanaHoy;
+            _premiosSetEstado(est);
+        }
+
+        // ── DÍA BOMBA ──
+        const hoy = new Date().getDay();
+        const esDiaBomba = (hoy === 1 || hoy === 2);
+        const servicios  = est.serviciosSemana || 0;
+        const desbloqueado = servicios >= 20;
+        window._clienteDiaBombaActivo = esDiaBomba && desbloqueado;
+
+        const elBloq  = document.getElementById('bomba-bloqueado');
+        const elDesbloq = document.getElementById('bomba-desbloqueado');
+        if (elBloq && elDesbloq) {
+            if (desbloqueado) {
+                elBloq.style.display    = 'none';
+                elDesbloq.style.display = 'block';
+            } else {
+                elBloq.style.display    = 'block';
+                elDesbloq.style.display = 'none';
+                const pct = Math.min(100, Math.round((servicios/20)*100));
+                const fill = document.getElementById('bomba-progreso-fill');
+                const txt  = document.getElementById('bomba-progreso-texto');
+                if (fill) fill.style.width = pct + '%';
+                if (txt)  txt.textContent  = `${servicios} / 20 servicios esta semana`;
+            }
+        }
+
+        // ── RULETA ──
+        const giros = est.girosDisp || 0;
+        const pedAcum = est.pedidosAcum || 0;
+        const pedParaGiro = 3 - (pedAcum % 3 || (pedAcum > 0 && pedAcum % 3 === 0 ? 3 : 0));
+        const pctRuleta = Math.round(((pedAcum % 3) / 3) * 100);
+
+        const cntGiros  = document.getElementById('ruleta-giros-count');
+        const progFill  = document.getElementById('ruleta-prog-fill');
+        const progTxt   = document.getElementById('ruleta-prog-texto');
+        if (cntGiros) cntGiros.textContent = giros;
+        if (progFill) progFill.style.width = pctRuleta + '%';
+        if (progTxt)  progTxt.textContent  = `${pedAcum % 3} / 3 pedidos para el próximo giro`;
+
+        const btnGirar = document.getElementById('btn-girar-ruleta');
+        if (btnGirar) {
+            btnGirar.disabled = giros <= 0;
+            btnGirar.style.opacity = giros > 0 ? '1' : '0.45';
+            btnGirar.textContent = giros > 0 ? '🎰 ¡Girar Ruleta!' : '🔒 Sin giros disponibles';
+        }
+
+        // Dibujar ruleta
+        _dibujarRuleta(0);
+    };
+
+    // ── Dibujar ruleta en canvas ─────────────────────────────────────────
+    function _dibujarRuleta(anguloOffset) {
+        const canvas = document.getElementById('ruleta-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const cx = 130, cy = 130, r = 122;
+        const total = RULETA_PREMIOS.reduce((s,p) => s + p.probabilidad, 0);
+        let startAngle = anguloOffset;
+
+        ctx.clearRect(0, 0, 260, 260);
+
+        // Sombra exterior
+        ctx.save();
+        ctx.shadowColor = 'rgba(99,102,241,0.5)';
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+        ctx.fillStyle = '#1e1b4b';
+        ctx.fill();
+        ctx.restore();
+
+        RULETA_PREMIOS.forEach((premio, i) => {
+            const slice = (premio.probabilidad / total) * 2 * Math.PI;
+            // Sector con gradiente
+            const grad = ctx.createRadialGradient(cx, cy, r*0.2, cx, cy, r);
+            grad.addColorStop(0, _lightenColor(premio.color, 40));
+            grad.addColorStop(1, premio.color);
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, r, startAngle, startAngle + slice);
+            ctx.closePath();
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.strokeStyle = '#08080f';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // Texto del premio
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(startAngle + slice / 2);
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 4;
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText(premio.label, r - 12, 5);
+            ctx.restore();
+
+            startAngle += slice;
+        });
+
+        // Aro exterior decorativo
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+        ctx.strokeStyle = 'rgba(167,139,250,0.5)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Centro hub
+        const hubGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 20);
+        hubGrad.addColorStop(0, '#6366f1');
+        hubGrad.addColorStop(1, '#1e1b4b');
+        ctx.beginPath();
+        ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
+        ctx.fillStyle = hubGrad;
+        ctx.fill();
+        ctx.strokeStyle = '#a78bfa';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Estrella en el centro
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', cx, cy);
+    }
+
+    function _lightenColor(hex, amount) {
+        const num = parseInt(hex.replace('#',''), 16);
+        const r = Math.min(255, (num >> 16) + amount);
+        const g = Math.min(255, ((num >> 8) & 0xFF) + amount);
+        const b = Math.min(255, (num & 0xFF) + amount);
+        return `rgb(${r},${g},${b})`;
+    }
+
+    // ── Animación y lógica de giro ───────────────────────────────────────
+    window.girarRuleta = function() {
+        const est = _premiosGetEstado();
+        if ((est.girosDisp || 0) <= 0) {
+            alert('No tienes giros disponibles. Completa 3 pedidos para ganar uno.');
+            return;
+        }
+
+        const btnGirar = document.getElementById('btn-girar-ruleta');
+        if (btnGirar) btnGirar.disabled = true;
+
+        // Elegir premio según probabilidad
+        const total = RULETA_PREMIOS.reduce((s,p) => s + p.probabilidad, 0);
+        let rand = Math.random() * total;
+        let premioGanado = RULETA_PREMIOS[0];
+        let acum = 0;
+        for (const p of RULETA_PREMIOS) {
+            acum += p.probabilidad;
+            if (rand <= acum) { premioGanado = p; break; }
+        }
+
+        // Calcular ángulo final para que la flecha (arriba=270°) apunte al premio
+        const totalAng = RULETA_PREMIOS.reduce((s,p) => s + p.probabilidad, 0);
+        let angInicio = 0;
+        for (const p of RULETA_PREMIOS) {
+            if (p === premioGanado) break;
+            angInicio += (p.probabilidad / totalAng) * 2 * Math.PI;
+        }
+        const angSlice = (premioGanado.probabilidad / totalAng) * 2 * Math.PI;
+        const angPremio = angInicio + angSlice / 2;
+        const targetAngle = (2 * Math.PI * 5) + ((3 * Math.PI / 2) - angPremio);
+
+        // Animar
+        let current = 0;
+        const duration = 3000;
+        const start = performance.now();
+        function step(now) {
+            const elapsed = now - start;
+            const t = Math.min(elapsed / duration, 1);
+            const ease = 1 - Math.pow(1 - t, 3);
+            current = targetAngle * ease;
+            _dibujarRuleta(current);
+            if (t < 1) {
+                requestAnimationFrame(step);
+            } else {
+                // Giro terminado
+                est.girosDisp = Math.max(0, (est.girosDisp || 1) - 1);
+                _premiosSetEstado(est);
+
+                const codigo = 'SA-' + premioGanado.label.replace('%','') + '-' + Math.random().toString(36).substr(2,5).toUpperCase();
+                const resDiv = document.getElementById('ruleta-resultado');
+                const resTxt = document.getElementById('ruleta-resultado-texto');
+                const resCod = document.getElementById('ruleta-cupon-codigo');
+                if (resDiv && resTxt && resCod) {
+                    resTxt.textContent = premioGanado.label === '100%'
+                        ? '🎉 ¡PRÓXIMO PEDIDO GRATIS!'
+                        : `🎊 ¡Ganaste ${premioGanado.label} de descuento!`;
+                    resCod.textContent = `Código: ${codigo} · Muéstraselo al admin`;
+                    resDiv.style.display = 'block';
+                }
+                window.initPremiosUI();
+            }
+        }
+        requestAnimationFrame(step);
+    };
+
+    // ── Llamar initPremiosUI cuando se entre al tab de Premios ──────────
+    // (se integra en changeTab más abajo)
+
+    // ── API pública: registrar un pedido completado ─────────────────────
+    // Llamar esta función cuando el pedido quede en estado "entregado"
+    window.registrarPedidoCompletado = function() {
+        const est = _premiosGetEstado();
+        const semanaHoy = _semanaActual();
+        if (est.semanaISO !== semanaHoy) {
+            est.serviciosSemana = 0;
+            est.semanaISO = semanaHoy;
+        }
+        est.pedidosAcum    = (est.pedidosAcum || 0) + 1;
+        est.serviciosSemana = (est.serviciosSemana || 0) + 1;
+        // Cada 3 pedidos = 1 giro
+        if (est.pedidosAcum % 3 === 0) {
+            est.girosDisp = (est.girosDisp || 0) + 1;
+            console.log('🎰 Giro de ruleta ganado! Total giros:', est.girosDisp);
+        }
+        _premiosSetEstado(est);
+        window.initPremiosUI();
+        // Actualizar nivel en el perfil también
+        window.actualizarNivelPerfil();
+    };
+
+    // ══════════════════════════════════════════════════════════════
+    // 🏆 SISTEMA DE NIVELES — Perfil del cliente
+    // ══════════════════════════════════════════════════════════════
+    const NIVELES = [
+        { nivel:1,  nombre:'Novato',       emoji:'🌱', min:0,   max:5,   color:'#6366f1', beneficios:'🎁 Acumula puntos por cada pedido' },
+        { nivel:2,  nombre:'Explorador',   emoji:'🚀', min:5,   max:15,  color:'#8b5cf6', beneficios:'🎁 Acceso a ruleta de descuentos\n🌟 1 giro extra al mes' },
+        { nivel:3,  nombre:'Regular',      emoji:'⭐', min:15,  max:30,  color:'#a855f7', beneficios:'🎁 Descuento permanente de $500\n🌟 Soporte prioritario en chat' },
+        { nivel:4,  nombre:'Frecuente',    emoji:'🔥', min:30,  max:50,  color:'#ec4899', beneficios:'🎁 Ruleta cada 2 pedidos (no 3)\n🌟 Tarifa reducida los miércoles' },
+        { nivel:5,  nombre:'Fiel',         emoji:'💎', min:50,  max:75,  color:'#f59e0b', beneficios:'🎁 2 giros de ruleta por cada 3 pedidos\n🌟 Descuentos exclusivos de temporada' },
+        { nivel:6,  nombre:'VIP',          emoji:'👑', min:75,  max:100, color:'#fbbf24', beneficios:'🎁 Ruleta cada pedido\n🌟 Prioridad de asignación de repartidor\n⚡ Acceso a tarifas bomba sin restricción' },
+        { nivel:7,  nombre:'Leyenda',      emoji:'🏆', min:100, max:999, color:'#fcd34d', beneficios:'🎁 Todos los beneficios VIP\n🌟 Insignia especial en el perfil\n⚡ Sorpresas exclusivas del admin' },
+    ];
+
+    window.actualizarNivelPerfil = function() {
+        const est = _premiosGetEstado();
+        const totalPedidos = est.pedidosAcum || 0;
+
+        // Buscar nivel actual
+        let nivelActual = NIVELES[0];
+        let nivelSig    = NIVELES[1];
+        for (let i = NIVELES.length - 1; i >= 0; i--) {
+            if (totalPedidos >= NIVELES[i].min) {
+                nivelActual = NIVELES[i];
+                nivelSig    = NIVELES[Math.min(i + 1, NIVELES.length - 1)];
+                break;
+            }
+        }
+
+        const esMaxNivel = nivelActual.nivel === NIVELES[NIVELES.length - 1].nivel;
+        const pedEnNivel = totalPedidos - nivelActual.min;
+        const rangNivel  = nivelActual.max - nivelActual.min;
+        const pct        = esMaxNivel ? 100 : Math.min(100, Math.round((pedEnNivel / rangNivel) * 100));
+        const faltantes  = esMaxNivel ? 0 : nivelActual.max - totalPedidos;
+
+        const badge      = document.getElementById('perfil-nivel-badge');
+        const nombre     = document.getElementById('perfil-nivel-nombre');
+        const numEl      = document.getElementById('perfil-nivel-num');
+        const sigEl      = document.getElementById('perfil-nivel-siguiente');
+        const faltaEl    = document.getElementById('perfil-xp-faltante');
+        const fill       = document.getElementById('perfil-xp-fill');
+        const xpLabel    = document.getElementById('perfil-xp-label');
+        const beneficios = document.getElementById('perfil-beneficios-lista');
+        const card       = document.getElementById('perfil-nivel-card');
+
+        if (badge)     { badge.textContent = nivelActual.emoji; badge.style.background = `linear-gradient(135deg,${nivelActual.color},${nivelSig.color})`; }
+        if (nombre)    nombre.textContent = nivelActual.nombre;
+        if (numEl)     numEl.textContent  = `Nivel ${nivelActual.nivel} · ${totalPedidos} domicilio${totalPedidos !== 1 ? 's' : ''}`;
+        if (sigEl)     sigEl.textContent  = esMaxNivel ? '¡Nivel máximo!' : nivelSig.nombre;
+        if (faltaEl)   faltaEl.textContent= esMaxNivel ? '🏆 Completado' : `${faltantes} más para subir`;
+        if (fill)      fill.style.width   = pct + '%';
+        if (xpLabel)   xpLabel.textContent= esMaxNivel ? '¡Nivel máximo!' : `${pedEnNivel} / ${rangNivel} XP`;
+        if (beneficios)beneficios.innerHTML = nivelActual.beneficios.split('\n').map(b => `<div>${b}</div>`).join('');
+        if (card)      card.style.borderColor = `${nivelActual.color}66`;
+    };
+
+    // Actualizar nivel al cargar el tab de perfil
+    const _origChangeTab = window.changeTab;
+    if (!window._nivelHookInstalado) {
+        window._nivelHookInstalado = true;
+        const _nivelOrig = window.changeTab;
+        // Piggybacking en el evento del tab
+        document.addEventListener('DOMContentLoaded', () => window.actualizarNivelPerfil());
+        setTimeout(() => window.actualizarNivelPerfil(), 1000);
+    }
+
 // ── 2. BUSCADOR DE BARRIOS ──────────────────────────────────
 window.filtrarBarriosInput = function(tipo) {
   const q = document.getElementById('search-barrio-' + tipo).value.toLowerCase().trim();
@@ -10540,13 +11354,152 @@ window.seleccionarMunicipioRecogida = function() {
 };
 </script>
 
+<!-- ══ GPS UTILITIES — Registro y Servicio ══════════════════════ -->
+<script>
+// Reverse geocoding compartido (Nominatim, sin API key)
+async function reverseGeocode(lat, lon) {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=es`,
+    { headers: { 'Accept-Language': 'es' } }
+  );
+  return await res.json();
+}
+function construirDireccion(addr) {
+  return [
+    addr.road || addr.pedestrian || addr.street || '',
+    addr.house_number || '',
+    addr.suburb || addr.neighbourhood || addr.quarter || '',
+    addr.city || addr.town || addr.village || ''
+  ].filter(Boolean).join(', ');
+}
+
+// ── 1. GPS en formulario de REGISTRO ────────────────────────────
+window.usarUbicacionEnRegistro = function() {
+  const statusEl = document.getElementById('gps-registro-status');
+  const dirInput = document.getElementById('direccionUsuario');
+  statusEl.style.display = 'block';
+  statusEl.style.color   = '#4A9EFF';
+  statusEl.textContent   = '📡 Detectando tu ubicación...';
+  if (!navigator.geolocation) {
+    statusEl.textContent = '❌ Tu dispositivo no soporta GPS.';
+    statusEl.style.color = '#dc3545'; return;
+  }
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { latitude: lat, longitude: lon } = pos.coords;
+    statusEl.textContent = '🔍 Obteniendo dirección...';
+    try {
+      const data = await reverseGeocode(lat, lon);
+      const dir  = construirDireccion(data.address || {});
+      if (dir) {
+        dirInput.value       = dir;
+        statusEl.textContent = '✅ Dirección detectada. Revisa y edita si hace falta.';
+        statusEl.style.color = '#28a745';
+      } else {
+        statusEl.textContent = '⚠️ No se obtuvo la dirección. Escríbela manualmente.';
+        statusEl.style.color = '#e67e22';
+      }
+    } catch(e) {
+      statusEl.textContent = '❌ Error de red. Escribe tu dirección manualmente.';
+      statusEl.style.color = '#dc3545';
+    }
+  }, (err) => {
+    statusEl.textContent = err.code === 1
+      ? '❌ Permiso denegado. Escribe tu dirección manualmente.'
+      : '❌ No se pudo obtener la ubicación.';
+    statusEl.style.color = '#dc3545';
+  }, { enableHighAccuracy: true, timeout: 12000 });
+};
+
+// ── 2. GPS en Punto A (recogida) del formulario de SERVICIO ─────
+window.usarUbicacionEnRecogida = function() {
+  const mismatchDiv = document.getElementById('gps-recogida-mismatch');
+  const dirInput    = document.getElementById('domi-dir-recogida');
+  if (mismatchDiv) mismatchDiv.style.display = 'none';
+  if (!navigator.geolocation) { alert('⚠️ Tu dispositivo no soporta GPS.'); return; }
+  const btn = event ? event.target : null;
+  if (btn) { btn.disabled = true; btn.textContent = '📡 Detectando...'; }
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { latitude: lat, longitude: lon } = pos.coords;
+    try {
+      const data = await reverseGeocode(lat, lon);
+      const dir  = construirDireccion(data.address || {});
+      if (dir) {
+        dirInput.value = dir;
+        if (btn) btn.textContent = '✅ Ubicación cargada como dirección de recogida';
+      } else {
+        if (btn) btn.textContent = '⚠️ No se obtuvo la dirección. Escríbela manualmente.';
+      }
+    } catch(e) {
+      if (btn) btn.textContent = '❌ Error de red. Escribe la dirección manualmente.';
+    }
+    if (btn) btn.disabled = false;
+  }, () => {
+    alert('❌ No se pudo obtener la ubicación. Escribe la dirección de recogida manualmente.');
+    if (btn) { btn.disabled = false; btn.textContent = '📍 Usar mi ubicación actual como dirección de recogida'; }
+  }, { enableHighAccuracy: true, timeout: 12000 });
+};
+
+// ── 3. VALIDACIÓN GPS vs dirección antes de confirmar pedido ────
+window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
+  if (!window.clienteUbicacionActual) { callback(); return; }
+  const { lat, lng } = window.clienteUbicacionActual;
+  try {
+    const data     = await reverseGeocode(lat, lng);
+    const addr     = data.address || {};
+    const barriGPS = (addr.suburb || addr.neighbourhood || addr.quarter || addr.road || '').toLowerCase();
+    const dirLower = dirEscrita.toLowerCase();
+    // Si tienen palabras en común → sin problema
+    if (!barriGPS || dirLower.includes(barriGPS) ||
+        barriGPS.split(' ').some(w => w.length > 3 && dirLower.includes(w))) {
+      callback(); return;
+    }
+    // Discrepancia → mostrar aviso
+    const mismatchDiv = document.getElementById('gps-recogida-mismatch');
+    const dirGPS      = construirDireccion(addr);
+    if (mismatchDiv) {
+      mismatchDiv.style.display = 'block';
+      mismatchDiv.innerHTML = `
+        <p style="color:#e67e22;font-weight:bold;margin:0 0 6px 0;">⚠️ Tu ubicación GPS no coincide con la dirección de recogida</p>
+        <p style="margin:0 0 4px 0;font-size:12px;color:#aaa;">
+          📍 <strong style="color:#4A9EFF;">GPS detecta:</strong> ${dirGPS}<br>
+          📝 <strong style="color:#FFD700;">Dirección ingresada:</strong> ${dirEscrita}
+        </p>
+        <p style="margin:6px 0 0;font-size:12px;color:#f0f0f0;">¿Cuál es tu dirección de recogida?</p>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button onclick="(function(){
+              document.getElementById('domi-dir-recogida').value='${dirGPS.replace(/'/g,"\\'")}';
+              document.getElementById('gps-recogida-mismatch').style.display='none';
+              if(window._gpsCallback){window._gpsCallback();window._gpsCallback=null;}
+            })()"
+            style="flex:1;background:#1976D2;color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:bold;cursor:pointer;">
+            📍 Usar mi GPS
+          </button>
+          <button onclick="(function(){
+              document.getElementById('gps-recogida-mismatch').style.display='none';
+              if(window._gpsCallback){window._gpsCallback();window._gpsCallback=null;}
+            })()"
+            style="flex:1;background:#555;color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:bold;cursor:pointer;">
+            ✏️ Mantener la mía
+          </button>
+        </div>`;
+      window._gpsCallback = callback;
+      mismatchDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      callback();
+    }
+  } catch(e) {
+    callback(); // Si falla geocoding, no bloquear el flujo
+  }
+};
+</script>
+
 <!-- ═══════════════════════════════════════════════════════════
      🤖 CHATBOT IA FLOTANTE — Servi Aliados
      Llama a /.netlify/functions/ai-proxy (nunca expone la API key)
 ════════════════════════════════════════════════════════════ -->
 
 <!-- Botón flotante -->
-<button id="ai-fab" title="Asistente IA" onclick="toggleAIChat()">
+<button id="ai-fab" title="Asistente IA" onclick="toggleAIChat()" style="display:none;">
     🤖
     <span class="ai-notif-dot" id="ai-notif-dot"></span>
 </button>
@@ -10582,38 +11535,105 @@ window.seleccionarMunicipioRecogida = function() {
 
 <script>
 // ══════════════════════════════════════════════════════════════════
-//  🤖 CHATBOT IA — SERVI ALIADOS
-//  → Llama a /api/ai-chat que redirige a netlify/functions/ai-proxy.js
-//  → La API key de Anthropic NUNCA se expone en el cliente.
-//  → Guarda sugerencias/quejas detectadas en Firebase > sugerencias_ia
+//  🤖 CHATBOT DE REGLAS — SERVI ALIADOS
+//  → Sin API key. Todas las respuestas están dentro del código.
+//  → Guarda sugerencias/quejas en Firebase > sugerencias_ia
 // ══════════════════════════════════════════════════════════════════
 (function () {
 
-    // ─────────────────────────────────────────────────────────
-    //  URL del proxy — en Netlify se usa el redirect configurado
-    //  en netlify.toml: /api/ai-chat → /.netlify/functions/ai-proxy
-    // ─────────────────────────────────────────────────────────
-    const AI_PROXY_URL = '/api/ai-chat';
-
-    let aiHistory = [];   // historial multi-turno
+    let aiHistory = [];
     let aiOpen    = false;
     let aiWorking = false;
     let msgCounter = 0;
 
-    // ── SYSTEM PROMPT con toda la info del servicio ────────────
-    function buildSystemPrompt() {
-        const hora  = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
-        const fecha = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
-        const logueado    = !!window.currentUserID;
-        const nombreCliente = window.currentUserNombre || (logueado ? 'cliente registrado' : null);
+    // ══════════════════════════════════════════════════════════
+    //  MOTOR DE RESPUESTAS POR REGLAS
+    //  Agrega o modifica las reglas aquí según necesites.
+    // ══════════════════════════════════════════════════════════
+    function obtenerRespuesta(msg) {
+        const m = msg.toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // quita tildes
 
+        // ── SALUDOS ──────────────────────────────────────────
+        if (/^(hola|buenas|buenos|holi|hey|saludos|buen dia|buen dia|buenas tardes|buenas noches|hi|ola)\b/.test(m)) {
+            const nombre = window.currentUserNombre ? `, ${window.currentUserNombre}` : '';
+            return `¡Hola${nombre}! 👋 Soy **ServiBot**, tu asistente de *Servi Aliados*.\n\n¿En qué te puedo ayudar? Puedo informarte sobre:\n💵 Precios y zonas\n⏱️ Tiempos de entrega\n📦 Cómo hacer un pedido\n🔍 Seguimiento de tu pedido`;
+        }
+
+        // ── PRECIOS / TARIFAS ────────────────────────────────
+        if (/precio|tarifa|cuesta|cobran|valor|cuanto|costo|domicilio|envio/.test(m)) {
+            return `💵 **Tarifas dentro de Armenia:**\n\n• Barrios cercanos (mismo grupo de barrios): **$3.500**\n• Misma zona (ej. Sur↔Sur): **$3.000**\n• Zonas distantes (1 nivel): **$6.000**\n• Zonas lejanas (ej. Sur↔Norte): **$7.000**\n\n📦 **Extras por tamaño del paquete:**\n• Paquete grande (caja/bolsa voluminosa): **+$1.000**\n• Paquete muy grande (mueble, electrodoméstico): **+$2.000**\n\n🗺️ **Fuera de Armenia** (Calarcá, Circasia, Montenegro, etc.):\nTarifa mínima $5.000 + $1.000 por kilómetro. Un administrador te confirma el valor exacto según la dirección.\n\n✅ Al hacer tu pedido en la pestaña "Servicio", el precio se calcula automáticamente al seleccionar los puntos de recogida y entrega.`;
+        }
+
+        // ── ZONAS ────────────────────────────────────────────
+        if (/zona|barrio|sector|norte|sur|centro|cobertura|cubren|llegan/.test(m)) {
+            return `🗺️ **Zonas de cobertura en Armenia:**\n\n• **Zona Norte** — barrios del norte de la ciudad\n• **Zona Centro** — centro y alrededores\n• **Zona Sur** — barrios del sur\n\n📌 Las zonas determinan el precio:\n• Barrios cercanos: $3.500\n• Misma zona: $3.000\n• Zonas contiguas: $6.000\n• Zonas opuestas (ej. Norte↔Sur): $7.000\n\n🌍 **Municipios cercanos:** Calarcá, Circasia, Montenegro, La Tebaida, Salento, Quimbaya, Filandia, Buenavista, Pijao, Génova, Córdoba, Puerto Tapao y vías principales. El valor lo confirma un administrador.`;
+        }
+
+        // ── TIEMPOS ──────────────────────────────────────────
+        if (/tiempo|demora|tarda|cuanto tarda|rapido|lento|minuto|hora|espera/.test(m)) {
+            return `⏱️ **Tiempos estimados:**\n\n• Recogida del paquete: **5 a 25 minutos** (depende de la distancia y pedidos en cola del repartidor)\n• Entrega total: **15 a 45 minutos**\n\nEstos tiempos pueden variar según el tráfico y la demanda del momento.`;
+        }
+
+        // ── HORARIO ──────────────────────────────────────────
+        if (/horario|hora|abren|cierran|disponible|atienden|servicio|funcionan/.test(m)) {
+            return `🕐 **Horario de atención:**\n\nEstamos disponibles **todos los días de 8:00 AM a 11:00 PM**.\n\nFuera de ese horario no hay repartidores disponibles. ¡Planea tu pedido con tiempo! 😊`;
+        }
+
+        // ── CÓMO HACER UN PEDIDO ─────────────────────────────
+        if (/como pedir|como hago|como se pide|hacer pedido|pedido|solicitar|pedir|ordenar/.test(m)) {
+            return `📦 **¿Cómo hacer un pedido?**\n\n1️⃣ Inicia sesión o regístrate\n2️⃣ Ve a la pestaña **"Servicio"**\n3️⃣ Completa el formulario:\n   - **Punto A:** quién entrega el paquete\n   - **Punto B:** quién lo recibe\n4️⃣ Selecciona las zonas → el precio aparece automáticamente\n5️⃣ Elige el tamaño del paquete si aplica\n6️⃣ ¡Confirma y envía!\n\nUn repartidor será asignado lo antes posible. 🛵`;
+        }
+
+        // ── SEGUIMIENTO ──────────────────────────────────────
+        if (/seguimiento|estado|donde|mi pedido|rastrear|rastreo|repartidor|ver pedido|seguir/.test(m)) {
+            return `🔍 **Seguimiento de tu pedido:**\n\nVe a la pestaña **"Seguir"** e ingresa tu correo electrónico para ver:\n\n• Estado actual: *Pendiente → Aceptado → Esperando → En Camino → Completado*\n• 📍 Ubicación del repartidor en tiempo real en el mapa\n\n${window.currentUserID ? '¡Recuerda que debes estar iniciado con el mismo correo con el que hiciste el pedido!' : 'Si aún no tienes cuenta, regístrate para poder hacer seguimiento de tus pedidos. 😊'}`;
+        }
+
+        // ── REGISTRO / LOGIN ─────────────────────────────────
+        if (/registrar|registro|cuenta|iniciar sesion|login|contrasena|olvide|acceder/.test(m)) {
+            return `👤 **Cuenta y acceso:**\n\nPara usar el servicio necesitas una cuenta. Puedes:\n\n• **Registrarte** con tu correo y contraseña desde la pantalla de inicio\n• **Iniciar sesión** si ya tienes cuenta\n• Si olvidaste tu contraseña, usa la opción *"¿Olvidaste tu contraseña?"* en el login\n\n¿Tienes algún problema al ingresar? Contáctanos por WhatsApp 💬`;
+        }
+
+        // ── QUEJAS / SOPORTE URGENTE ─────────────────────────
+        if (/queja|reclamo|problema|soporte urgente|encargado|numero del encargado|numero de queja/.test(m)) {
+            return `⚠️ **Soporte y quejas:**\n\nSi tienes un problema grave o reclamo importante, puedes comunicarte directamente con el encargado:\n\n📱 **WhatsApp:** [3237942133](https://wa.me/3237942133)\n\nTambién puedes usar el **chat de soporte** dentro de la plataforma para hablar con nosotros. 💬`;
+        }
+
+        // ── WHATSAPP / CONTACTO ──────────────────────────────
+        if (/whatsapp|contacto|telefono|llamar|comunicar|numero/.test(m)) {
+            return `📱 **Contacto:**\n\nPuedes usar el **chat de soporte** dentro de la plataforma para hablar directamente con nosotros. Es la forma más rápida.\n\nPara quejas o reclamos graves, el número del encargado está disponible si lo necesitas. Solo pregúntamelo. 😊`;
+        }
+
+        // ── PAQUETE / TAMAÑO ─────────────────────────────────
+        if (/paquete|tamano|grande|pequeno|caja|bolsa|mueble|electrodomestico|peso|medida/.test(m)) {
+            return `📦 **Tipos de paquete:**\n\n• **Normal:** sin costo extra (documento, bolsa pequeña, etc.)\n• **Grande** (caja o bolsa voluminosa): **+$1.000**\n• **Muy grande** (mueble, electrodoméstico): **+$2.000**\n\nElige el tamaño al momento de hacer el pedido en la pestaña "Servicio".`;
+        }
+
+        // ── FUERA DE ARMENIA ─────────────────────────────────
+        if (/calarca|circasia|montenegro|tebaida|salento|quimbaya|filandia|buenavista|pijao|genova|cordoba|puerto tapao|fuera de armenia|otro municipio/.test(m)) {
+            return `🌍 **Entregas fuera de Armenia:**\n\nSí hacemos domicilios a municipios cercanos:\n\nCalarcá, Circasia, Montenegro, La Tebaida, Puerto Tapao, Salento, Quimbaya, Filandia, Buenavista, Pijao, Génova, Córdoba y vías principales.\n\n💵 **Tarifa:** mínimo $5.000 + $1.000 por kilómetro recorrido.\nEjemplo: 4 km = $5.000 base + $4.000 km = **$9.000 total**.\n\nUn administrador te confirma el valor exacto según tu dirección.`;
+        }
+
+        // ── GRACIAS / DESPEDIDA ───────────────────────────────
+        if (/gracias|muchas gracias|perfecto|listo|ok|bueno|excelente|chevere|genial|entendi|claro|hasta luego|adios|chao/.test(m)) {
+            return `¡Con gusto! 😊 Si tienes más preguntas, aquí estaré. ¡Que tengas un excelente día! 🛵`;
+        }
+
+        // ── RESPUESTA POR DEFECTO ─────────────────────────────
+        return `Mmm, no estoy seguro de cómo responder eso 🤔\n\nPuedo ayudarte con:\n💵 **Precios** — escribe "precios"\n🗺️ **Zonas** — escribe "zonas"\n⏱️ **Tiempos** — escribe "cuánto tarda"\n📦 **Pedir** — escribe "cómo hago un pedido"\n🔍 **Mi pedido** — escribe "seguimiento"\n\nO si prefieres hablar con una persona, usa el **chat de soporte** o escríbenos al WhatsApp. 💬`;
+    }
+
+    // ── SYSTEM PROMPT (conservado solo como referencia, ya no se usa) ────────────
+    function buildSystemPrompt() {
         return `Eres el asistente virtual de "Servi Aliados", servicio de domicilios en Armenia, Colombia.
 Tu nombre es ServiBot. Eres amable, claro y útil. Responde siempre en español colombiano.
 Fecha y hora actual: ${fecha}, ${hora}.
 ${logueado ? `Cliente autenticado: ${nombreCliente}.` : 'El cliente no ha iniciado sesión.'}
 
 ═══ TARIFAS DENTRO DE ARMENIA ═══
-• Misma zona (Sur↔Sur, Centro↔Centro, etc.): $5.000
+• Barrios cercanos (mismo grupo de barrios): $3.500
+• Misma zona (Sur↔Sur, Centro↔Centro, etc.): $3.000
 • Zonas distantes (1 nivel): $6.000
 • Zonas lejanas (Sur↔Norte): $7.000
 • Extra paquete grande (caja/bolsa voluminosa): +$1.000
@@ -10624,7 +11644,20 @@ ZONAS EN ARMENIA: Sur 🔴, Centro 🟡, Norte 🔵, Oriente, Occidente
 ═══ DESTINOS FUERA DE ARMENIA ═══
 Calarcá, Circasia, Montenegro, La Tebaida, Puerto Tapao, Salento,
 Quimbaya, Filandia, Buenavista, Pijao, Génova, Córdoba y vías principales.
-El precio varía según distancia; el administrador confirma el valor exacto.
+Tarifa fuera de Armenia: cuota mínima $5.000 + $1.000 por kilómetro recorrido.
+Ejemplo: 4 km = $5.000 base + $4.000 km = $9.000 total.
+El administrador confirma el valor exacto según la dirección.
+
+═══ HORARIO DE ATENCIÓN ═══
+Servicio disponible de 8:00 AM a 11:00 PM todos los días.
+Fuera de ese horario no hay repartidores disponibles.
+
+═══ QUEJAS Y SOPORTE URGENTE ═══
+Existe un número directo del encargado para quejas graves o reclamos importantes.
+SOLO comparte ese número si el cliente lo pide explícitamente para una queja o reclamo.
+NO lo menciones proactivamente ni en respuestas generales.
+Si el cliente pregunta por el número de quejas o reclamos graves, entonces sí proporciona:
+📱 WhatsApp del encargado: 3237942133
 
 ═══ TIEMPOS ESTIMADOS ═══
 • Recogida: 5–25 min según distancia y pedidos en cola del repartidor
@@ -10649,8 +11682,10 @@ En la pestaña "Seguir" el cliente ingresa su correo para ver:
 - Si el cliente no está autenticado y pregunta por su pedido específico, pídele que inicie sesión.
 - Si detectas una queja, sugerencia de mejora o problema técnico, incluye al final exactamente:
   [GUARDAR_SUGERENCIA: resumen_sin_datos_privados]
+- Si te preguntan algo que no sabes responder (peso máximo, políticas especiales, etc.), responde exactamente así:
+  "En este momento no tengo esa información, pero puedes hablar con soporte — ellos te responden de inmediato 💬 [BOTÓN_SUGERENCIA]"
 - Respuestas concisas: máximo 3–4 párrafos cortos. Usa emojis con moderación.
-- Si no sabes algo específico, di "Para más detalles puedes contactarnos por el chat de soporte."`;
+- Recuerda siempre el horario: servicio de 8 AM a 11 PM.`;
     }
 
     // ── TOGGLE PANEL ──────────────────────────────────────────
@@ -10674,7 +11709,7 @@ En la pestaña "Seguir" el cliente ingresa su correo para ver:
     };
 
     // ── ENVIAR MENSAJE ────────────────────────────────────────
-    window.sendAIMessage = async function () {
+    window.sendAIMessage = function () {
         if (aiWorking) return;
         const input = document.getElementById('ai-chat-input');
         const text  = input.value.trim();
@@ -10686,46 +11721,22 @@ En la pestaña "Seguir" el cliente ingresa su correo para ver:
         aiWorking = true;
 
         aiHistory.push({ role: 'user', content: text });
+
+        // Simular pequeño delay para que se sienta natural
         const typingId = addBotMessage('✍️ Escribiendo...', true);
+        setTimeout(function () {
+            const respuesta = obtenerRespuesta(text);
 
-        try {
-            // ── Llamada al PROXY (no a Anthropic directo) ─────
-            const response = await fetch(AI_PROXY_URL, {
-                method : 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body   : JSON.stringify({
-                    system    : buildSystemPrompt(),
-                    messages  : aiHistory.slice(-12),
-                    max_tokens: 600
-                })
-            });
-
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.error || `HTTP ${response.status}`);
+            // Detectar si el usuario tiene queja/sugerencia y guardarla en Firebase
+            const msgLower = text.toLowerCase();
+            if (/queja|reclamo|sugerencia|falla|error|problema|mal servicio|mejora/.test(msgLower)) {
+                guardarSugerenciaIA('💬 Mensaje del cliente: ' + text.substring(0, 250));
             }
 
-            const data     = await response.json();
-            const rawReply = (data.content || []).map(b => b.text || '').join('');
-
-            // ── Detectar y guardar sugerencias ────────────────
-            const match = rawReply.match(/\[GUARDAR_SUGERENCIA:\s*([^\]]+)\]/);
-            const replyClean = rawReply.replace(/\[GUARDAR_SUGERENCIA:[^\]]*\]/g, '').trim();
-
-            if (match) guardarSugerenciaIA(match[1].trim());
-
-            aiHistory.push({ role: 'assistant', content: replyClean });
-            updateBotMessage(typingId, replyClean);
-
-        } catch (err) {
-            console.error('❌ AI Chat error:', err);
-            updateBotMessage(
-                typingId,
-                '⚠️ No pude conectarme en este momento. Por favor intenta más tarde o usa el **chat de soporte** para hablar directamente con nosotros.'
-            );
-        }
-
-        aiWorking = false;
+            aiHistory.push({ role: 'assistant', content: respuesta });
+            updateBotMessage(typingId, respuesta);
+            aiWorking = false;
+        }, 600);
     };
 
     // ── GUARDAR SUGERENCIA EN FIREBASE ────────────────────────
@@ -10789,6 +11800,18 @@ En la pestaña "Seguir" el cliente ingresa su correo para ver:
         const q = document.getElementById('ai-quick-btns');
         if (q) q.style.display = 'none';
     }
+
+    // ── BOTÓN "ENVIAR PREGUNTA A SOPORTE" ────────────────────
+    window.abrirSugerenciaIA = function () {
+        // Obtener la última pregunta del usuario del historial
+        const ultimaConsulta = (aiHistory.slice().reverse().find(m => m.role === 'user') || {}).content
+            || 'Consulta sin especificar';
+        // Guardar en Firebase > sugerencias_ia para que admin la vea
+        guardarSugerenciaIA('❓ Pregunta sin respuesta del bot: ' + ultimaConsulta.substring(0, 250));
+        // Redirigir a WhatsApp del encargado
+        const msg = encodeURIComponent('Hola, tengo una pregunta que el asistente no pudo responder:\n\n' + ultimaConsulta.substring(0, 200));
+        window.open('https://wa.me/3237942133?text=' + msg, '_blank');
+    };
 
 })();
 </script>

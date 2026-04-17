@@ -1,2 +1,0 @@
-# Servialiadocliente
-Página del cliente

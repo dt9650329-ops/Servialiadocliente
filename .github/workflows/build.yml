@@ -34,8 +34,12 @@ jobs:
       - name: Build release APK
         run: |
           cd android
-          ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=servi-aliados-cliente.keystore \
+          echo "Keystore existe en:"
+          ls -la app/servi-aliados-cliente.keystore
+          echo "Ruta absoluta que se usara:"
+          echo "$(pwd)/app/servi-aliados-cliente.keystore"
+          ./gradlew --no-daemon assembleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/app/servi-aliados-cliente.keystore \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}

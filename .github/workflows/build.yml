@@ -35,7 +35,7 @@ jobs:
         run: |
           cd android
           ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=app/servi-aliados-cliente.keystore \
+            -Pandroid.injected.signing.store.file=servi-aliados-cliente.keystore \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}

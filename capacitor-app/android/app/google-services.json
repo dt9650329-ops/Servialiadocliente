@@ -52,6 +52,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "771819437001-um8938hlu32a6j4r1oonjhlh79o5itai.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.servialiados.cliente",
+            "certificate_hash": "fac9b690635cfcb3d4720431681d9c946ff1459f"
+          }
+        },
+        {
           "client_id": "771819437001-kin5e0gqmq0ukmdb8n0eh0nrdkqn8u7c.apps.googleusercontent.com",
           "client_type": 3
         }

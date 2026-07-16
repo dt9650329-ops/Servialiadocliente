@@ -45,9 +45,9 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:771819437001:android:d29e34599a8e97bbc10618",
+        "mobilesdk_app_id": "1:771819437001:android:954672ed599b5fcbc10618",
         "android_client_info": {
-          "package_name": "com.serviaiados.cliente"
+          "package_name": "com.servialiados.cliente"
         }
       },
       "oauth_client": [

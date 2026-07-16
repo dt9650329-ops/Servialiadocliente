@@ -9741,7 +9741,7 @@ statusDiv.style.color = 'var(--color-primary)';
 const esCapacitor = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 if (esCapacitor) {
 try {
-const { FirebaseAuthentication } = window.CapacitorFirebaseAuthentication || {};
+const FirebaseAuthentication = window.Capacitor?.Plugins?.FirebaseAuthentication;
 if (!FirebaseAuthentication) {
 throw new Error('Plugin @capacitor-firebase/authentication no está cargado');
 }

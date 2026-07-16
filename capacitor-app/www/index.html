@@ -9897,7 +9897,8 @@ if (dentroDeHorario) {
  try {
  const FirebaseAuthentication = window.Capacitor?.Plugins?.FirebaseAuthentication;
  if (!FirebaseAuthentication) {
- throw new Error('Plugin @capacitor-firebase/authentication no está cargado');
+ const pluginsDisponibles = Object.keys(window.Capacitor?.Plugins || {}).join(', ') || 'ninguno';
+ throw new Error('Plugin no cargado. Plugins detectados: [' + pluginsDisponibles + ']');
  }
  const result = await FirebaseAuthentication.signInWithGoogle();
  const idToken = result?.credential?.idToken;

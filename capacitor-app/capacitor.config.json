@@ -1,5 +1,11 @@
 {
   "appId": "com.servialiados.cliente",
   "appName": "servi aliados ",
-  "webDir": "www"
+  "webDir": "www",
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": ["google.com"]
+    }
+  }
 }

@@ -9444,6 +9444,7 @@ if (dentroDeHorario) {
  signInWithRedirect,
  getRedirectResult,
  GoogleAuthProvider,
+ GoogleAuthProvider, 
  signOut, 
  onAuthStateChanged,
  deleteUser
@@ -9727,40 +9728,68 @@ if (dentroDeHorario) {
  // 
  // INICIAR SESIÓN CON GOOGLE (Gmail)
  // 
- window.signInWithGoogle = function() {
- const statusDiv = document.getElementById('auth-status');
- if (statusDiv) {
- statusDiv.textContent = '[Espera] Conectando con Google...';
- statusDiv.style.color = 'var(--color-primary)';
- }
- const provider = new GoogleAuthProvider();
- // Safari/iPhone bloquea popups — detectar y usar redirect como fallback
- const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
- if (isSafari) {
- signInWithRedirect(auth, provider);
- return;
- }
- signInWithPopup(auth, provider)
- .then(() => {
- if (statusDiv) statusDiv.textContent = ' ¡Sesión iniciada!';
- })
- .catch((error) => {
- // Si el popup fue bloqueado, intentar redirect
- if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
- if (statusDiv) {
- statusDiv.textContent = '[Espera] Redirigiendo a Google...';
- statusDiv.style.color = 'var(--color-primary)';
- }
- signInWithRedirect(auth, provider);
- } else {
- if (statusDiv) {
- statusDiv.textContent = ' Error: ' + (error.message || error.code);
- statusDiv.style.color = '#dc3545';
- }
- console.error(' Error Google Sign-In:', error);
- }
- });
- };
+ window.signInWithGoogle = async function() {
+const statusDiv = document.getElementById('auth-status');
+if (statusDiv) {
+statusDiv.textContent = '[Espera] Conectando con Google...';
+statusDiv.style.color = 'var(--color-primary)';
+}
+
+// App empaquetada con Capacitor: Google bloquea el login OAuth dentro de
+// WebViews embebidos (error disallowed_useragent), así que acá usamos el
+// plugin nativo en vez de popup/redirect.
+const esCapacitor = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+if (esCapacitor) {
+try {
+const { FirebaseAuthentication } = window.CapacitorFirebaseAuthentication || {};
+if (!FirebaseAuthentication) {
+throw new Error('Plugin @capacitor-firebase/authentication no está cargado');
+}
+const result = await FirebaseAuthentication.signInWithGoogle();
+const idToken = result?.credential?.idToken;
+if (!idToken) throw new Error('No se recibió idToken de Google');
+
+const credential = GoogleAuthProvider.credential(idToken);
+await signInWithCredential(auth, credential);
+
+if (statusDiv) statusDiv.textContent = ' ¡Sesión iniciada!';
+} catch (error) {
+if (statusDiv) {
+statusDiv.textContent = ' Error: ' + (error.message || error.code);
+statusDiv.style.color = '#dc3545';
+}
+console.error(' Error Google Sign-In (nativo/Capacitor):', error);
+}
+return;
+}
+
+// ---- Flujo web normal (navegador, no Capacitor) ----
+const provider = new GoogleAuthProvider();
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+if (isSafari) {
+signInWithRedirect(auth, provider);
+return;
+}
+signInWithPopup(auth, provider)
+.then(() => {
+if (statusDiv) statusDiv.textContent = ' ¡Sesión iniciada!';
+})
+.catch((error) => {
+if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+if (statusDiv) {
+statusDiv.textContent = '[Espera] Redirigiendo a Google...';
+statusDiv.style.color = 'var(--color-primary)';
+}
+signInWithRedirect(auth, provider);
+} else {
+if (statusDiv) {
+statusDiv.textContent = ' Error: ' + (error.message || error.code);
+statusDiv.style.color = '#dc3545';
+}
+console.error(' Error Google Sign-In:', error);
+}
+});
+};
 
  // Manejar resultado del redirect de Google (Safari/iPhone)
  getRedirectResult(auth).then((result) => {

@@ -1,65 +1,51 @@
-package com.servialiados.cliente;
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-import android.Manifest;
-import android.content.pm.PackageManager;
-import android.os.Bundle;
-import android.webkit.PermissionRequest;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import com.getcapacitor.BridgeActivity;
-import com.getcapacitor.BridgeWebChromeClient;
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
 
-public class MainActivity extends BridgeActivity {
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:exported="true">
 
-    private static final int PERM_REQUEST_CODE = 1001;
-    private PermissionRequest pendingRequest;
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+        </activity>
 
-        bridge.getWebView().setWebChromeClient(new BridgeWebChromeClient(bridge) {
-            @Override
-            public void onPermissionRequest(final PermissionRequest request) {
-                runOnUiThread(() -> {
-                    boolean needsAudio = false;
-                    boolean needsCamera = false;
-                    for (String resource : request.getResources()) {
-                        if (resource.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) needsAudio = true;
-                        if (resource.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) needsCamera = true;
-                    }
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
 
-                    boolean audioGranted = ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
-                    boolean cameraGranted = ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+    <!-- Permissions -->
 
-                    if ((needsAudio && !audioGranted) || (needsCamera && !cameraGranted)) {
-                        pendingRequest = request;
-                        java.util.ArrayList<String> perms = new java.util.ArrayList<>();
-                        if (needsAudio && !audioGranted) perms.add(Manifest.permission.RECORD_AUDIO);
-                        if (needsCamera && !cameraGranted) perms.add(Manifest.permission.CAMERA);
-                        ActivityCompat.requestPermissions(MainActivity.this, perms.toArray(new String[0]), PERM_REQUEST_CODE);
-                    } else {
-                        request.grant(request.getResources());
-                    }
-                });
-            }
-        });
-    }
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == PERM_REQUEST_CODE && pendingRequest != null) {
-            boolean allGranted = true;
-            for (int result : grantResults) {
-                if (result != PackageManager.PERMISSION_GRANTED) allGranted = false;
-            }
-            if (allGranted) {
-                pendingRequest.grant(pendingRequest.getResources());
-            } else {
-                pendingRequest.deny();
-            }
-            pendingRequest = null;
-        }
-    }
-}
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+</manifest>

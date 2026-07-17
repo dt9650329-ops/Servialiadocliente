@@ -1493,6 +1493,32 @@
  background: var(--color-card);
  }
 
+ /* TOAST FLOTANTE DE PERMISOS (auto-desaparece) */
+ .toast-permiso {
+ position: fixed;
+ top: 16px;
+ left: 50%;
+ transform: translateX(-50%) translateY(-30px);
+ background: var(--color-surface3, #1a2332);
+ border: 1px solid var(--color-primary, #f39c12);
+ color: #fff;
+ padding: 10px 16px;
+ border-radius: 10px;
+ font-size: 13px;
+ font-weight: 600;
+ z-index: 9999;
+ box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+ opacity: 0;
+ transition: opacity 0.3s ease, transform 0.3s ease;
+ pointer-events: none;
+ max-width: 90vw;
+ text-align: center;
+ }
+ .toast-permiso.mostrar {
+ opacity: 1;
+ transform: translateX(-50%) translateY(0);
+ }
+
  /* INDICADOR DE GPS ACTIVO PARA EL CLIENTE */
  .gps-indicator-cliente {
  position: fixed;
@@ -3033,7 +3059,7 @@
  </div>
  </div>
 
- <div class="menu-section">
+ <div class="menu-section" id="seccion-permisos" style="display:none;">
  <h4 class="menu-section-title"><i data-lucide="lock" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i> Permisos</h4>
 
  <!-- Botón colapsable de permisos -->
@@ -7765,6 +7791,9 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  resumen.textContent = `${activos}/${total} permisos activos`;
  resumen.style.color = 'var(--color-text-dark)';
  }
+ // La sección solo se muestra si falta activar o corregir algo manualmente
+ const seccion = document.getElementById('seccion-permisos');
+ if (seccion) seccion.style.display = (activos === total) ? 'none' : '';
  }
 
  document.addEventListener('keydown', function(e) {
@@ -9408,6 +9437,23 @@ if (dentroDeHorario) {
  if (typeof actualizarResumenPermisos === 'function') actualizarResumenPermisos();
  }
 
+ // Aviso flotante que se autodesaparece — reemplaza los alert() bloqueantes
+ window.mostrarToastPermiso = function(mensaje, duracionMs) {
+ let toast = document.getElementById('toast-permiso-global');
+ if (!toast) {
+ toast = document.createElement('div');
+ toast.id = 'toast-permiso-global';
+ toast.className = 'toast-permiso';
+ document.body.appendChild(toast);
+ }
+ toast.textContent = mensaje;
+ toast.classList.add('mostrar');
+ clearTimeout(window._toastPermisoTimeout);
+ window._toastPermisoTimeout = setTimeout(() => {
+ toast.classList.remove('mostrar');
+ }, duracionMs || 3000);
+ }
+
  window.solicitarPermisoNotificaciones = async function() {
  const esCapacitorNotif = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 
@@ -9417,7 +9463,7 @@ if (dentroDeHorario) {
  verificarEstadosPermisos();
 
  if (resultado.display === 'granted') {
- alert(' Notificaciones activadas correctamente');
+ mostrarToastPermiso(' Notificaciones activadas');
  try { reproducirTonoNotif(); } catch (e) { console.log("Error:", e); }
  window.Capacitor.Plugins.LocalNotifications.schedule({
  notifications: [{
@@ -9437,7 +9483,7 @@ if (dentroDeHorario) {
  verificarEstadosPermisos();
  
  if (permission === 'granted') {
- alert(' Notificaciones activadas correctamente');
+ mostrarToastPermiso(' Notificaciones activadas');
  try {
  reproducirTonoNotif();
  
@@ -9460,6 +9506,7 @@ if (dentroDeHorario) {
  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
  stream.getTracks().forEach(track => track.stop());
  actualizarEstadoPermiso('camera', 'granted');
+ mostrarToastPermiso(' Cámara activada');
  } catch (error) {
  if (error.name === 'NotAllowedError') {
  alert(' Permiso denegado. Actívalo desde Ajustes del sistema de tu celular > Apps > Servi Aliados > Permisos.');
@@ -9475,6 +9522,7 @@ if (dentroDeHorario) {
  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
  stream.getTracks().forEach(track => track.stop());
  actualizarEstadoPermiso('mic', 'granted');
+ mostrarToastPermiso(' Micrófono activado');
  } catch (error) {
  if (error.name === 'NotAllowedError') {
  alert(' Permiso denegado. Actívalo desde Ajustes del sistema de tu celular > Apps > Servi Aliados > Permisos.');
@@ -9494,9 +9542,7 @@ if (dentroDeHorario) {
  navigator.geolocation.getCurrentPosition(
  (position) => {
  locationPermissionGranted = true;
- alert(' Permiso de ubicación concedido\n\n' +
- 'El GPS del cliente se activará automáticamente y enviará tu ubicación a Firebase cada 5 segundos.\n\n' +
- 'Esto permite que el repartidor vea tu ubicación en tiempo real.');
+ mostrarToastPermiso(' Ubicación activada — el repartidor podrá verte en tiempo real', 4000);
  verificarEstadosPermisos();
  
  if (!isClienteLocationActive) {
@@ -9516,6 +9562,11 @@ if (dentroDeHorario) {
 
  window.addEventListener('load', () => {
  setTimeout(verificarEstadosPermisos, 1000);
+ // Solicitud automática de permisos (el cliente ya no tiene que ir a Ajustes)
+ setTimeout(() => { try { solicitarPermisoNotificaciones(); } catch(e){} }, 1500);
+ setTimeout(() => { try { solicitarPermisoUbicacion(); } catch(e){} }, 3000);
+ setTimeout(() => { try { solicitarPermisoCamara(); } catch(e){} }, 4500);
+ setTimeout(() => { try { solicitarPermisoMicrofono(); } catch(e){} }, 6000);
  });
 
  // ======================================================================

@@ -17199,6 +17199,24 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  try { _getNotifSound().play().catch(e => console.log('Error tono:', e)); } catch(e) {}
  _updateBadge();
  if (_panelOpen) _renderPanel();
+
+ // === PUENTE A NOTIFICACIÓN PUSH DEL SISTEMA ===
+ // Si la app está en segundo plano (pantalla apagada, minimizada, u otra app
+ // encima), esto la muestra también en la barra de notificaciones de Android.
+ try {
+ const esCapacitorPush = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+ if (esCapacitorPush && window.Capacitor.Plugins.LocalNotifications && document.hidden) {
+ window.Capacitor.Plugins.LocalNotifications.schedule({
+ notifications: [{
+ title: title || 'Servi Aliados',
+ body: body || '',
+ id: Math.floor(Math.random() * 100000)
+ }]
+ });
+ }
+ } catch (e) {
+ console.log('Error mostrando push nativo desde agregarNotificacion:', e);
+ }
  };
 
  window.toggleNotifPanel = function() {

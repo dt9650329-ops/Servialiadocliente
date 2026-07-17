@@ -9275,17 +9275,21 @@ if (dentroDeHorario) {
  // ======================================================================
 
  window.verificarEstadosPermisos = async function() {
- if ('Notification' in window) {
  const notifStatus = document.getElementById('notif-status');
  const btnNotif = document.getElementById('btn-permiso-notif');
- 
- if (Notification.permission === 'granted') {
+ const esCapacitorNotif = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
+ function pintarEstadoNotif(estado) {
+ notifStatus.classList.remove('status-granted', 'status-denied', 'status-prompt');
+ btnNotif.classList.remove('granted', 'denied');
+
+ if (estado === 'granted') {
  notifStatus.textContent = ' Concedido';
  notifStatus.classList.add('status-granted');
  btnNotif.textContent = ' Activo';
  btnNotif.classList.add('granted');
  btnNotif.disabled = true;
- } else if (Notification.permission === 'denied') {
+ } else if (estado === 'denied') {
  notifStatus.textContent = ' Denegado';
  notifStatus.classList.add('status-denied');
  btnNotif.textContent = 'Denegado';
@@ -9297,6 +9301,20 @@ if (dentroDeHorario) {
  btnNotif.textContent = 'Activar';
  btnNotif.disabled = false;
  }
+ if (typeof actualizarResumenPermisos === 'function') actualizarResumenPermisos();
+ }
+
+ if (esCapacitorNotif && window.Capacitor.Plugins.LocalNotifications) {
+ try {
+ const permiso = await window.Capacitor.Plugins.LocalNotifications.checkPermissions();
+ pintarEstadoNotif(permiso.display === 'granted' ? 'granted' : (permiso.display === 'denied' ? 'denied' : 'prompt'));
+ } catch (e) {
+ console.log('Error verificando permiso de notificaciones nativo:', e);
+ }
+ } else if ('Notification' in window) {
+ if (Notification.permission === 'granted') pintarEstadoNotif('granted');
+ else if (Notification.permission === 'denied') pintarEstadoNotif('denied');
+ else pintarEstadoNotif('prompt');
  }
  
  try {
@@ -9374,8 +9392,31 @@ if (dentroDeHorario) {
  if (typeof actualizarResumenPermisos === 'function') actualizarResumenPermisos();
  }
 
- window.solicitarPermisoNotificaciones = function() {
- if ('Notification' in window) {
+ window.solicitarPermisoNotificaciones = async function() {
+ const esCapacitorNotif = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
+ if (esCapacitorNotif && window.Capacitor.Plugins.LocalNotifications) {
+ try {
+ const resultado = await window.Capacitor.Plugins.LocalNotifications.requestPermissions();
+ verificarEstadosPermisos();
+
+ if (resultado.display === 'granted') {
+ alert(' Notificaciones activadas correctamente');
+ try { reproducirTonoNotif(); } catch (e) { console.log("Error:", e); }
+ window.Capacitor.Plugins.LocalNotifications.schedule({
+ notifications: [{
+ title: ' ¡Notificaciones Activas!',
+ body: 'Recibirás alertas de nuevos mensajes',
+ id: Date.now() % 100000
+ }]
+ });
+ } else {
+ alert(' Permiso denegado. Actívalo desde Ajustes > Apps > Servi Aliados > Notificaciones.');
+ }
+ } catch (e) {
+ alert(' Error solicitando permiso de notificaciones: ' + e.message);
+ }
+ } else if ('Notification' in window) {
  Notification.requestPermission().then(permission => {
  verificarEstadosPermisos();
  

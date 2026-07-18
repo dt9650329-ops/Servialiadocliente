@@ -3,7 +3,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 async function enviarPush(uid, title, body, data = {}) {
-  const tokenSnap = await admin.database().ref(`fcm_tokens/${uid}`).get();
+  const tokenSnap = await admin.database().ref(`usuarios/${uid}/fcmToken`).get();
   if (!tokenSnap.exists()) return;
   const token = tokenSnap.val();
   const message = {
@@ -17,7 +17,7 @@ async function enviarPush(uid, title, body, data = {}) {
   } catch (e) {
     console.error('Error enviando push a', uid, e);
     if (e.code === 'messaging/registration-token-not-registered') {
-      await admin.database().ref(`fcm_tokens/${uid}`).remove();
+      await admin.database().ref(`usuarios/${uid}/fcmToken`).remove();
     }
   }
 }

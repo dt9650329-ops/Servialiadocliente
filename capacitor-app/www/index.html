@@ -9607,63 +9607,12 @@ if (dentroDeHorario) {
  // ====================================================================
  // [PUSH-FCM] Notificaciones push reales vía Firebase Cloud Messaging
  // ====================================================================
- // A diferencia de LocalNotifications (que depende de que el JS de la
- // app siga corriendo), esto usa el plugin @capacitor-firebase/messaging
- // para registrar el dispositivo y guardar su "token" en Firebase. El
- // envío real del push lo hace el servidor (función de Netlify), sin
- // depender de que la app esté abierta.
- window._inicializarPushFCM = async function() {
- console.warn('🔵 DEBUG PUSH: _inicializarPushFCM() llamada');
- try {
- console.warn('🔵 DEBUG PUSH: _audioUnifNativoDisponible existe =', !!window._audioUnifNativoDisponible, ' valor =', window._audioUnifNativoDisponible ? window._audioUnifNativoDisponible() : 'N/A');
- if (!window._audioUnifNativoDisponible || !window._audioUnifNativoDisponible()) { console.warn('🔴 DEBUG PUSH: salió por _audioUnifNativoDisponible false'); return; } // solo aplica dentro del APK
- console.warn('🔵 DEBUG PUSH: window.Capacitor existe =', !!window.Capacitor, ' Plugins =', window.Capacitor ? !!window.Capacitor.Plugins : 'N/A');
- const fm = window.Capacitor.Plugins.FirebaseMessaging;
- if (!fm) { console.warn('🔴 DEBUG PUSH: Plugin FirebaseMessaging no disponible (¿falta npx cap sync?)'); return; }
- console.warn('🔵 DEBUG PUSH: plugin FirebaseMessaging encontrado, pidiendo permisos...');
-
- let permiso = await fm.checkPermissions();
- console.warn('🔵 DEBUG PUSH: permiso inicial =', JSON.stringify(permiso));
- if (permiso.receive !== 'granted') {
- permiso = await fm.requestPermissions();
- console.warn('🔵 DEBUG PUSH: permiso tras requestPermissions =', JSON.stringify(permiso));
- }
- if (permiso.receive !== 'granted') {
- console.warn('🔴 DEBUG PUSH: Permiso de notificaciones push denegado');
- return;
- }
-
- console.warn('🔵 DEBUG PUSH: permiso concedido, pidiendo token...');
- const resultado = await fm.getToken();
- console.warn('🔵 DEBUG PUSH: resultado getToken =', JSON.stringify(resultado));
- if (resultado && resultado.token) {
- await window._guardarTokenFCM(resultado.token);
- } else {
- console.warn('🔴 DEBUG PUSH: getToken no devolvió token');
- }
-
- // Si el token cambia (reinstalación, limpieza de caché, etc.) se vuelve a guardar
- fm.addListener('tokenReceived', async (event) => {
- if (event && event.token) await window._guardarTokenFCM(event.token);
- });
- } catch (e) {
- console.warn('🔴 DEBUG PUSH: Error inicializando push FCM:', e.message, e.stack);
- }
- };
-
- window._guardarTokenFCM = async function(token) {
- console.warn('🔵 DEBUG PUSH: _guardarTokenFCM() llamada, currentUserID =', window.currentUserID, ' db existe =', !!window.db);
- try {
- if (!window.currentUserID || !window.db) { console.warn('🔴 DEBUG PUSH: falta currentUserID o db, no se guarda'); return; }
- await window.update(window.ref(window.db, `usuarios/${window.currentUserID}`), {
- fcmToken: token,
- fcmTokenTs: Date.now()
- });
- console.warn('🟢 DEBUG PUSH: ✅ Token FCM guardado exitosamente');
- } catch (e) {
- console.warn('🔴 DEBUG PUSH: Error guardando token FCM:', e.message, e.stack);
- }
- };
+ // NOTA: la implementación real de _inicializarPushFCM / _guardarTokenFCM
+ // se movió al bloque <script> donde se usa (justo antes de onAuthStateChanged),
+ // para que no dependa de que este bloque de script termine de ejecutarse
+ // sin errores. Si algo antes de este punto lanzaba una excepción en tiempo
+ // de ejecución, todo lo que seguía en este mismo bloque (incluida esta
+ // función) nunca llegaba a definirse, y por eso el push nunca se disparaba.
 
  window.solicitarPermisoUbicacion = function() {
  if (!navigator.geolocation) {
@@ -10211,6 +10160,65 @@ if (dentroDeHorario) {
  if (vi) vi.style.display = 'block';
  }
  }, 3000);
+
+ // ====================================================================
+ // [PUSH-FCM] Notificaciones push reales vía Firebase Cloud Messaging
+ // ====================================================================
+ // Movida a este bloque (el mismo que usa onAuthStateChanged justo abajo)
+ // para que no dependa de que el bloque <script> anterior termine de
+ // ejecutarse sin errores. Ver nota en la ubicación original.
+ window._inicializarPushFCM = async function() {
+ console.warn('🔵 DEBUG PUSH: _inicializarPushFCM() llamada');
+ try {
+ console.warn('🔵 DEBUG PUSH: _audioUnifNativoDisponible existe =', !!window._audioUnifNativoDisponible, ' valor =', window._audioUnifNativoDisponible ? window._audioUnifNativoDisponible() : 'N/A');
+ if (!window._audioUnifNativoDisponible || !window._audioUnifNativoDisponible()) { console.warn('🔴 DEBUG PUSH: salió por _audioUnifNativoDisponible false'); return; } // solo aplica dentro del APK
+ console.warn('🔵 DEBUG PUSH: window.Capacitor existe =', !!window.Capacitor, ' Plugins =', window.Capacitor ? !!window.Capacitor.Plugins : 'N/A');
+ const fm = window.Capacitor.Plugins.FirebaseMessaging;
+ if (!fm) { console.warn('🔴 DEBUG PUSH: Plugin FirebaseMessaging no disponible (¿falta npx cap sync?)'); return; }
+ console.warn('🔵 DEBUG PUSH: plugin FirebaseMessaging encontrado, pidiendo permisos...');
+
+ let permiso = await fm.checkPermissions();
+ console.warn('🔵 DEBUG PUSH: permiso inicial =', JSON.stringify(permiso));
+ if (permiso.receive !== 'granted') {
+ permiso = await fm.requestPermissions();
+ console.warn('🔵 DEBUG PUSH: permiso tras requestPermissions =', JSON.stringify(permiso));
+ }
+ if (permiso.receive !== 'granted') {
+ console.warn('🔴 DEBUG PUSH: Permiso de notificaciones push denegado');
+ return;
+ }
+
+ console.warn('🔵 DEBUG PUSH: permiso concedido, pidiendo token...');
+ const resultado = await fm.getToken();
+ console.warn('🔵 DEBUG PUSH: resultado getToken =', JSON.stringify(resultado));
+ if (resultado && resultado.token) {
+ await window._guardarTokenFCM(resultado.token);
+ } else {
+ console.warn('🔴 DEBUG PUSH: getToken no devolvió token');
+ }
+
+ // Si el token cambia (reinstalación, limpieza de caché, etc.) se vuelve a guardar
+ fm.addListener('tokenReceived', async (event) => {
+ if (event && event.token) await window._guardarTokenFCM(event.token);
+ });
+ } catch (e) {
+ console.warn('🔴 DEBUG PUSH: Error inicializando push FCM:', e.message, e.stack);
+ }
+ };
+
+ window._guardarTokenFCM = async function(token) {
+ console.warn('🔵 DEBUG PUSH: _guardarTokenFCM() llamada, currentUserID =', window.currentUserID, ' db existe =', !!window.db);
+ try {
+ if (!window.currentUserID || !window.db) { console.warn('🔴 DEBUG PUSH: falta currentUserID o db, no se guarda'); return; }
+ await window.update(window.ref(window.db, `usuarios/${window.currentUserID}`), {
+ fcmToken: token,
+ fcmTokenTs: Date.now()
+ });
+ console.warn('🟢 DEBUG PUSH: ✅ Token FCM guardado exitosamente');
+ } catch (e) {
+ console.warn('🔴 DEBUG PUSH: Error guardando token FCM:', e.message, e.stack);
+ }
+ };
 
  onAuthStateChanged(auth, async (user) => {
  setTimeout(() => {

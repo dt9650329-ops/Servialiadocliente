@@ -10167,11 +10167,22 @@ if (dentroDeHorario) {
  // Movida a este bloque (el mismo que usa onAuthStateChanged justo abajo)
  // para que no dependa de que el bloque <script> anterior termine de
  // ejecutarse sin errores. Ver nota en la ubicación original.
+ //
+ // IMPORTANTE: _audioUnifNativoDisponible() (definida más arriba en el
+ // archivo) exige además que el plugin CapacitorAudioRecorder esté
+ // registrado, porque se creó específicamente para el flujo de audio del
+ // chat. Reutilizarla aquí como "¿estoy en el APK?" era incorrecto: si el
+ // plugin de audio no cargaba a tiempo, el push se caía con él sin razón.
+ // Por eso usamos un chequeo propio, solo de plataforma nativa.
+ window._nativoDisponiblePush = function() {
+ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+ };
+
  window._inicializarPushFCM = async function() {
  console.warn('🔵 DEBUG PUSH: _inicializarPushFCM() llamada');
  try {
- console.warn('🔵 DEBUG PUSH: _audioUnifNativoDisponible existe =', !!window._audioUnifNativoDisponible, ' valor =', window._audioUnifNativoDisponible ? window._audioUnifNativoDisponible() : 'N/A');
- if (!window._audioUnifNativoDisponible || !window._audioUnifNativoDisponible()) { console.warn('🔴 DEBUG PUSH: salió por _audioUnifNativoDisponible false'); return; } // solo aplica dentro del APK
+ console.warn('🔵 DEBUG PUSH: _nativoDisponiblePush =', window._nativoDisponiblePush());
+ if (!window._nativoDisponiblePush()) { console.warn('🔴 DEBUG PUSH: salió, no es plataforma nativa'); return; } // solo aplica dentro del APK
  console.warn('🔵 DEBUG PUSH: window.Capacitor existe =', !!window.Capacitor, ' Plugins =', window.Capacitor ? !!window.Capacitor.Plugins : 'N/A');
  const fm = window.Capacitor.Plugins.FirebaseMessaging;
  if (!fm) { console.warn('🔴 DEBUG PUSH: Plugin FirebaseMessaging no disponible (¿falta npx cap sync?)'); return; }

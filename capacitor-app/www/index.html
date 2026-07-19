@@ -4675,12 +4675,16 @@ const TONOS_NOTIFICACION = [
  let _tonoSeleccionado = parseInt(localStorage.getItem('servi_tono_notif') || '1');
  function _getNotifSound() {
  const tono = TONOS_NOTIFICACION.find(t => t.id === _tonoSeleccionado) || TONOS_NOTIFICACION[0];
+ if (!tono.src) return null;
  const a = new Audio(tono.src);
  a.volume = 0.8;
  return a;
  }
  window.reproducirTonoNotif = function() {
- try { _getNotifSound().play().catch(e => console.log('Error tono:', e)); } catch(e) {}
+ try {
+ const snd = _getNotifSound();
+ if (snd) snd.play().catch(e => console.log('Error tono:', e));
+ } catch(e) {}
  };
  // Marcar el tono activo al cargar
  document.addEventListener('DOMContentLoaded', function() {
@@ -7319,7 +7323,10 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  const resultado = await plugin.stopRecording();
  if (resultado.blob) return resultado.blob;
  if (resultado.uri) {
- const respuesta = await fetch(resultado.uri);
+ const uriWeb = (window.Capacitor && window.Capacitor.convertFileSrc)
+ ? window.Capacitor.convertFileSrc(resultado.uri)
+ : resultado.uri;
+ const respuesta = await fetch(uriWeb);
  return await respuesta.blob();
  }
  throw new Error('El plugin de audio no devolvió blob ni uri');

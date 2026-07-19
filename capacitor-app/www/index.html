@@ -4624,6 +4624,7 @@
  let mediaRecorder = null;
  let audioChunks = [];
  let isRecording = false;
+ let _sesionAudioSoporte = null;
  let permisosMultimediaSolicitados = false;
  let notificationPermissionRequested = false;
  let menuAbierto = false;
@@ -4674,12 +4675,16 @@ const TONOS_NOTIFICACION = [
  let _tonoSeleccionado = parseInt(localStorage.getItem('servi_tono_notif') || '1');
  function _getNotifSound() {
  const tono = TONOS_NOTIFICACION.find(t => t.id === _tonoSeleccionado) || TONOS_NOTIFICACION[0];
+ if (!tono.src) return null;
  const a = new Audio(tono.src);
  a.volume = 0.8;
  return a;
  }
  window.reproducirTonoNotif = function() {
- try { _getNotifSound().play().catch(e => console.log('Error tono:', e)); } catch(e) {}
+ try {
+ const snd = _getNotifSound();
+ if (snd) snd.play().catch(e => console.log('Error tono:', e));
+ } catch(e) {}
  };
  // Marcar el tono activo al cargar
  document.addEventListener('DOMContentLoaded', function() {
@@ -7274,11 +7279,84 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  }
 
  // ====================================================================
+ // [AUDIO-UNIFICADO] Grabación de audio compatible con APK nativo y web
+ // ====================================================================
+ // En el APK, el MediaRecorder del navegador a veces no puede acceder al
+ // micrófono ("Could not start audio source"). Por eso, si la app corre
+ // empaquetada con Capacitor y el plugin @capgo/capacitor-audio-recorder
+ // está disponible, usamos ese plugin nativo. Si no (pruebas en navegador
+ // normal), usamos el MediaRecorder de siempre. En ambos casos el
+ // resultado final es un Blob, para no tener que tocar el resto del
+ // código que sube el audio a Firebase.
+ window._audioUnifNativoDisponible = function() {
+ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()
+ && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorAudioRecorder);
+ };
+
+ window._audioUnifIniciar = async function() {
+ if (window._audioUnifNativoDisponible()) {
+ const plugin = window.Capacitor.Plugins.CapacitorAudioRecorder;
+ let permiso = await plugin.checkPermissions();
+ if (permiso.recordAudio !== 'granted') {
+ permiso = await plugin.requestPermissions();
+ }
+ if (permiso.recordAudio !== 'granted') {
+ throw new Error('Permiso de micrófono denegado');
+ }
+ await plugin.startRecording();
+ return { modo: 'nativo' };
+ } else {
+ const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+ const recorder = new MediaRecorder(stream);
+ const chunks = [];
+ recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+ recorder.start();
+ return { modo: 'web', stream, recorder, chunks };
+ }
+ };
+
+ // Siempre devuelve un Blob, sin importar si vino del plugin nativo o del navegador.
+ window._audioUnifDetener = async function(sesion) {
+ if (!sesion) throw new Error('No hay grabación activa');
+ if (sesion.modo === 'nativo') {
+ const plugin = window.Capacitor.Plugins.CapacitorAudioRecorder;
+ const resultado = await plugin.stopRecording();
+ console.warn('🟡 DEBUG AUDIO: resultado stopRecording =', JSON.stringify(resultado));
+ if (resultado.blob) return resultado.blob;
+ if (resultado.uri) {
+ const uriWeb = (window.Capacitor && window.Capacitor.convertFileSrc)
+ ? window.Capacitor.convertFileSrc(resultado.uri)
+ : resultado.uri;
+ console.warn('🟡 DEBUG AUDIO: uri original =', resultado.uri, ' uriWeb convertida =', uriWeb);
+ try {
+ const respuesta = await fetch(uriWeb);
+ console.warn('🟡 DEBUG AUDIO: fetch ok, status =', respuesta.status);
+ return await respuesta.blob();
+ } catch (errFetch) {
+ console.warn('🔴 DEBUG AUDIO: fetch falló =', errFetch.message);
+ throw errFetch;
+ }
+ }
+ throw new Error('El plugin de audio no devolvió blob ni uri');
+ } else {
+ return new Promise((resolve, reject) => {
+ sesion.recorder.onstop = () => {
+ const blob = new Blob(sesion.chunks, { type: 'audio/webm' });
+ sesion.stream.getTracks().forEach(t => t.stop());
+ resolve(blob);
+ };
+ sesion.recorder.onerror = (e) => reject(e.error || e);
+ sesion.recorder.stop();
+ });
+ }
+ };
+
+ // ====================================================================
  // FUNCIONES PARA GRABAR Y ENVIAR AUDIO
  // ====================================================================
  window.toggleGrabarAudio = async function() {
  if (isRecording) {
- detenerGrabacion();
+ await detenerGrabacion();
  } else {
  await iniciarGrabacion();
  }
@@ -7287,26 +7365,8 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  async function iniciarGrabacion() {
  try {
  console.log(' Iniciando grabación de audio...');
- 
- const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
- mediaRecorder = new MediaRecorder(stream);
- audioChunks = [];
 
- mediaRecorder.ondataavailable = (event) => {
- if (event.data.size > 0) {
- audioChunks.push(event.data);
- }
- };
-
- mediaRecorder.onstop = async () => {
- console.log(' Grabación detenida, procesando audio...');
- const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
- await enviarAudio(audioBlob);
- 
- stream.getTracks().forEach(track => track.stop());
- };
-
- mediaRecorder.start();
+ _sesionAudioSoporte = await window._audioUnifIniciar();
  isRecording = true;
 
  document.getElementById('btn-audio').textContent = '[■] Detener';
@@ -7321,16 +7381,22 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  }
  }
 
- function detenerGrabacion() {
- if (mediaRecorder && mediaRecorder.state !== 'inactive') {
- mediaRecorder.stop();
+ async function detenerGrabacion() {
+ if (!isRecording || !_sesionAudioSoporte) return;
+ try {
  isRecording = false;
-
  document.getElementById('btn-audio').textContent = ' Grabar';
  document.getElementById('btn-audio').style.backgroundColor = '';
- document.getElementById('audio-recording-status').style.display = 'none';
+ document.getElementById('audio-recording-status').textContent = ' Procesando audio...';
 
- console.log(' Grabación detenida');
+ const audioBlob = await window._audioUnifDetener(_sesionAudioSoporte);
+ _sesionAudioSoporte = null;
+ console.log(' Grabación detenida, procesando audio...');
+ await enviarAudio(audioBlob);
+ } catch (error) {
+ console.error(' Error al detener/procesar grabación:', error);
+ alert('Error al procesar el audio: ' + error.message);
+ document.getElementById('audio-recording-status').style.display = 'none';
  }
  }
 
@@ -9519,6 +9585,25 @@ if (dentroDeHorario) {
 
  window.solicitarPermisoMicrofono = async function() {
  try {
+ if (window._audioUnifNativoDisponible && window._audioUnifNativoDisponible()) {
+ // En el APK: pedir el permiso directo al plugin nativo, SIN abrir
+ // un stream de audio real (eso es lo que fallaba con "Could not
+ // start audio source" — el WebView no puede abrir la fuente de
+ // audio aunque el permiso del sistema sí se conceda).
+ const plugin = window.Capacitor.Plugins.CapacitorAudioRecorder;
+ let permiso = await plugin.checkPermissions();
+ if (permiso.recordAudio !== 'granted') {
+ permiso = await plugin.requestPermissions();
+ }
+ if (permiso.recordAudio === 'granted') {
+ actualizarEstadoPermiso('mic', 'granted');
+ mostrarToastPermiso(' Micrófono activado');
+ } else {
+ actualizarEstadoPermiso('mic', 'denied');
+ }
+ return;
+ }
+ // Navegador normal (sin Capacitor nativo): flujo de siempre
  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
  stream.getTracks().forEach(track => track.stop());
  actualizarEstadoPermiso('mic', 'granted');
@@ -9528,10 +9613,21 @@ if (dentroDeHorario) {
  alert(' Permiso denegado. Actívalo desde Ajustes del sistema de tu celular > Apps > Servi Aliados > Permisos.');
  actualizarEstadoPermiso('mic', 'denied');
  } else {
- alert(' Error al acceder al micrófono: ' + error.message);
+ console.warn('⚠️ No se pudo activar el micrófono automáticamente:', error.message);
+ actualizarEstadoPermiso('mic', 'denied');
  }
  }
  }
+
+ // ====================================================================
+ // [PUSH-FCM] Notificaciones push reales vía Firebase Cloud Messaging
+ // ====================================================================
+ // NOTA: la implementación real de _inicializarPushFCM / _guardarTokenFCM
+ // se movió al bloque <script> donde se usa (justo antes de onAuthStateChanged),
+ // para que no dependa de que este bloque de script termine de ejecutarse
+ // sin errores. Si algo antes de este punto lanzaba una excepción en tiempo
+ // de ejecución, todo lo que seguía en este mismo bloque (incluida esta
+ // función) nunca llegaba a definirse, y por eso el push nunca se disparaba.
 
  window.solicitarPermisoUbicacion = function() {
  if (!navigator.geolocation) {
@@ -10080,6 +10176,76 @@ if (dentroDeHorario) {
  }
  }, 3000);
 
+ // ====================================================================
+ // [PUSH-FCM] Notificaciones push reales vía Firebase Cloud Messaging
+ // ====================================================================
+ // Movida a este bloque (el mismo que usa onAuthStateChanged justo abajo)
+ // para que no dependa de que el bloque <script> anterior termine de
+ // ejecutarse sin errores. Ver nota en la ubicación original.
+ //
+ // IMPORTANTE: _audioUnifNativoDisponible() (definida más arriba en el
+ // archivo) exige además que el plugin CapacitorAudioRecorder esté
+ // registrado, porque se creó específicamente para el flujo de audio del
+ // chat. Reutilizarla aquí como "¿estoy en el APK?" era incorrecto: si el
+ // plugin de audio no cargaba a tiempo, el push se caía con él sin razón.
+ // Por eso usamos un chequeo propio, solo de plataforma nativa.
+ window._nativoDisponiblePush = function() {
+ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+ };
+
+ window._inicializarPushFCM = async function() {
+ console.warn('🔵 DEBUG PUSH: _inicializarPushFCM() llamada');
+ try {
+ console.warn('🔵 DEBUG PUSH: _nativoDisponiblePush =', window._nativoDisponiblePush());
+ if (!window._nativoDisponiblePush()) { console.warn('🔴 DEBUG PUSH: salió, no es plataforma nativa'); return; } // solo aplica dentro del APK
+ console.warn('🔵 DEBUG PUSH: window.Capacitor existe =', !!window.Capacitor, ' Plugins =', window.Capacitor ? !!window.Capacitor.Plugins : 'N/A');
+ const fm = window.Capacitor.Plugins.FirebaseMessaging;
+ if (!fm) { console.warn('🔴 DEBUG PUSH: Plugin FirebaseMessaging no disponible (¿falta npx cap sync?)'); return; }
+ console.warn('🔵 DEBUG PUSH: plugin FirebaseMessaging encontrado, pidiendo permisos...');
+
+ let permiso = await fm.checkPermissions();
+ console.warn('🔵 DEBUG PUSH: permiso inicial =', JSON.stringify(permiso));
+ if (permiso.receive !== 'granted') {
+ permiso = await fm.requestPermissions();
+ console.warn('🔵 DEBUG PUSH: permiso tras requestPermissions =', JSON.stringify(permiso));
+ }
+ if (permiso.receive !== 'granted') {
+ console.warn('🔴 DEBUG PUSH: Permiso de notificaciones push denegado');
+ return;
+ }
+
+ console.warn('🔵 DEBUG PUSH: permiso concedido, pidiendo token...');
+ const resultado = await fm.getToken();
+ console.warn('🔵 DEBUG PUSH: resultado getToken =', JSON.stringify(resultado));
+ if (resultado && resultado.token) {
+ await window._guardarTokenFCM(resultado.token);
+ } else {
+ console.warn('🔴 DEBUG PUSH: getToken no devolvió token');
+ }
+
+ // Si el token cambia (reinstalación, limpieza de caché, etc.) se vuelve a guardar
+ fm.addListener('tokenReceived', async (event) => {
+ if (event && event.token) await window._guardarTokenFCM(event.token);
+ });
+ } catch (e) {
+ console.warn('🔴 DEBUG PUSH: Error inicializando push FCM:', e.message, e.stack);
+ }
+ };
+
+ window._guardarTokenFCM = async function(token) {
+ console.warn('🔵 DEBUG PUSH: _guardarTokenFCM() llamada, currentUserID =', window.currentUserID, ' db existe =', !!window.db);
+ try {
+ if (!window.currentUserID || !window.db) { console.warn('🔴 DEBUG PUSH: falta currentUserID o db, no se guarda'); return; }
+ await window.update(window.ref(window.db, `usuarios/${window.currentUserID}`), {
+ fcmToken: token,
+ fcmTokenTs: Date.now()
+ });
+ console.warn('🟢 DEBUG PUSH: ✅ Token FCM guardado exitosamente');
+ } catch (e) {
+ console.warn('🔴 DEBUG PUSH: Error guardando token FCM:', e.message, e.stack);
+ }
+ };
+
  onAuthStateChanged(auth, async (user) => {
  setTimeout(() => {
  if (typeof window.hideSplashScreen === 'function') {
@@ -10111,6 +10277,7 @@ if (dentroDeHorario) {
  if (!window.getClientID) window.getClientID = (uid) => `cliente_auth_${uid}`;
  window.currentUserID = window.getClientID(user.uid);
  cargarURLsTonos();
+ if (window._inicializarPushFCM) window._inicializarPushFCM();
  
  console.log(' Usuario autenticado:', user.uid);
  
@@ -11097,12 +11264,11 @@ ${mensajeEstado}
  // FUNCIONES PARA GRABAR Y ENVIAR AUDIO AL ADMIN
  // 
  let isRecordingAdmin = false;
- let mediaRecorderAdmin = null;
- let audioChunksAdmin = [];
+ let _sesionAudioAdmin = null;
 
  window.toggleGrabarAudioAdmin = async function() {
  if (isRecordingAdmin) {
- detenerGrabacionAdmin();
+ await detenerGrabacionAdmin();
  } else {
  await iniciarGrabacionAdmin();
  }
@@ -11111,26 +11277,8 @@ ${mensajeEstado}
  async function iniciarGrabacionAdmin() {
  try {
  console.log(' Iniciando grabación de audio para admin...');
- 
- const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
- mediaRecorderAdmin = new MediaRecorder(stream);
- audioChunksAdmin = [];
 
- mediaRecorderAdmin.ondataavailable = (event) => {
- if (event.data.size > 0) {
- audioChunksAdmin.push(event.data);
- }
- };
-
- mediaRecorderAdmin.onstop = async () => {
- console.log(' Grabación detenida, procesando audio...');
- const audioBlob = new Blob(audioChunksAdmin, { type: 'audio/webm' });
- await enviarAudioAdmin(audioBlob);
- 
- stream.getTracks().forEach(track => track.stop());
- };
-
- mediaRecorderAdmin.start();
+ _sesionAudioAdmin = await window._audioUnifIniciar();
  isRecordingAdmin = true;
 
  const btnAudio = document.getElementById('admin-btn-audio');
@@ -11148,19 +11296,28 @@ ${mensajeEstado}
  }
  }
 
- function detenerGrabacionAdmin() {
- if (mediaRecorderAdmin && mediaRecorderAdmin.state !== 'inactive') {
- mediaRecorderAdmin.stop();
+ async function detenerGrabacionAdmin() {
+ if (!isRecordingAdmin || !_sesionAudioAdmin) return;
+ try {
  isRecordingAdmin = false;
 
  const btnAudio = document.getElementById('admin-btn-audio');
  const statusElement = document.getElementById('admin-audio-recording-status');
- 
+
  btnAudio.textContent = ' Grabar Audio';
  btnAudio.style.backgroundColor = '';
- statusElement.style.display = 'none';
+ statusElement.textContent = ' Procesando audio...';
 
- console.log(' Grabación detenida');
+ const audioBlob = await window._audioUnifDetener(_sesionAudioAdmin);
+ _sesionAudioAdmin = null;
+ console.log(' Grabación detenida, procesando audio...');
+ await enviarAudioAdmin(audioBlob);
+ statusElement.style.display = 'none';
+ } catch (error) {
+ console.error(' Error al detener/procesar grabación:', error);
+ alert('Error al procesar el audio: ' + error.message);
+ const statusElement = document.getElementById('admin-audio-recording-status');
+ if (statusElement) statusElement.style.display = 'none';
  }
  }
 
@@ -15292,33 +15449,28 @@ window.toggleGrabarAudioP2P = async function(pedidoId) {
  const pid = pedidoId || _chatP2PId;
  if (!pid) return;
  if (_chatP2PBloqueado[pid]) { alert('Este chat fue bloqueado por soporte y ya no puedes enviar mensajes.'); return; }
- if (!_chatP2PAudios[pid]) _chatP2PAudios[pid] = { audio: null, chunks: [], recording: false };
+ if (!_chatP2PAudios[pid]) _chatP2PAudios[pid] = { audio: null, chunks: [], recording: false, sesion: null };
  const estado = _chatP2PAudios[pid];
  const btn = document.getElementById('btn-audio-p2p-' + pid);
  if (!estado.recording) {
  try {
- const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
- estado.audio = new MediaRecorder(stream);
- estado.chunks = [];
- estado.audio.ondataavailable = e => estado.chunks.push(e.data);
- estado.audio.onstop = () => {
- const blob = new Blob(estado.chunks, { type: 'audio/webm' });
+ estado.sesion = await window._audioUnifIniciar();
+ estado.recording = true;
+ if (btn) { btn.textContent = '[■] Detener'; btn.style.background = '#c0392b'; }
+ } catch(e) { alert('Error al acceder al micrófono: ' + e.message); }
+ } else {
+ try {
+ estado.recording = false;
+ if (btn) { btn.textContent = ' Audio'; btn.style.background = '#333'; }
+ const blob = await window._audioUnifDetener(estado.sesion);
+ estado.sesion = null;
  const url = URL.createObjectURL(blob);
  const prev = document.getElementById('preview-audio-p2p-' + pid);
  const prevCont = document.getElementById('audio-preview-p2p-' + pid);
  if (prev) prev.src = url;
  if (prevCont) prevCont.style.display = 'block';
- estado.audio._blob = blob;
- stream.getTracks().forEach(t => t.stop());
- };
- estado.audio.start();
- estado.recording = true;
- if (btn) { btn.textContent = '[■] Detener'; btn.style.background = '#c0392b'; }
- } catch(e) { alert('Error al acceder al micrófono'); }
- } else {
- estado.audio.stop();
- estado.recording = false;
- if (btn) { btn.textContent = ' Audio'; btn.style.background = '#333'; }
+ estado.audio = { _blob: blob };
+ } catch(e) { alert('Error al procesar el audio: ' + e.message); }
  }
 };
 

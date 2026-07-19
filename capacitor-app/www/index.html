@@ -9613,23 +9613,33 @@ if (dentroDeHorario) {
  // envío real del push lo hace el servidor (función de Netlify), sin
  // depender de que la app esté abierta.
  window._inicializarPushFCM = async function() {
+ console.warn('🔵 DEBUG PUSH: _inicializarPushFCM() llamada');
  try {
- if (!window._audioUnifNativoDisponible || !window._audioUnifNativoDisponible()) return; // solo aplica dentro del APK
+ console.warn('🔵 DEBUG PUSH: _audioUnifNativoDisponible existe =', !!window._audioUnifNativoDisponible, ' valor =', window._audioUnifNativoDisponible ? window._audioUnifNativoDisponible() : 'N/A');
+ if (!window._audioUnifNativoDisponible || !window._audioUnifNativoDisponible()) { console.warn('🔴 DEBUG PUSH: salió por _audioUnifNativoDisponible false'); return; } // solo aplica dentro del APK
+ console.warn('🔵 DEBUG PUSH: window.Capacitor existe =', !!window.Capacitor, ' Plugins =', window.Capacitor ? !!window.Capacitor.Plugins : 'N/A');
  const fm = window.Capacitor.Plugins.FirebaseMessaging;
- if (!fm) { console.warn('⚠️ Plugin FirebaseMessaging no disponible (¿falta npx cap sync?)'); return; }
+ if (!fm) { console.warn('🔴 DEBUG PUSH: Plugin FirebaseMessaging no disponible (¿falta npx cap sync?)'); return; }
+ console.warn('🔵 DEBUG PUSH: plugin FirebaseMessaging encontrado, pidiendo permisos...');
 
  let permiso = await fm.checkPermissions();
+ console.warn('🔵 DEBUG PUSH: permiso inicial =', JSON.stringify(permiso));
  if (permiso.receive !== 'granted') {
  permiso = await fm.requestPermissions();
+ console.warn('🔵 DEBUG PUSH: permiso tras requestPermissions =', JSON.stringify(permiso));
  }
  if (permiso.receive !== 'granted') {
- console.warn('⚠️ Permiso de notificaciones push denegado');
+ console.warn('🔴 DEBUG PUSH: Permiso de notificaciones push denegado');
  return;
  }
 
+ console.warn('🔵 DEBUG PUSH: permiso concedido, pidiendo token...');
  const resultado = await fm.getToken();
+ console.warn('🔵 DEBUG PUSH: resultado getToken =', JSON.stringify(resultado));
  if (resultado && resultado.token) {
  await window._guardarTokenFCM(resultado.token);
+ } else {
+ console.warn('🔴 DEBUG PUSH: getToken no devolvió token');
  }
 
  // Si el token cambia (reinstalación, limpieza de caché, etc.) se vuelve a guardar
@@ -9637,20 +9647,21 @@ if (dentroDeHorario) {
  if (event && event.token) await window._guardarTokenFCM(event.token);
  });
  } catch (e) {
- console.warn('⚠️ Error inicializando push FCM:', e.message);
+ console.warn('🔴 DEBUG PUSH: Error inicializando push FCM:', e.message, e.stack);
  }
  };
 
  window._guardarTokenFCM = async function(token) {
+ console.warn('🔵 DEBUG PUSH: _guardarTokenFCM() llamada, currentUserID =', window.currentUserID, ' db existe =', !!window.db);
  try {
- if (!window.currentUserID || !window.db) return;
+ if (!window.currentUserID || !window.db) { console.warn('🔴 DEBUG PUSH: falta currentUserID o db, no se guarda'); return; }
  await window.update(window.ref(window.db, `usuarios/${window.currentUserID}`), {
  fcmToken: token,
  fcmTokenTs: Date.now()
  });
- console.log('✅ Token FCM guardado');
+ console.warn('🟢 DEBUG PUSH: ✅ Token FCM guardado exitosamente');
  } catch (e) {
- console.warn('⚠️ Error guardando token FCM:', e.message);
+ console.warn('🔴 DEBUG PUSH: Error guardando token FCM:', e.message, e.stack);
  }
  };
 

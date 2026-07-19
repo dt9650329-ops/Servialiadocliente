@@ -7321,13 +7321,21 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  if (sesion.modo === 'nativo') {
  const plugin = window.Capacitor.Plugins.CapacitorAudioRecorder;
  const resultado = await plugin.stopRecording();
+ console.warn('🟡 DEBUG AUDIO: resultado stopRecording =', JSON.stringify(resultado));
  if (resultado.blob) return resultado.blob;
  if (resultado.uri) {
  const uriWeb = (window.Capacitor && window.Capacitor.convertFileSrc)
  ? window.Capacitor.convertFileSrc(resultado.uri)
  : resultado.uri;
+ console.warn('🟡 DEBUG AUDIO: uri original =', resultado.uri, ' uriWeb convertida =', uriWeb);
+ try {
  const respuesta = await fetch(uriWeb);
+ console.warn('🟡 DEBUG AUDIO: fetch ok, status =', respuesta.status);
  return await respuesta.blob();
+ } catch (errFetch) {
+ console.warn('🔴 DEBUG AUDIO: fetch falló =', errFetch.message);
+ throw errFetch;
+ }
  }
  throw new Error('El plugin de audio no devolvió blob ni uri');
  } else {

@@ -22,6 +22,12 @@ allprojects {
         google()
         mavenCentral()
     }
+    configurations.all {
+        resolutionStrategy {
+            force 'androidx.credentials:credentials:1.3.0'
+            force 'androidx.credentials:credentials-play-services-auth:1.3.0'
+        }
+    }
 }
 
 task clean(type: Delete) {

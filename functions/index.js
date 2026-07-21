@@ -225,26 +225,118 @@ async function consultarEstadoPedido(clienteEmail) {
   };
 }
 
-exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => {
-  const { mensaje } = request.data;
-  const clienteEmail = request.auth?.token?.email;
+function buildSystemPrompt(logueado, clienteEmail) {
+  const ahora = new Date();
+  const fecha = ahora.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'full' });
+  const hora = ahora.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
 
-  if (!clienteEmail) {
-    throw new HttpsError('unauthenticated', 'Debes iniciar sesión para usar ServiBot.');
-  }
+  return `Eres el asistente virtual de "Servi Aliados", servicio de domicilios en Armenia, Colombia.
+Tu nombre es ServiBot. Eres amable, claro y útil. Responde siempre en español colombiano.
+Fecha y hora actual: ${fecha}, ${hora}.
+${logueado ? `Cliente autenticado (correo: ${clienteEmail}).` : 'El cliente NO ha iniciado sesión.'}
+
+— TARIFAS DENTRO DE ARMENIA (por distancia real de ruta) —
+• Hasta 1 km: $4.000
+• Hasta 3.1 km: $5.000
+• Hasta 5.9 km: $6.000
+• Hasta 7.5 km: $7.000
+• Hasta 9 km: $8.000
+• Hasta 10.5 km: $9.000
+• Más de 10.5 km: $10.000
+• Extra paquete grande (caja/bolsa voluminosa): +$1.000
+• Extra paquete muy grande (mueble, electrodoméstico): +$2.000
+
+ZONAS EN ARMENIA: Sur, Centro, Norte, Oriente, Occidente
+
+— DESTINOS FUERA DE ARMENIA —
+Calarcá, Circasia, Montenegro, La Tebaida, Puerto Tapao, Salento,
+Quimbaya, Filandia, Buenavista, Pijao, Génova, Córdoba y vías principales.
+Tarifa fuera de Armenia: cuota mínima $5.000 + $1.000 por kilómetro recorrido.
+Ejemplo: 4 km = $5.000 base + $4.000 km = $9.000 total.
+El administrador confirma el valor exacto según la dirección.
+
+— HORARIO DE ATENCIÓN —
+Servicio disponible de 8:00 AM a 11:00 PM todos los días.
+Fuera de ese horario no hay repartidores disponibles.
+
+— QUEJAS Y SOPORTE URGENTE —
+Existe un número directo del encargado para quejas graves o reclamos importantes.
+SOLO comparte ese número si el cliente lo pide explícitamente para una queja o reclamo.
+NO lo menciones proactivamente ni en respuestas generales.
+Si el cliente pregunta por el número de quejas o reclamos graves, entonces sí proporciona:
+WhatsApp del encargado: 3137065977
+
+— TIEMPOS ESTIMADOS —
+• Recogida: 5–25 min según distancia y pedidos en cola del repartidor
+• Entrega total: 15–45 min
+
+— CÓMO HACER UN PEDIDO —
+1. Inicia sesión o regístrate
+2. Ve a la pestaña "Servicio"
+3. Completa el formulario: Punto A (quién entrega) y Punto B (quién recibe)
+4. Selecciona zonas → el precio aparece automáticamente
+5. Elige el tamaño del paquete si aplica
+6. Confirma y envía
+
+— SEGUIMIENTO DEL PEDIDO —
+En la pestaña "Seguir" el cliente ingresa su correo para ver:
+- Estado actual: Pendiente → Aceptado → Esperando → En Camino → Completado
+- Ubicación del repartidor en tiempo real en el mapa
+Si el cliente está autenticado y pregunta por su pedido, usa la herramienta
+consultarEstadoPedido en vez de mandarlo a la pestaña "Seguir".
+
+— SISTEMA DE NIVELES DE EXPERIENCIA —
+Nivel 1 · Cliente Nuevo (0-50 dom): 1 giro de ruleta + cupón $600 de descuento.
+Nivel 2 · Cliente Nuevo (51-130 dom): 2 giros de ruleta + cupón $1.200 de descuento.
+Nivel 3 · Cliente Estrella (131-220+ dom): 3 giros + cupón $6.000 de descuento.
+Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
+
+— REGLAS IMPORTANTES —
+- NUNCA compartas datos de OTROS clientes (nombres, teléfonos, direcciones, estados de pedidos ajenos).
+- Solo puedes hablar del pedido del cliente que está escribiendo.
+- Si el cliente no está autenticado y pregunta por su pedido específico, pídele que inicie sesión.
+- Si te preguntan algo que no sabes responder (peso máximo, políticas especiales, etc.), responde
+  que no tienes esa información en este momento pero que puede escribir al chat de soporte para
+  que le respondan de inmediato.
+- Respuestas concisas: máximo 3–4 párrafos cortos. Usa emojis con moderación.
+- Recuerda siempre el horario: servicio de 8 AM a 11 PM.
+- Mantente siempre en temas de Servi Aliados (precios, zonas, tiempos, pedidos, cuenta, etc). Si
+  te preguntan algo totalmente ajeno (chistes, tareas, trivia, clima), redirige amablemente al tema.`;
+}
+
+exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => {
+  const { mensaje, historial } = request.data;
+  const clienteEmail = request.auth?.token?.email || null;
+  const logueado = !!clienteEmail;
+
   if (!mensaje) {
     throw new HttpsError('invalid-argument', 'Falta el mensaje.');
   }
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash', tools: herramientas });
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-3.1-flash-lite',
+    tools: herramientas,
+    systemInstruction: buildSystemPrompt(logueado, clienteEmail),
+  });
 
-  const chat = model.startChat();
+  // Historial que manda el cliente: [{role:'user'|'model', content: '...'}, ...]
+  // (últimos mensajes de la conversación, sin incluir el mensaje actual)
+  const historialGemini = Array.isArray(historial)
+    ? historial
+        .filter(h => h && typeof h.content === 'string' && (h.role === 'user' || h.role === 'model'))
+        .slice(-10)
+        .map(h => ({ role: h.role, parts: [{ text: h.content }] }))
+    : [];
+
+  const chat = model.startChat({ history: historialGemini });
   const result = await chat.sendMessage(mensaje);
   const call = result.response.functionCalls()?.[0];
 
   if (call && call.name === 'consultarEstadoPedido') {
-    const datosPedido = await consultarEstadoPedido(clienteEmail);
+    const datosPedido = logueado
+      ? await consultarEstadoPedido(clienteEmail)
+      : { encontrado: false, mensaje: 'El cliente no ha iniciado sesión, no se puede consultar su pedido.' };
     const result2 = await chat.sendMessage([
       { functionResponse: { name: 'consultarEstadoPedido', response: datosPedido } },
     ]);
@@ -253,4 +345,3 @@ exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => 
 
   return { respuesta: result.response.text() };
 });
-rm ~/Servialiadocliente/capacitor-app/android/app/src/main/res/drawable/splash.png

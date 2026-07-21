@@ -14553,6 +14553,10 @@ if (window.db) {
  const b = (est.bonosAcum || []).find(x => x.codigo === codigo);
  if (!b) return false;
  b.redimido = true;
+ // Descontar el monto del bono de los créditos acumulados, para que
+ // "Mis créditos" refleje el gasto real (antes se quedaba pegado porque
+ // el monto se sumaba al otorgar el bono pero nunca se restaba al usarlo).
+ est.creditos = Math.max(0, (est.creditos || 0) - (b.monto || 0));
  await _premiosSetEstado(est);
  _actualizarBonosUI();
  return true;

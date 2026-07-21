@@ -5984,31 +5984,58 @@ const TONOS_NOTIFICACION = [
  const raw = (document.getElementById('domi-datos-destinatario-raw')?.value || '');
  const preview = document.getElementById('preview-datos-destinatario');
 
- // 1) Buscar teléfono (secuencias de dígitos, con o sin espacios/guiones, 7 o 10 dígitos)
+ // 1) Separar en líneas primero. Así el teléfono se busca DENTRO de cada
+ // línea por separado y nunca se mezcla con los dígitos de la línea de
+ // arriba o de abajo (ej: dirección que termina en "...Casa 20" ya no se
+ // pega con el teléfono de la siguiente línea).
+ let lineasCrudas = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+ if (lineasCrudas.length <= 1) {
+ // Si el cliente pegó todo en una sola línea, se intenta separar por comas
+ lineasCrudas = raw.split(',').map(l => l.trim()).filter(l => l.length > 0);
+ }
+
  let telefono = '';
- let textoSinTel = raw;
- const telMatch = raw.match(/(\d[\d\s\-]{5,13}\d)/);
+ const lineasSinTel = [];
+ for (const linea of lineasCrudas) {
+ if (telefono) { lineasSinTel.push(linea); continue; } // ya se encontró, no seguir buscando
+ const telMatch = linea.match(/(\d[\d\s\-]{5,13}\d)/);
  if (telMatch) {
  const soloDigitos = telMatch[1].replace(/[^\d]/g, '');
  if (soloDigitos.length === 7 || soloDigitos.length === 10) {
  telefono = soloDigitos;
- textoSinTel = raw.replace(telMatch[1], ' ');
+ const resto = linea.replace(telMatch[1], '').trim();
+ if (resto) lineasSinTel.push(resto); // si la línea tenía algo más además del teléfono, se conserva
+ continue;
  }
  }
-
- // 2) Lo que queda se separa por líneas (o comas si viene todo en una sola línea)
- let lineas = textoSinTel.split('\n').map(l => l.trim()).filter(l => l.length > 0);
- if (lineas.length <= 1) {
- lineas = textoSinTel.split(',').map(l => l.trim()).filter(l => l.length > 0);
+ lineasSinTel.push(linea);
  }
 
- let nombre = '';
- let direccion = '';
- if (lineas.length >= 2) {
- nombre = lineas[0];
- direccion = lineas.slice(1).join(', ');
- } else if (lineas.length === 1) {
- direccion = lineas[0];
+ // 2) De las líneas que quedan (sin el teléfono), separar nombre y dirección
+ // sin importar el orden en que el cliente las haya escrito: una dirección
+ // casi siempre trae números (Cra, Cll, #, Mz, Casa, Apto...) mientras que
+ // un nombre de persona prácticamente nunca trae dígitos.
+ let nombre = '', direccion = '';
+ if (lineasSinTel.length === 0) {
+ // nada que hacer
+ } else if (lineasSinTel.length === 1) {
+ // Solo una línea: si tiene números, es dirección; si no, es nombre
+ if (/\d/.test(lineasSinTel[0])) direccion = lineasSinTel[0];
+ else nombre = lineasSinTel[0];
+ } else {
+ const conNumero = lineasSinTel.filter(l => /\d/.test(l));
+ const sinNumero = lineasSinTel.filter(l => !/\d/.test(l));
+ if (conNumero.length > 0 && sinNumero.length > 0) {
+ // Caso normal: una o más líneas de dirección (con números) y una
+ // línea de nombre (sin números), en cualquier orden.
+ direccion = conNumero.join(', ');
+ nombre = sinNumero.join(' ');
+ } else {
+ // No se pudo distinguir por números (todas o ninguna línea tiene
+ // dígitos) — se usa el orden como respaldo: primera línea = nombre.
+ nombre = lineasSinTel[0];
+ direccion = lineasSinTel.slice(1).join(', ');
+ }
  }
 
  document.getElementById('domi-nombre-recibe').value = nombre;
@@ -17330,7 +17357,14 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 ============================================================ -->
  <script>
  (function() {
- let _notifs = JSON.parse(localStorage.getItem('sa_notifs') || '[]');
+ // ✅ FIX: las notificaciones de la campanita ahora se guardan por cuenta
+ // (uidBase), no en una sola clave global compartida por TODOS los usuarios
+ // que hayan iniciado sesión alguna vez en este dispositivo. Antes, una
+ // cuenta nueva heredaba las notificaciones viejas de la cuenta anterior
+ // porque todas usaban la misma llave 'sa_notifs' en localStorage.
+ let _uidBaseNotif = null; // se setea en escucharNotifAdmin(userId)
+ function _notifKey() { return 'sa_notifs_' + (_uidBaseNotif || 'guest'); }
+ let _notifs = [];
  let _panelOpen = false;
  let _lastPedidoEstado = {};
  let _lastMsgCount = {};
@@ -17340,7 +17374,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  function _save() {
  if (_notifs.length > 50) _notifs = _notifs.slice(-50);
- localStorage.setItem('sa_notifs', JSON.stringify(_notifs));
+ localStorage.setItem(_notifKey(), JSON.stringify(_notifs));
  }
  function _unreadCount() { return _notifs.filter(n => !n.read).length; }
  function _updateBadge() {
@@ -17542,6 +17576,18 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (_adminNotifListener) return;
  _adminNotifListener = true;
 
+ // ✅ FIX: cargar la campanita SOLO con lo que le pertenece a esta cuenta.
+ // Si en este dispositivo antes había iniciado sesión otra cuenta, sus
+ // notificaciones quedan en su propia llave y no se mezclan con esta.
+ if (userId) {
+ _uidBaseNotif = String(userId).replace(/^(cliente_auth_)+/, '');
+ } else {
+ _uidBaseNotif = null;
+ }
+ try { _notifs = JSON.parse(localStorage.getItem(_notifKey()) || '[]'); } catch(e) { _notifs = []; }
+ _updateBadge();
+ if (_panelOpen) _renderPanel();
+
  // Helper: refresca bonos/cupones en la UI cuando llega uno nuevo
  function _refrescarBonosUI() {
  if (typeof window.cargarPremios === 'function') { try { window.cargarPremios(); } catch(e){} }
@@ -17556,7 +17602,10 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  }
 
  // 1. Avisos globales
- const vistasKey = 'sa_notif_vistas';
+ // ✅ FIX: la lista de "avisos ya vistos" también se guarda por cuenta,
+ // así una cuenta nueva sí ve los avisos globales que a ella le
+ // corresponden en vez de heredar el historial de otra cuenta.
+ const vistasKey = 'sa_notif_vistas_' + (_uidBaseNotif || 'guest');
  const globalRef = window.ref(window.db, 'notificaciones_globales');
  window.onValue(globalRef, function(snap) {
  if (!snap.exists()) return;

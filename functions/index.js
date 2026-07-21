@@ -4,9 +4,8 @@ admin.initializeApp();
 
 async function enviarPush(uid, title, body, data = {}) {
   const tokenSnap = await admin.database().ref(`usuarios/${uid}/fcmToken`).get();
-  if (!tokenSnap.exists()) { console.log('[push] usuario', uid, 'NO tiene fcmToken guardado'); return; }
+  if (!tokenSnap.exists()) return;
   const token = tokenSnap.val();
-  console.log('[push] token encontrado para', uid, '- mandando push:', title);
   const message = {
     token,
     notification: { title, body },
@@ -15,7 +14,6 @@ async function enviarPush(uid, title, body, data = {}) {
   };
   try {
     await admin.messaging().send(message);
-    console.log('[push] enviado OK a', uid);
   } catch (e) {
     console.error('Error enviando push a', uid, e);
     if (e.code === 'messaging/registration-token-not-registered') {
@@ -40,47 +38,35 @@ exports.onNuevoMensajeChat = functions.database
   .ref('/chat_p2p/{pedidoId}/{msgId}')
   .onCreate(async (snap, context) => {
     const m = snap.val();
+    if (!m) return null;
+
     const pedidoId = context.params.pedidoId;
-    console.log('[chat] mensaje nuevo en pedido', pedidoId, 'contenido:', JSON.stringify(m));
-
-    if (!m) { console.log('[chat] snap vacio, salgo'); return null; }
-
     const pedidoSnap = await admin.database().ref(`pedidos_historial/${pedidoId}`).get();
-    if (!pedidoSnap.exists()) {
-      console.log('[chat] NO existe pedidos_historial/' + pedidoId);
-      return null;
-    }
+    if (!pedidoSnap.exists()) return null;
     const pedido = pedidoSnap.val();
-    console.log('[chat] pedido encontrado, campos:', Object.keys(pedido).join(', '));
 
     const texto = m.texto || (m.tipo === 'imagen' ? 'Imagen' : m.tipo === 'audio' ? 'Audio' : '');
 
     if (m.remitente === 'repartidor') {
       const clienteUID = obtenerClienteUID(pedido);
-      console.log('[chat] remitente=repartidor, clienteUID resuelto =', clienteUID);
-      if (!clienteUID) { console.log('[chat] no hay clienteUID, salgo'); return null; }
+      if (!clienteUID) return null;
       const rep = m.repartidorNombre || 'Tu repartidor';
       await enviarPush(
         clienteUID,
         'Mensaje de ' + rep,
-        rep + ' te escribio' + (texto ? ': "' + texto + '"' : ''),
+        rep + ' te escribió' + (texto ? ': "' + texto + '"' : ''),
         { pedidoId, tipo: 'chat_p2p' }
       );
-      console.log('[chat] push (a cliente) intentado para uid', clienteUID);
     } else if (m.remitente === 'cliente') {
       const repartidorUID = obtenerRepartidorUID(pedido);
-      console.log('[chat] remitente=cliente, repartidorUID resuelto =', repartidorUID);
-      if (!repartidorUID) { console.log('[chat] no hay repartidorUID, salgo'); return null; }
+      if (!repartidorUID) return null;
       const cli = m.clienteNombre || 'Tu cliente';
       await enviarPush(
         repartidorUID,
         'Mensaje de ' + cli,
-        cli + ' te escribio' + (texto ? ': "' + texto + '"' : ''),
+        cli + ' te escribió' + (texto ? ': "' + texto + '"' : ''),
         { pedidoId, tipo: 'chat_p2p' }
       );
-      console.log('[chat] push (a repartidor) intentado para uid', repartidorUID);
-    } else {
-      console.log('[chat] remitente no reconocido:', JSON.stringify(m.remitente), '- no se manda push');
     }
     return null;
   });
@@ -99,9 +85,9 @@ exports.onCambioEstadoPedido = functions.database
     const labels = {
       'aceptado': 'Tu pedido fue aceptado',
       'esperando': 'Repartidor en punto de recogida',
-      'en camino': 'Tu pedido va en camino!',
-      'completado': 'Pedido entregado!',
-      'entregado': 'Pedido entregado!',
+      'en camino': '¡Tu pedido va en camino!',
+      'completado': '¡Pedido entregado!',
+      'entregado': '¡Pedido entregado!',
       'cancelado': 'Pedido cancelado'
     };
     const titulo = labels[nuevoEstado] || 'Estado actualizado';
@@ -122,9 +108,58 @@ exports.onNuevaNotificacionUsuario = functions.database
 
     await enviarPush(
       uid,
-      n.titulo || 'Notificacion',
+      n.titulo || 'Notificación',
       n.mensaje || n.texto || '',
       { tipo: 'notificacion_usuario' }
     );
+    return null;
+  });
+
+exports.onNuevaNotificacionGlobal = functions.database
+  .ref('/notificaciones_globales/{notifId}')
+  .onCreate(async (snap, context) => {
+    const n = snap.val();
+    if (!n) return null;
+
+    const usersSnap = await admin.database().ref('usuarios').get();
+    if (!usersSnap.exists()) return null;
+
+    const tokens = [];
+    usersSnap.forEach(function(child) {
+      const t = child.val() && child.val().fcmToken;
+      if (t) tokens.push(t);
+    });
+    if (tokens.length === 0) {
+      console.log('[global] no hay usuarios con fcmToken guardado');
+      return null;
+    }
+
+    const titulo = n.titulo || 'Aviso de Servi Aliados';
+    const mensaje = n.mensaje || n.texto || '';
+
+    const tandas = [];
+    for (let i = 0; i < tokens.length; i += 500) tandas.push(tokens.slice(i, i + 500));
+
+    let enviados = 0, invalidos = 0;
+    for (const tanda of tandas) {
+      try {
+        const resultado = await admin.messaging().sendEachForMulticast({
+          tokens: tanda,
+          notification: { title: titulo, body: mensaje },
+          android: { priority: 'high' },
+          data: { tipo: 'aviso_global' }
+        });
+        enviados += resultado.successCount;
+
+        resultado.responses.forEach(function(r, idx) {
+          if (!r.success && r.error && r.error.code === 'messaging/registration-token-not-registered') {
+            invalidos++;
+          }
+        });
+      } catch (e) {
+        console.error('[global] error enviando tanda:', e);
+      }
+    }
+    console.log('[global] aviso enviado a', enviados, 'usuarios de', tokens.length, '(', invalidos, 'tokens invalidos)');
     return null;
   });

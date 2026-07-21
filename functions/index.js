@@ -253,3 +253,4 @@ exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => 
 
   return { respuesta: result.response.text() };
 });
+rm ~/Servialiadocliente/capacitor-app/android/app/src/main/res/drawable/splash.png

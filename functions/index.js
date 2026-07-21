@@ -151,11 +151,7 @@ exports.onNuevaNotificacionGlobal = functions.database
         const resultado = await admin.messaging().sendEachForMulticast({
           tokens: tanda,
           notification: { title: titulo, body: mensaje },
-cd ~/Servialiadocliente
-git add functions/index.js
-git commit -m "push respeta tono de notificacion por usuario"
-git push
-firebase deploy --only functions          android: { priority: 'high' },
+          android: { priority: 'high' },
           data: { tipo: 'aviso_global' }
         });
         enviados += resultado.successCount;

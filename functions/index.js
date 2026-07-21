@@ -6,11 +6,16 @@ async function enviarPush(uid, title, body, data = {}) {
   const tokenSnap = await admin.database().ref(`usuarios/${uid}/fcmToken`).get();
   if (!tokenSnap.exists()) return;
   const token = tokenSnap.val();
+  const tonoSnap = await admin.database().ref(`usuarios/${uid}/tonoNotificacion`).get();
+  const tono = tonoSnap.exists() ? tonoSnap.val() : '1';
   const message = {
     token,
     notification: { title, body },
     data,
-    android: { priority: 'high' }
+    android: {
+      priority: 'high',
+      notification: { channelId: 'pedidos_tono' + tono }
+    }
   };
   try {
     await admin.messaging().send(message);
@@ -146,7 +151,11 @@ exports.onNuevaNotificacionGlobal = functions.database
         const resultado = await admin.messaging().sendEachForMulticast({
           tokens: tanda,
           notification: { title: titulo, body: mensaje },
-          android: { priority: 'high' },
+cd ~/Servialiadocliente
+git add functions/index.js
+git commit -m "push respeta tono de notificacion por usuario"
+git push
+firebase deploy --only functions          android: { priority: 'high' },
           data: { tipo: 'aviso_global' }
         });
         enviados += resultado.successCount;

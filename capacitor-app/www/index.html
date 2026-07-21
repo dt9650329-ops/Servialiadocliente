@@ -9796,7 +9796,7 @@ if (dentroDeHorario) {
  appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
  };
 
- let app, db, auth, storage, functions, girarRuletaCallable;
+ let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable;
  try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
@@ -9804,6 +9804,7 @@ if (dentroDeHorario) {
  storage = getStorage(app);
  functions = getFunctions(app, 'us-central1');
  girarRuletaCallable = httpsCallable(functions, 'girarRuleta');
+ servibotChatCallable = httpsCallable(functions, 'servibotChat');
  console.log(' Firebase inicializado correctamente');
  } catch(e) {
  console.error(' Firebase no pudo iniciar:', e.message);
@@ -9811,6 +9812,11 @@ if (dentroDeHorario) {
 
  window.db = db;
  window.girarRuletaCallable = girarRuletaCallable;
+ window.servibotChatCallable = servibotChatCallable;
+ window.consultarServibot = async function(mensaje) {
+   const res = await servibotChatCallable({ mensaje });
+   return res.data.respuesta;
+ };
  window.push = push;
  window.ref = ref;
  window.set = set;
@@ -16394,6 +16400,11 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  // en vivo en lugar de caer al fallback genérico.
  const RE_COLA_SEGUIMIENTO = /revisa|revisar|verifica|verificar|confirma|confirmar|chequea|checa|vuelve a mirar|mira de nuevo|ya hay|alguien (activo|disponible|libre|conectado)|algun repartidor|otra vez|de nuevo/;
 
+ // Preguntas de estado de pedido: si el cliente está logueado, consultar
+ // servibotChat (Cloud Function con Gemini + Firebase en vivo) en vez de
+ // la respuesta genérica de obtenerRespuesta().
+ const RE_ESTADO_PEDIDO_LIVE = /seguimiento|estado de mi pedido|donde esta mi pedido|donde va mi pedido|rastrear|rastreo|donde esta el repartidor|ver mi pedido|seguir mi pedido|como va mi pedido/;
+
  // Punto de entrada único: intercepta la pregunta de disponibilidad (que
  // necesita datos en vivo de Firebase) antes de pasar por el motor de
  // reglas síncrono obtenerRespuesta().
@@ -16405,6 +16416,15 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  }
  if (ultimoTema === 'cola' && RE_COLA_SEGUIMIENTO.test(m)) {
  return await respuestaColaRepartidores();
+ }
+ if (RE_ESTADO_PEDIDO_LIVE.test(m) && window.currentUserID && typeof window.consultarServibot === 'function') {
+ try {
+ return await window.consultarServibot(msg);
+ } catch (e) {
+ console.error('[ServiBot] Error consultando servibotChat:', e);
+ // Si falla la Cloud Function, cae a la respuesta genérica de siempre
+ return obtenerRespuesta(msg);
+ }
  }
  return obtenerRespuesta(msg);
  }

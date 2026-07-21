@@ -168,3 +168,86 @@ exports.onNuevaNotificacionGlobal = functions.database
     console.log('[global] aviso enviado a', enviados, 'usuarios de', tokens.length, '(', invalidos, 'tokens invalidos)');
     return null;
   });
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
+
+// Definición de la función que Gemini puede "llamar"
+const herramientas = [
+  {
+    functionDeclarations: [
+      {
+        name: 'consultarEstadoPedido',
+        description: 'Consulta el estado actual del pedido activo de un cliente (en camino, pendiente, entregado, etc.) y datos del repartidor asignado.',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+      },
+    ],
+  },
+];
+
+// Ejecuta la función real contra Firebase
+async function consultarEstadoPedido(clienteEmail) {
+  const snap = await admin.database()
+    .ref('pedidos_historial')
+    .orderByChild('clienteEmail')
+    .equalTo(clienteEmail)
+    .limitToLast(5)
+    .once('value');
+
+  if (!snap.exists()) {
+    return { encontrado: false, mensaje: 'No se encontró ningún pedido reciente para este cliente.' };
+  }
+
+  const pedidos = Object.entries(snap.val())
+    .map(([id, p]) => ({ id, ...p }))
+    .filter(p => !['entregado', 'cancelado'].includes(p.estado))
+    .sort((a, b) => (b.timestampCreacion || 0) - (a.timestampCreacion || 0));
+
+  if (pedidos.length === 0) {
+    return { encontrado: false, mensaje: 'No tienes pedidos activos en este momento.' };
+  }
+
+  const p = pedidos[0];
+  return {
+    encontrado: true,
+    estado: p.estado,
+    repartidor: p.repartidorNombre || 'Sin asignar',
+    descripcion: p.descripcion || '',
+    montoTotal: p.montoTotal || 0,
+    tiempoEstimadoEntrega: p.tiempoEstimadoEntrega || null,
+  };
+}
+
+exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => {
+  const { mensaje } = request.data;
+  const clienteEmail = request.auth?.token?.email;
+
+  if (!clienteEmail) {
+    throw new HttpsError('unauthenticated', 'Debes iniciar sesión para usar ServiBot.');
+  }
+  if (!mensaje) {
+    throw new HttpsError('invalid-argument', 'Falta el mensaje.');
+  }
+
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash', tools: herramientas });
+
+  const chat = model.startChat();
+  const result = await chat.sendMessage(mensaje);
+  const call = result.response.functionCalls()?.[0];
+
+  if (call && call.name === 'consultarEstadoPedido') {
+    const datosPedido = await consultarEstadoPedido(clienteEmail);
+    const result2 = await chat.sendMessage([
+      { functionResponse: { name: 'consultarEstadoPedido', response: datosPedido } },
+    ]);
+    return { respuesta: result2.response.text() };
+  }
+
+  return { respuesta: result.response.text() };
+});

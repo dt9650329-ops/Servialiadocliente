@@ -9813,8 +9813,8 @@ if (dentroDeHorario) {
  window.db = db;
  window.girarRuletaCallable = girarRuletaCallable;
  window.servibotChatCallable = servibotChatCallable;
- window.consultarServibot = async function(mensaje) {
-   const res = await servibotChatCallable({ mensaje });
+ window.consultarServibot = async function(mensaje, historial) {
+   const res = await servibotChatCallable({ mensaje, historial });
    return res.data.respuesta;
  };
  window.push = push;
@@ -16400,14 +16400,21 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  // en vivo en lugar de caer al fallback genérico.
  const RE_COLA_SEGUIMIENTO = /revisa|revisar|verifica|verificar|confirma|confirmar|chequea|checa|vuelve a mirar|mira de nuevo|ya hay|alguien (activo|disponible|libre|conectado)|algun repartidor|otra vez|de nuevo/;
 
- // Preguntas de estado de pedido: si el cliente está logueado, consultar
- // servibotChat (Cloud Function con Gemini + Firebase en vivo) en vez de
- // la respuesta genérica de obtenerRespuesta().
- const RE_ESTADO_PEDIDO_LIVE = /seguimiento|estado de mi pedido|donde esta mi pedido|donde va mi pedido|rastrear|rastreo|donde esta el repartidor|ver mi pedido|seguir mi pedido|como va mi pedido/;
+ // Convierte el aiHistory del cliente (role: 'user'|'assistant') al formato
+ // que espera la Cloud Function/Gemini (role: 'user'|'model'), sin incluir
+ // el mensaje que se está por responder (ese va aparte como "msg").
+ function construirHistorialParaIA() {
+ return aiHistory.slice(0, -1).slice(-10).map(function(m) {
+ return { role: m.role === 'assistant' ? 'model' : 'user', content: m.content };
+ });
+ }
 
- // Punto de entrada único: intercepta la pregunta de disponibilidad (que
- // necesita datos en vivo de Firebase) antes de pasar por el motor de
- // reglas síncrono obtenerRespuesta().
+ // Punto de entrada único del chat. La disponibilidad de repartidores
+ // ("cola") sigue resuelta aparte porque es un dato en vivo de Firebase,
+ // no una pregunta que la IA pueda contestar por sí sola. Todo lo demás
+ // (precios, zonas, tiempos, cómo pedir, estado del pedido, charla libre)
+ // pasa por servibotChat (Gemini). El motor de reglas viejo (TEMAS /
+ // obtenerRespuesta) queda solo como red de seguridad si la IA falla.
  async function obtenerRespuestaAsync(msg) {
  const m = msg.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
  if (RE_COLA.test(m)) {
@@ -16417,12 +16424,13 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  if (ultimoTema === 'cola' && RE_COLA_SEGUIMIENTO.test(m)) {
  return await respuestaColaRepartidores();
  }
- if (RE_ESTADO_PEDIDO_LIVE.test(m) && window.currentUserID && typeof window.consultarServibot === 'function') {
+ if (typeof window.consultarServibot === 'function') {
  try {
- return await window.consultarServibot(msg);
+ return await window.consultarServibot(msg, construirHistorialParaIA());
  } catch (e) {
  console.error('[ServiBot] Error consultando servibotChat:', e);
- // Si falla la Cloud Function, cae a la respuesta genérica de siempre
+ // Si falla la Cloud Function (sin internet, cuota agotada, etc.),
+ // cae a la respuesta genérica de siempre en vez de dejar al cliente sin nada.
  return obtenerRespuesta(msg);
  }
  }

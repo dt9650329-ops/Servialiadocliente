@@ -4686,6 +4686,32 @@ const TONOS_NOTIFICACION = [
  if (snd) snd.play().catch(e => console.log('Error tono:', e));
  } catch(e) {}
  };
+
+ // ✅ Canales nativos de Android para que el push FUERA de la app (barra de
+ // notificaciones del sistema) suene igual al tono elegido DENTRO de la app.
+ // Cada tono tiene su propio canal porque Android no deja cambiar el sonido
+ // de un canal después de creado — así que se crean los 4 una sola vez al
+ // abrir la app (si ya existen, Android simplemente los ignora).
+ // Requiere que tono1.mp3 .. tono4.mp3 estén en android/app/src/main/res/raw/
+ window.nombreCanalTono = function(id) { return 'tono_notif_' + id; };
+ (function _crearCanalesTono() {
+ try {
+ const esCapacitor = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+ if (!esCapacitor || !window.Capacitor.Plugins.LocalNotifications) return;
+ const LN = window.Capacitor.Plugins.LocalNotifications;
+ for (let i = 1; i <= 4; i++) {
+ LN.createChannel({
+ id: window.nombreCanalTono(i),
+ name: 'Notificaciones (tono ' + i + ')',
+ description: 'Sonido de notificación #' + i + ' de Servi Aliados',
+ sound: 'tono' + i, // sin extensión — apunta a res/raw/tono{i}.mp3
+ importance: 5,
+ visibility: 1
+ }).catch(e => console.log('Error creando canal tono ' + i + ':', e));
+ }
+ } catch (e) { console.log('Error creando canales de tono:', e); }
+ })();
+
  // Marcar el tono activo al cargar
  document.addEventListener('DOMContentLoaded', function() {
  const tonoGuardado = parseInt(localStorage.getItem('servi_tono_notif') || '1');
@@ -4704,6 +4730,9 @@ const TONOS_NOTIFICACION = [
  const btn = document.getElementById('tono-btn-' + id);
  if (btn) btn.classList.add('activo');
  reproducirTonoNotif();
+ if (window.currentUserID) {
+ firebase.database().ref('usuarios/' + window.currentUserID + '/tonoNotificacion').set(id);
+ }
  };
 
  window.toggleTonosPanel = function() {
@@ -9562,7 +9591,8 @@ if (dentroDeHorario) {
  notifications: [{
  title: ' ¡Notificaciones Activas!',
  body: 'Recibirás alertas de nuevos mensajes',
- id: Date.now() % 100000
+ id: Date.now() % 100000,
+ channelId: (typeof window.nombreCanalTono === 'function') ? window.nombreCanalTono(parseInt(localStorage.getItem('servi_tono_notif') || '1')) : undefined
  }]
  });
  } else {
@@ -17443,11 +17473,13 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  try {
  const esCapacitorPush = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
  if (esCapacitorPush && window.Capacitor.Plugins.LocalNotifications && document.hidden) {
+ const tonoActual = parseInt(localStorage.getItem('servi_tono_notif') || '1');
  window.Capacitor.Plugins.LocalNotifications.schedule({
  notifications: [{
  title: title || 'Servi Aliados',
  body: body || '',
- id: Math.floor(Math.random() * 100000)
+ id: Math.floor(Math.random() * 100000),
+ channelId: (typeof window.nombreCanalTono === 'function') ? window.nombreCanalTono(tonoActual) : undefined
  }]
  });
  }

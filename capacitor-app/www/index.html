@@ -17497,6 +17497,15 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  window.limpiarNotificaciones = function() {
  _notifs = []; _save(); _updateBadge(); _renderPanel();
+ // Borra también en Firebase para que no reaparezcan si se reinstala
+ // la app o se limpia el caché (localStorage) en otro momento/dispositivo.
+ if (window.currentUserID) {
+ const uidBase = window.currentUserID.replace(/^(cliente_auth_)+/, '');
+ try {
+ window.remove(window.ref(window.db, 'notificaciones_usuario/cliente_auth_' + uidBase)).catch(function(){});
+ window.remove(window.ref(window.db, 'notificaciones_usuario/' + uidBase)).catch(function(){});
+ } catch (e) { console.log('Error borrando notificaciones en Firebase:', e); }
+ }
  };
 
  // Visor de imagen fullscreen (como el repartidor) 

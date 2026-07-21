@@ -14553,6 +14553,10 @@ if (window.db) {
  const b = (est.bonosAcum || []).find(x => x.codigo === codigo);
  if (!b) return false;
  b.redimido = true;
+ // Descontar el monto del bono de los créditos acumulados, para que
+ // "Mis créditos" refleje el gasto real (antes se quedaba pegado porque
+ // el monto se sumaba al otorgar el bono pero nunca se restaba al usarlo).
+ est.creditos = Math.max(0, (est.creditos || 0) - (b.monto || 0));
  await _premiosSetEstado(est);
  _actualizarBonosUI();
  return true;
@@ -17497,6 +17501,15 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  window.limpiarNotificaciones = function() {
  _notifs = []; _save(); _updateBadge(); _renderPanel();
+ // Borra también en Firebase para que no reaparezcan si se reinstala
+ // la app o se limpia el caché (localStorage) en otro momento/dispositivo.
+ if (window.currentUserID) {
+ const uidBase = window.currentUserID.replace(/^(cliente_auth_)+/, '');
+ try {
+ window.remove(window.ref(window.db, 'notificaciones_usuario/cliente_auth_' + uidBase)).catch(function(){});
+ window.remove(window.ref(window.db, 'notificaciones_usuario/' + uidBase)).catch(function(){});
+ } catch (e) { console.log('Error borrando notificaciones en Firebase:', e); }
+ }
  };
 
  // Visor de imagen fullscreen (como el repartidor) 

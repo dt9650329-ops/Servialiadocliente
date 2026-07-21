@@ -3,6 +3,7 @@ package com.servialiados.cliente;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import androidx.core.splashscreen.SplashScreen;
 import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
 import androidx.core.app.ActivityCompat;
@@ -20,6 +21,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
 
         // Asegura que el WebView tenga habilitada la geolocalización

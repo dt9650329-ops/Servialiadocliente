@@ -100,6 +100,22 @@ exports.onCambioEstadoPedido = functions.database
     const cuerpo = rep ? 'Tu repartidor ' + rep + ': ' + nuevoEstado : 'Estado: ' + nuevoEstado;
 
     await enviarPush(clienteUID, titulo, cuerpo, { pedidoId, tipo: 'estado_pedido' });
+
+    // FIX: cuando un pedido AGENDADO (creado por ServiBot) se entrega o se
+    // cancela por una vía distinta al chat (ej. el admin lo cancela, o
+    // simplemente se completa normalmente), había que "cerrar" también su
+    // registro en agendas_programadas/{uid}. Sin esto, ese nodo se quedaba
+    // en estado 'vinculada' para siempre, y el cliente quedaba bloqueado
+    // sin poder agendar un nuevo domicilio ("ya tienes uno activo"), ni
+    // cancelarlo desde el chat (porque ya tenía repartidor asignado).
+    if (['completado', 'entregado', 'cancelado'].includes(nuevoEstado) && pedido.tipo === 'domicilio_chatbot') {
+      const agendaSnap = await admin.database().ref(`agendas_programadas/${clienteUID}`).get();
+      if (agendaSnap.exists() && agendaSnap.val().pedidoId === pedidoId) {
+        const estadoAgenda = nuevoEstado === 'cancelado' ? 'cancelada' : 'completada';
+        await admin.database().ref(`agendas_programadas/${clienteUID}`).update({ estado: estadoAgenda });
+      }
+    }
+
     return null;
   });
 
@@ -614,12 +630,15 @@ El administrador confirma el valor exacto según la dirección.
 — HORARIO DE ATENCIÓN —
 [MODO PRUEBAS: temporalmente sin restricción de horario, el servicio puede agendarse a cualquier hora]
 
-— QUEJAS Y SOPORTE URGENTE —
-Existe un número directo del encargado para quejas graves o reclamos importantes.
-SOLO comparte ese número si el cliente lo pide explícitamente para una queja o reclamo.
-NO lo menciones proactivamente ni en respuestas generales.
-Si el cliente pregunta por el número de quejas o reclamos graves, entonces sí proporciona:
-WhatsApp del encargado: 3137065977
+— QUEJAS, SOPORTE Y HABLAR CON UNA PERSONA —
+Existe un número directo del encargado, y dentro de la app hay un "chat de soporte" (botones
+"Soporte WhatsApp" y "Soporte para Pedidos" en la pestaña Perfil) para hablar con una persona real.
+Comparte esta información si el cliente pide explícitamente cualquiera de estas cosas: una queja,
+un reclamo, hablar con el administrador o el dueño, hablar con una persona/humano, o dice que
+ServiBot no le está ayudando. NO lo menciones proactivamente en respuestas generales sobre otros temas.
+Cuando aplique, ofrece ambas opciones:
+- El chat de soporte dentro de la app (botones "Soporte WhatsApp" / "Soporte para Pedidos" en Perfil)
+- WhatsApp directo del encargado: 3137065977
 
 — TIEMPOS ESTIMADOS —
 • Recogida: 5–25 min según distancia y pedidos en cola del repartidor
@@ -748,6 +767,114 @@ exports.confirmarAgendaConBarrios = onCall(async (request) => {
     throw new HttpsError('failed-precondition', resultado.mensaje || 'No se pudo agendar.');
   }
   return resultado;
+});
+
+// ======================================================================
+// SECCIÓN "DOMICILIOS PROGRAMADOS" (cliente) — consultar, editar y
+// cancelar el pedido agendado directamente desde la app, sin pasar por
+// el chat. Reutiliza la misma lógica que ya usa ServiBot.
+// ======================================================================
+
+// Consulta si el cliente autenticado tiene un domicilio programado activo,
+// y si puede editarlo o cancelarlo (solo si aún no tiene repartidor asignado).
+exports.miAgendaProgramada = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  const clienteAuthUID = `cliente_auth_${uid}`;
+
+  const agendaSnap = await admin.database().ref(`agendas_programadas/${clienteAuthUID}`).get();
+  if (!agendaSnap.exists()) return { tieneAgenda: false };
+
+  const agenda = agendaSnap.val();
+  if (agenda.estado !== 'vinculada' && agenda.estado !== 'programada') {
+    return { tieneAgenda: false };
+  }
+  if (!agenda.pedidoId) return { tieneAgenda: false };
+
+  const pedidoSnap = await admin.database().ref(`pedidos_historial/${agenda.pedidoId}`).get();
+  if (!pedidoSnap.exists()) return { tieneAgenda: false };
+  const pedido = pedidoSnap.val();
+
+  const puedeGestionar = pedido.estado === 'programado' && !pedido.repartidorUID;
+
+  return {
+    tieneAgenda: true,
+    pedidoId: agenda.pedidoId,
+    horaProgramada: agenda.horaProgramada,
+    estadoPedido: pedido.estado,
+    editable: puedeGestionar,
+    cancelable: puedeGestionar,
+    dirRecogida: pedido.dirRecogida || null,
+    barrioEntrega: pedido.barrioEntrega || null,
+    direccionEntrega: pedido.direccionCliente || null,
+    nombreRecibe: pedido.nombreRecibe || null,
+    telefonoCliente: pedido.telefonoCliente || null,
+    montoTotal: pedido.montoTotal || null,
+    repartidorNombre: pedido.repartidorNombre || 'Sin asignar',
+  };
+});
+
+// Cancela el domicilio programado directamente desde la sección (botón),
+// sin pasar por Gemini. Usa la misma función que ya usa ServiBot.
+exports.cancelarAgendaDirecto = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  const clienteAuthUID = `cliente_auth_${uid}`;
+  const resultado = await cancelarPedidoProgramado(clienteAuthUID);
+  if (!resultado.cancelado) {
+    throw new HttpsError('failed-precondition', resultado.mensaje || 'No se pudo cancelar.');
+  }
+  return resultado;
+});
+
+// Permite corregir datos de entrega (nombre, teléfono, barrio/dirección)
+// del domicilio programado, solo mientras no tenga repartidor asignado.
+exports.editarAgendaProgramada = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  const clienteAuthUID = `cliente_auth_${uid}`;
+  const { nombreRecibe, telefonoCliente, barrioEntrega, manzanaCasaEntrega } = request.data || {};
+
+  const agendaSnap = await admin.database().ref(`agendas_programadas/${clienteAuthUID}`).get();
+  if (!agendaSnap.exists() || !agendaSnap.val().pedidoId) {
+    throw new HttpsError('failed-precondition', 'No tienes ningún pedido programado activo.');
+  }
+  const pedidoId = agendaSnap.val().pedidoId;
+  const pedidoSnap = await admin.database().ref(`pedidos_historial/${pedidoId}`).get();
+  if (!pedidoSnap.exists()) {
+    throw new HttpsError('failed-precondition', 'No se encontró el pedido programado.');
+  }
+  const pedido = pedidoSnap.val();
+  if (pedido.estado !== 'programado' || pedido.repartidorUID) {
+    throw new HttpsError('failed-precondition', 'Ya no se puede editar: el pedido ya tiene un repartidor asignado o está en curso.');
+  }
+
+  const updates = {};
+  if (nombreRecibe) updates.nombreRecibe = nombreRecibe;
+  if (telefonoCliente) updates.telefonoCliente = telefonoCliente;
+
+  if (barrioEntrega && manzanaCasaEntrega) {
+    const coordsEnt = await resolverCoordsBarrio(barrioEntrega);
+    updates.barrioEntrega = barrioEntrega;
+    updates.direccionCliente = `${barrioEntrega}, ${manzanaCasaEntrega}`;
+    updates.descripcion = `De "${pedido.dirRecogida}" a "${updates.direccionCliente}" (agendado por ServiBot)`;
+    if (coordsEnt) {
+      updates.gpsDestino = { lat: coordsEnt.lat, lng: coordsEnt.lng };
+      if (pedido.gpsRecogida) {
+        const km = calcularDistanciaKm(pedido.gpsRecogida, coordsEnt);
+        updates.montoTotal = precioSegunKm(km);
+        updates.montoOriginal = updates.montoTotal;
+        updates.razonPrecio = `Estimado automáticamente por distancia (${km.toFixed(1)} km)`;
+      }
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new HttpsError('invalid-argument', 'No enviaste ningún dato para actualizar.');
+  }
+
+  await admin.database().ref(`pedidos_historial/${pedidoId}`).update(updates);
+  return { editado: true, mensaje: 'Tus datos fueron actualizados con éxito.' };
 });
 
 // ======================================================================

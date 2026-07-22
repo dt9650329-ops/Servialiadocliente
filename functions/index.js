@@ -362,13 +362,16 @@ async function iniciarAgendaProgramada(clienteAuthUID, args) {
   if (typeof hora !== 'number' || typeof minuto !== 'number' || hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
     return { disponible: false, mensaje: 'La hora indicada no es válida.' };
   }
-  if (hora < 8 || hora >= 23) {
-    return { disponible: false, mensaje: 'El servicio solo opera de 8:00 AM a 11:00 PM. Pide otra hora dentro de ese rango.' };
-  }
+  // MODO PRUEBAS: restricción de horario (8am-11pm) desactivada temporalmente.
+  // Para reactivarla, descomentar el bloque de abajo.
+  // if (hora < 8 || hora >= 23) {
+  //   return { disponible: false, mensaje: 'El servicio solo opera de 8:00 AM a 11:00 PM. Pide otra hora dentro de ese rango.' };
+  // }
 
   const timestampAgenda = calcularTimestampAgenda(dia, hora, minuto);
-  if (timestampAgenda <= Date.now() + 15 * 60000) {
-    return { disponible: false, mensaje: 'Esa hora está muy cerca o ya pasó. Debe agendarse con al menos 15 minutos de anticipación.' };
+  // MODO PRUEBAS: anticipación mínima bajada de 15 a 3 minutos.
+  if (timestampAgenda <= Date.now() + 3 * 60000) {
+    return { disponible: false, mensaje: 'Esa hora está muy cerca o ya pasó. Debe agendarse con al menos 3 minutos de anticipación.' };
   }
 
   // ¿Ya tiene una agenda activa (sin cancelar/completar)?
@@ -396,8 +399,9 @@ async function confirmarAgendaConBarrios(clienteAuthUID, clienteEmail, args) {
 
   const timestampAgenda = calcularTimestampAgenda(dia, hora, minuto);
   const ahora = Date.now();
-  if (timestampAgenda <= ahora + 15 * 60000) {
-    return { agendado: false, mensaje: 'Esa hora ya no es válida, debe agendarse con al menos 15 minutos de anticipación.' };
+  // MODO PRUEBAS: anticipación mínima bajada de 15 a 3 minutos.
+  if (timestampAgenda <= ahora + 3 * 60000) {
+    return { agendado: false, mensaje: 'Esa hora ya no es válida, debe agendarse con al menos 3 minutos de anticipación.' };
   }
 
   const agendaExistente = await admin.database().ref(`agendas_programadas/${clienteAuthUID}`).get();
@@ -573,8 +577,7 @@ Ejemplo: 4 km = $5.000 base + $4.000 km = $9.000 total.
 El administrador confirma el valor exacto según la dirección.
 
 — HORARIO DE ATENCIÓN —
-Servicio disponible de 8:00 AM a 11:00 PM todos los días.
-Fuera de ese horario no hay repartidores disponibles.
+[MODO PRUEBAS: temporalmente sin restricción de horario, el servicio puede agendarse a cualquier hora]
 
 — QUEJAS Y SOPORTE URGENTE —
 Existe un número directo del encargado para quejas graves o reclamos importantes.
@@ -626,7 +629,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
   que no tienes esa información en este momento pero que puede escribir al chat de soporte para
   que le respondan de inmediato.
 - Respuestas concisas: máximo 3–4 párrafos cortos. Usa emojis con moderación.
-- Recuerda siempre el horario: servicio de 8 AM a 11 PM.
+- [MODO PRUEBAS: sin restricción de horario por ahora]
 - Mantente siempre en temas de Servi Aliados (precios, zonas, tiempos, pedidos, cuenta, etc). Si
   te preguntan algo totalmente ajeno (chistes, tareas, trivia, clima), redirige amablemente al tema.`;
 }
@@ -777,6 +780,15 @@ exports.asignarPedidosProgramados = functions.pubsub
         };
         await admin.database().ref(`pedidos_historial/${pedidoId}`).update(updates);
         await admin.database().ref(`pedidos_pendientes/${pedidoId}`).set({ ...pedido, ...updates, pedidoId, historialId: pedidoId });
+
+        // FIX: sin esto, el pedido queda "asignado" en la base de datos pero
+        // nunca aparece en la pantalla del repartidor, porque su app solo
+        // escucha repartidores_pedidos/{uid}/{pedidoId} (no pedidos_historial
+        // directamente) para la lista de pedidos pendientes/asignados.
+        await admin.database().ref(`repartidores_pedidos/${repartidorGanador.uid}/${pedidoId}`).set({
+          ...pedido,
+          ...updates,
+        });
 
         await enviarPush(repartidorGanador.uid, 'Pedido agendado activado', 'Tienes un pedido programado listo para recoger.', { pedidoId, tipo: 'pedido_programado' });
         const clienteUID = obtenerClienteUID(pedido);

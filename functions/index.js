@@ -189,6 +189,19 @@ const herramientas = [
           properties: {},
         },
       },
+      {
+        name: 'agendarPedido',
+        description: 'Agenda un pedido para una hora exacta más tarde. Úsala cuando el cliente pida programar/agendar un pedido a una hora específica (ej: "agendar para recoger a las 7:30 pm de hoy"). NUNCA pidas dirección de recogida, entrega, ni otros datos del pedido: eso lo completa el cliente en el formulario normal.',
+        parameters: {
+          type: 'object',
+          properties: {
+            hora: { type: 'integer', description: 'Hora en formato 24h (0-23) a la que quiere que pasen a recoger.' },
+            minuto: { type: 'integer', description: 'Minutos (0-59).' },
+            dia: { type: 'string', enum: ['hoy', 'mañana'], description: 'Si el pedido es para hoy o mañana.' },
+          },
+          required: ['hora', 'minuto', 'dia'],
+        },
+      },
     ],
   },
 ];
@@ -222,6 +235,54 @@ async function consultarEstadoPedido(clienteEmail) {
     descripcion: p.descripcion || '',
     montoTotal: p.montoTotal || 0,
     tiempoEstimadoEntrega: p.tiempoEstimadoEntrega || null,
+  };
+}
+
+function obtenerFechaBogota(offsetDias = 0) {
+  const ahora = new Date(Date.now() + offsetDias * 86400000);
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(ahora);
+  const obj = {};
+  partes.forEach(p => { if (p.type !== 'literal') obj[p.type] = p.value; });
+  return obj; // { year, month, day }
+}
+
+function calcularTimestampAgenda(dia, hora, minuto) {
+  const { year, month, day } = obtenerFechaBogota(dia === 'mañana' ? 1 : 0);
+  const iso = `${year}-${month}-${day}T${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}:00-05:00`;
+  return new Date(iso).getTime();
+}
+
+async function agendarPedido(clienteAuthUID, clienteEmail, hora, minuto, dia) {
+  if (!clienteAuthUID) {
+    return { agendado: false, mensaje: 'El cliente no ha iniciado sesión, no se puede agendar. Pídele que inicie sesión primero.' };
+  }
+  if (typeof hora !== 'number' || typeof minuto !== 'number' || hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
+    return { agendado: false, mensaje: 'La hora indicada no es válida.' };
+  }
+  if (hora < 8 || hora >= 23) {
+    return { agendado: false, mensaje: 'El servicio solo opera de 8:00 AM a 11:00 PM. Pide otra hora dentro de ese rango.' };
+  }
+
+  const timestampAgenda = calcularTimestampAgenda(dia, hora, minuto);
+  const ahora = Date.now();
+  if (timestampAgenda <= ahora + 15 * 60000) {
+    return { agendado: false, mensaje: 'Esa hora está muy cerca o ya pasó. Debe agendarse con al menos 15 minutos de anticipación.' };
+  }
+
+  await admin.database().ref(`agendas_programadas/${clienteAuthUID}`).set({
+    horaProgramada: timestampAgenda,
+    estado: 'programada',
+    creadoEn: ahora,
+    clienteEmail: clienteEmail || null,
+  });
+
+  const horaTexto = new Date(timestampAgenda).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+  return {
+    agendado: true,
+    horaProgramada: horaTexto,
+    mensaje: `Pedido agendado para las ${horaTexto}. Ahora debe ir a la pestaña "Servicio" y llenar el formulario normal (recogida y entrega); el sistema activará el pedido automáticamente cerca de la hora, asignando repartidor según la demanda del momento.`,
   };
 }
 
@@ -278,6 +339,14 @@ WhatsApp del encargado: 3137065977
 5. Elige el tamaño del paquete si aplica
 6. Confirma y envía
 
+— PEDIDOS PROGRAMADOS (AGENDAR PARA UNA HORA EXACTA) —
+Si el cliente quiere agendar un pedido para una hora exacta (ej: "necesito agendar un pedido
+para recoger a las 7:30 pm"), usa la herramienta agendarPedido con hora, minuto y si es hoy o
+mañana. NO le pidas dirección de recogida, entrega ni otros datos: eso lo completa el cliente
+en el formulario normal de la pestaña "Servicio". Después de agendar, dile que vaya a
+"Servicio" y llene el formulario normal como siempre; el sistema activará el pedido
+automáticamente cerca de la hora, asignando repartidor según la demanda del momento.
+
 — SEGUIMIENTO DEL PEDIDO —
 En la pestaña "Seguir" el cliente ingresa su correo para ver:
 - Estado actual: Pendiente → Aceptado → Esperando → En Camino → Completado
@@ -307,6 +376,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => {
   const { mensaje, historial } = request.data;
   const clienteEmail = request.auth?.token?.email || null;
+  const clienteAuthUID = request.auth?.uid ? `cliente_auth_${request.auth.uid}` : null;
   const logueado = !!clienteEmail;
 
   if (!mensaje) {
@@ -343,5 +413,101 @@ exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => 
     return { respuesta: result2.response.text() };
   }
 
+  if (call && call.name === 'agendarPedido') {
+    const { hora, minuto, dia } = call.args || {};
+    const datosAgenda = await agendarPedido(clienteAuthUID, clienteEmail, hora, minuto, dia);
+    const result2 = await chat.sendMessage([
+      { functionResponse: { name: 'agendarPedido', response: datosAgenda } },
+    ]);
+    return { respuesta: result2.response.text() };
+  }
+
   return { respuesta: result.response.text() };
 });
+
+// ======================================================================
+// AGENDA — Activa automáticamente los pedidos programados según demanda
+// ======================================================================
+exports.asignarPedidosProgramados = functions.pubsub
+  .schedule('every 5 minutes')
+  .timeZone('America/Bogota')
+  .onRun(async () => {
+    const progSnap = await admin.database()
+      .ref('pedidos_historial')
+      .orderByChild('estado')
+      .equalTo('programado')
+      .get();
+    if (!progSnap.exists()) return null;
+
+    // Medir la carga actual UNA vez por corrida
+    const repSnap = await admin.database().ref('repartidores_info').get();
+    const disponibles = repSnap.exists()
+      ? Object.entries(repSnap.val())
+          .map(([uid, r]) => ({ uid, ...r }))
+          .filter(r => r.online === true)
+      : [];
+
+    const activosSnap = await admin.database()
+      .ref('pedidos_historial')
+      .orderByChild('estado')
+      .equalTo('pendiente')
+      .get();
+    const numPedidosActivos = activosSnap.exists() ? Object.keys(activosSnap.val()).length : 0;
+    const numDisponibles = Math.max(disponibles.length, 1);
+    const ratio = numPedidosActivos / numDisponibles;
+
+    // Ventana dinámica: más demanda → se asigna con más anticipación
+    let ventanaMin = 15;
+    if (ratio >= 2) ventanaMin = 60;
+    else if (ratio >= 1) ventanaMin = 30;
+
+    const ahora = Date.now();
+
+    for (const [pedidoId, pedido] of Object.entries(progSnap.val())) {
+      const minutosRestantes = (pedido.programadoPara - ahora) / 60000;
+      if (minutosRestantes > ventanaMin) continue; // todavía no toca
+
+      const candidatos = disponibles
+        .slice()
+        .sort((a, b) => (a.pedidosActivos || 0) - (b.pedidosActivos || 0));
+
+      let repartidorGanador = null;
+      for (const cand of candidatos) {
+        const ref = admin.database().ref(`repartidores_info/${cand.uid}/pedidosActivos`);
+        const tx = await ref.transaction(actual => {
+          if ((actual || 0) >= 3) return actual; // ya está lleno, aborta
+          return (actual || 0) + 1;
+        });
+        if (tx.committed) { repartidorGanador = cand; break; }
+      }
+
+      if (repartidorGanador) {
+        const updates = {
+          estado: 'pendiente',
+          repartidorUID: repartidorGanador.uid,
+          repartidorNombre: repartidorGanador.nombre || 'Repartidor',
+          timestampAsignacion: ahora,
+        };
+        await admin.database().ref(`pedidos_historial/${pedidoId}`).update(updates);
+        await admin.database().ref(`pedidos_pendientes/${pedidoId}`).set({ ...pedido, ...updates, pedidoId, historialId: pedidoId });
+
+        await enviarPush(repartidorGanador.uid, 'Pedido agendado activado', 'Tienes un pedido programado listo para recoger.', { pedidoId, tipo: 'pedido_programado' });
+        const clienteUID = obtenerClienteUID(pedido);
+        if (clienteUID) {
+          await enviarPush(clienteUID, 'Repartidor asignado', `${repartidorGanador.nombre || 'Tu repartidor'} fue asignado a tu pedido agendado.`, { pedidoId, tipo: 'pedido_programado' });
+        }
+      } else if (minutosRestantes <= -10 && !pedido.avisoRetrasoEnviado) {
+        await admin.database().ref(`notificaciones_admin/retraso_${pedidoId}`).set({
+          titulo: 'Pedido agendado sin repartidor',
+          mensaje: `El pedido ${pedidoId} debía recogerse a las ${new Date(pedido.programadoPara).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' })} y no hay repartidores disponibles.`,
+          timestamp: ahora,
+        });
+        await admin.database().ref(`pedidos_historial/${pedidoId}/avisoRetrasoEnviado`).set(true);
+        const clienteUID = obtenerClienteUID(pedido);
+        if (clienteUID) {
+          await enviarPush(clienteUID, 'Seguimos en eso', 'Estamos buscando repartidor disponible para tu pedido agendado, te avisamos apenas se asigne.', { pedidoId, tipo: 'pedido_programado_retraso' });
+        }
+      }
+    }
+    return null;
+  });

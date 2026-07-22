@@ -465,9 +465,18 @@ async function confirmarAgendaConBarrios(clienteAuthUID, clienteEmail, args) {
     dirRecogida: dirRecogidaTexto,
     nombreRecogida: nombreRecogidaFinal,
     telefonoRecogida: telefonoRecogidaFinal,
+    // FIX: sin estos campos, los mapas del cliente y del repartidor no
+    // tienen coordenadas ni nombre de barrio para dibujar los marcadores
+    // de recogida/entrega (agregarMarcadorRecogida/agregarMarcadorEntrega
+    // buscan primero gpsRecogida/gpsDestino, y si no existen, caen a
+    // barrioRecogida/barrioEntrega).
+    barrioRecogida: recogidaEnCasa ? null : barrioRecogida,
+    gpsRecogida: coordsRec ? { lat: coordsRec.lat, lng: coordsRec.lng } : null,
     direccionCliente: direccionEntrega,
     nombreRecibe,
     telefonoCliente: telefonoRecibe,
+    barrioEntrega,
+    gpsDestino: coordsEnt ? { lat: coordsEnt.lat, lng: coordsEnt.lng } : null,
     montoTotal,
     montoOriginal: montoTotal,
     razonPrecio,

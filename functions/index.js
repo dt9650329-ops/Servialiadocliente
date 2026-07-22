@@ -420,7 +420,33 @@ async function confirmarAgendaConBarrios(clienteAuthUID, clienteEmail, args) {
       return { agendado: false, mensaje: 'No hay ninguna dirección registrada en tu perfil.' };
     }
     dirRecogidaTexto = dirSnap.val();
-    coordsRec = await geocodificarTexto(dirRecogidaTexto);
+
+    // FIX: usar la ubicación GPS real del cliente en vez de geocodificar el
+    // texto de la dirección (poco confiable y causaba "999.0 km" / "Recoge en: —"
+    // en la app del repartidor). Prioridad:
+    //   1) ubicación en vivo (ubicaciones_clientes), si es reciente (<30 min)
+    //   2) ubicación capturada en el registro (usuarios/.../ubicacionRegistro)
+    //   3) geocodificar el texto como último recurso
+    const liveSnap = await admin.database().ref(`ubicaciones_clientes/${clienteAuthUID}`).get();
+    if (liveSnap.exists()) {
+      const live = liveSnap.val();
+      const antiguedadMin = (Date.now() - (live.ts || 0)) / 60000;
+      if (live.lat && live.lng && antiguedadMin < 30) {
+        coordsRec = { lat: live.lat, lng: live.lng };
+      }
+    }
+    if (!coordsRec) {
+      const regSnap = await admin.database().ref(`usuarios/${clienteAuthUID}/ubicacionRegistro`).get();
+      if (regSnap.exists()) {
+        const reg = regSnap.val();
+        if (reg.lat && reg.lat !== 'N/A' && (reg.lon || reg.lng)) {
+          coordsRec = { lat: parseFloat(reg.lat), lng: parseFloat(reg.lon || reg.lng) };
+        }
+      }
+    }
+    if (!coordsRec) {
+      coordsRec = await geocodificarTexto(dirRecogidaTexto);
+    }
   } else {
     if (!barrioRecogida || !manzanaCasaRecogida || !nombreRecogida || !telefonoRecogida) {
       return { agendado: false, mensaje: 'Faltan datos de recogida (barrio, manzana/casa, nombre o teléfono).' };

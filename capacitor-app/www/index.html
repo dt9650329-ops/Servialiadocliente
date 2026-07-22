@@ -3542,6 +3542,81 @@
  </div>
  <span class="servicio-tipo-arrow">›</span>
  </button>
+
+ <button class="servicio-tipo-card" onclick="elegirTipoServicio('programados')">
+ <img class="servicio-tipo-img"
+ src="https://cdn-icons-png.flaticon.com/512/2693/2693507.png"
+ onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 60 60%22><text y=%2248%22 font-size=%2248%22></text></svg>'"
+ alt="Calendario">
+ <div class="servicio-tipo-info">
+ <div class="servicio-tipo-nombre">Domicilios<br>programados</div>
+ <div class="servicio-tipo-desc">Mira si tu domicilio agendado quedó confirmado, corrige un dato o cancélalo.</div>
+ </div>
+ <span class="servicio-tipo-arrow">›</span>
+ </button>
+ </div>
+
+ <!-- ===== PANEL "DOMICILIOS PROGRAMADOS" ===== -->
+ <div id="programados-container" style="display:none;">
+ <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+ <button onclick="volverASelectorServicio()" title="Volver" style="width:36px; height:36px; border-radius:10px; background:#1A2845; border:1px solid var(--color-border); color:var(--color-text-dark); font-size:20px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0;">‹</button>
+ <div>
+ <h3 style="color:var(--color-primary); margin:0 0 2px;">📅 Domicilios Programados</h3>
+ <p style="font-size:13px; color:var(--color-text-dark); margin:0;">Consulta, corrige o cancela tu domicilio agendado</p>
+ </div>
+ </div>
+
+ <div id="programados-cargando" style="text-align:center; padding:40px 20px; color:var(--color-text-dark);">
+ Consultando tu agenda...
+ </div>
+
+ <div id="programados-vacio" style="display:none; text-align:center; padding:40px 20px;">
+ <div style="font-size:40px; margin-bottom:10px;">📭</div>
+ <p style="color:var(--color-text-dark); font-size:14px; margin:0 0 4px;">No tienes ningún domicilio programado activo.</p>
+ <p style="color:var(--color-text-dark); font-size:13px; margin:0;">Para agendar uno nuevo, habla con <strong style="color:var(--color-primary);">ServiBot</strong> y dile la hora a la que quieres que pasen a recoger.</p>
+ </div>
+
+ <div id="programados-activo" style="display:none; background:var(--color-surface); border:1px solid var(--color-border); border-radius:14px; padding:16px;">
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+ <span style="font-size:13px; color:var(--color-text-dark);">Hora programada</span>
+ <span id="pa-hora" style="font-weight:700; color:var(--color-primary); font-size:15px;">--:--</span>
+ </div>
+ <div style="border-top:1px solid var(--color-border); margin:10px 0; padding-top:10px; display:flex; flex-direction:column; gap:8px; font-size:13px;">
+ <div><span style="color:var(--color-text-dark);">📦 Recoge en:</span> <span id="pa-recogida" style="color:#fff;">-</span></div>
+ <div><span style="color:var(--color-text-dark);">🏠 Entrega en:</span> <span id="pa-entrega" style="color:#fff;">-</span></div>
+ <div><span style="color:var(--color-text-dark);">👤 Recibe:</span> <span id="pa-nombre" style="color:#fff;">-</span></div>
+ <div><span style="color:var(--color-text-dark);">📞 Teléfono:</span> <span id="pa-telefono" style="color:#fff;">-</span></div>
+ <div><span style="color:var(--color-text-dark);">💰 Valor estimado:</span> <span id="pa-monto" style="color:#fff;">-</span></div>
+ <div><span style="color:var(--color-text-dark);">🏍️ Repartidor:</span> <span id="pa-repartidor" style="color:#fff;">Sin asignar</span></div>
+ </div>
+
+ <div id="pa-aviso-bloqueado" style="display:none; margin-top:12px; background:rgba(245,158,11,0.12); border:1px solid var(--color-primary); border-radius:10px; padding:10px; font-size:12.5px; color:var(--color-primary);">
+ ⚠️ Ya tiene repartidor asignado, así que no se puede editar ni cancelar desde aquí. Si necesitas ayuda, escribe al chat de soporte.
+ </div>
+
+ <div id="pa-botones" style="display:flex; gap:10px; margin-top:14px;">
+ <button onclick="abrirEdicionAgenda()" style="flex:1; padding:11px; border-radius:10px; border:1px solid var(--color-border); background:#1A2845; color:#fff; font-weight:600; font-size:13.5px; cursor:pointer;">✏️ Editar datos</button>
+ <button onclick="cancelarMiAgendaProgramada()" style="flex:1; padding:11px; border-radius:10px; border:none; background:var(--color-danger); color:#fff; font-weight:600; font-size:13.5px; cursor:pointer;">❌ Cancelar</button>
+ </div>
+ </div>
+
+ <!-- Formulario de edición -->
+ <div id="programados-editar" style="display:none; background:var(--color-surface); border:1px solid var(--color-border); border-radius:14px; padding:16px; margin-top:14px;">
+ <h4 style="color:var(--color-primary); margin:0 0 12px; font-size:14px;">Corregir datos de entrega</h4>
+ <label style="font-size:12.5px; color:var(--color-text-dark);">Nombre de quien recibe</label>
+ <input id="pe-nombre" type="text" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid var(--color-border); background:#0A0F1C; color:#fff; margin:6px 0 12px; font-size:14px;">
+ <label style="font-size:12.5px; color:var(--color-text-dark);">Teléfono de quien recibe</label>
+ <input id="pe-telefono" type="tel" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid var(--color-border); background:#0A0F1C; color:#fff; margin:6px 0 12px; font-size:14px;">
+ <label style="font-size:12.5px; color:var(--color-text-dark);">Barrio de entrega</label>
+ <input id="pe-barrio" type="text" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid var(--color-border); background:#0A0F1C; color:#fff; margin:6px 0 12px; font-size:14px;">
+ <label style="font-size:12.5px; color:var(--color-text-dark);">Manzana / Casa / Referencia</label>
+ <input id="pe-manzana" type="text" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid var(--color-border); background:#0A0F1C; color:#fff; margin:6px 0 4px; font-size:14px;">
+ <p style="font-size:11.5px; color:var(--color-text-dark); margin:8px 0 14px;">Deja en blanco lo que no quieras cambiar. Si corriges el barrio, debes completar también la manzana/casa.</p>
+ <div style="display:flex; gap:10px;">
+ <button onclick="cerrarEdicionAgenda()" style="flex:1; padding:11px; border-radius:10px; border:1px solid var(--color-border); background:transparent; color:var(--color-text-dark); font-weight:600; font-size:13.5px; cursor:pointer;">Cancelar</button>
+ <button onclick="guardarEdicionAgenda()" style="flex:1; padding:11px; border-radius:10px; border:none; background:var(--color-primary); color:#1A1200; font-weight:700; font-size:13.5px; cursor:pointer;">Guardar cambios</button>
+ </div>
+ </div>
  </div>
 
  <!-- ===== PANEL DE FAVORES ===== -->
@@ -5036,17 +5111,28 @@ const TONOS_NOTIFICACION = [
  const selector = document.getElementById('servicio-tipo-selector');
  const formulario = document.getElementById('domi-container');
  const favores = document.getElementById('favores-container');
+ const programados = document.getElementById('programados-container');
 
  if (selector) selector.style.display = 'none';
 
  if (tipo === 'favores') {
  if (favores) favores.style.display = 'block';
  if (formulario) formulario.style.display = 'none';
+ if (programados) programados.style.display = 'none';
+ return;
+ }
+
+ if (tipo === 'programados') {
+ if (programados) programados.style.display = 'block';
+ if (formulario) formulario.style.display = 'none';
+ if (favores) favores.style.display = 'none';
+ cargarMiAgendaProgramada();
  return;
  }
 
  if (formulario) formulario.style.display = 'block';
  if (favores) favores.style.display = 'none';
+ if (programados) programados.style.display = 'none';
 
  // Ajustar título y subtítulo según el tipo
  const titulo = document.getElementById('domi-titulo-form');
@@ -5063,6 +5149,133 @@ const TONOS_NOTIFICACION = [
 
  // Autollenar nombre y teléfono del cliente logueado
  autoLlenarDatosCliente();
+ };
+
+ // Vuelve del panel "Domicilios Programados" (o cualquier panel) al selector de tipo de servicio
+ window.volverASelectorServicio = function() {
+ const selector = document.getElementById('servicio-tipo-selector');
+ const programados = document.getElementById('programados-container');
+ const formularioEdicion = document.getElementById('programados-editar');
+ if (programados) programados.style.display = 'none';
+ if (formularioEdicion) formularioEdicion.style.display = 'none';
+ if (selector) selector.style.display = 'block';
+ };
+
+ // ===== Sección "Domicilios Programados" =====
+ window._miAgendaActual = null;
+
+ window.cargarMiAgendaProgramada = async function() {
+ const cargando = document.getElementById('programados-cargando');
+ const vacio = document.getElementById('programados-vacio');
+ const activo = document.getElementById('programados-activo');
+ const editar = document.getElementById('programados-editar');
+ if (cargando) cargando.style.display = 'block';
+ if (vacio) vacio.style.display = 'none';
+ if (activo) activo.style.display = 'none';
+ if (editar) editar.style.display = 'none';
+
+ try {
+ if (!window.miAgendaProgramadaCallable) throw new Error('No se pudo conectar con el servidor.');
+ const res = await window.miAgendaProgramadaCallable();
+ const data = res.data;
+ window._miAgendaActual = data;
+ if (cargando) cargando.style.display = 'none';
+
+ if (!data.tieneAgenda) {
+ if (vacio) vacio.style.display = 'block';
+ return;
+ }
+
+ document.getElementById('pa-hora').textContent = data.horaProgramada
+ ? new Date(data.horaProgramada).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+ : '--:--';
+ document.getElementById('pa-recogida').textContent = data.dirRecogida || 'Sin especificar';
+ document.getElementById('pa-entrega').textContent = data.direccionEntrega || 'Sin especificar';
+ document.getElementById('pa-nombre').textContent = data.nombreRecibe || '-';
+ document.getElementById('pa-telefono').textContent = data.telefonoCliente || '-';
+ document.getElementById('pa-monto').textContent = data.montoTotal ? ('$' + Number(data.montoTotal).toLocaleString('es-CO')) : 'Por confirmar';
+ document.getElementById('pa-repartidor').textContent = data.repartidorNombre || 'Sin asignar';
+
+ const avisoBloqueado = document.getElementById('pa-aviso-bloqueado');
+ const botones = document.getElementById('pa-botones');
+ if (data.editable || data.cancelable) {
+ if (avisoBloqueado) avisoBloqueado.style.display = 'none';
+ if (botones) botones.style.display = 'flex';
+ } else {
+ if (avisoBloqueado) avisoBloqueado.style.display = 'block';
+ if (botones) botones.style.display = 'none';
+ }
+
+ if (activo) activo.style.display = 'block';
+ } catch (e) {
+ console.error('[ProgramaAgenda] Error consultando:', e);
+ if (cargando) cargando.style.display = 'none';
+ if (vacio) vacio.style.display = 'block';
+ }
+ };
+
+ window.cancelarMiAgendaProgramada = async function() {
+ if (!confirm('¿Seguro que quieres cancelar tu domicilio programado?')) return;
+ try {
+ if (!window.cancelarAgendaDirectoCallable) throw new Error('No se pudo conectar con el servidor.');
+ await window.cancelarAgendaDirectoCallable();
+ alert('✅ Tu domicilio programado fue cancelado.');
+ cargarMiAgendaProgramada();
+ } catch (e) {
+ console.error('[ProgramaAgenda] Error cancelando:', e);
+ alert('⚠️ ' + (e.message || 'No se pudo cancelar. Intenta de nuevo.'));
+ }
+ };
+
+ window.abrirEdicionAgenda = function() {
+ const data = window._miAgendaActual;
+ if (!data) return;
+ document.getElementById('pe-nombre').value = data.nombreRecibe || '';
+ document.getElementById('pe-telefono').value = data.telefonoCliente || '';
+ document.getElementById('pe-barrio').value = data.barrioEntrega || '';
+ document.getElementById('pe-manzana').value = '';
+ document.getElementById('programados-editar').style.display = 'block';
+ document.getElementById('programados-editar').scrollIntoView({ behavior: 'smooth', block: 'center' });
+ };
+
+ window.cerrarEdicionAgenda = function() {
+ document.getElementById('programados-editar').style.display = 'none';
+ };
+
+ window.guardarEdicionAgenda = async function() {
+ const nombreRecibe = document.getElementById('pe-nombre').value.trim();
+ const telefonoCliente = document.getElementById('pe-telefono').value.trim();
+ const barrioEntrega = document.getElementById('pe-barrio').value.trim();
+ const manzanaCasaEntrega = document.getElementById('pe-manzana').value.trim();
+
+ if (barrioEntrega && !manzanaCasaEntrega) {
+ alert('⚠️ Si cambias el barrio, también debes escribir la manzana/casa/referencia.');
+ return;
+ }
+
+ const payload = {};
+ if (nombreRecibe) payload.nombreRecibe = nombreRecibe;
+ if (telefonoCliente) payload.telefonoCliente = telefonoCliente;
+ if (barrioEntrega && manzanaCasaEntrega) {
+ payload.barrioEntrega = barrioEntrega;
+ payload.manzanaCasaEntrega = manzanaCasaEntrega;
+ }
+
+ if (Object.keys(payload).length === 0) {
+ alert('No cambiaste ningún dato.');
+ return;
+ }
+
+ try {
+ if (!window.editarAgendaProgramadaCallable) throw new Error('No se pudo conectar con el servidor.');
+ await window.editarAgendaProgramadaCallable(payload);
+ alert('✅ Tus datos fueron actualizados.');
+ cerrarEdicionAgenda();
+ cargarMiAgendaProgramada();
+ } catch (e) {
+ console.error('[ProgramaAgenda] Error editando:', e);
+ alert('⚠️ ' + (e.message || 'No se pudo actualizar. Intenta de nuevo.'));
+ }
  };
 
  // Funciones del panel de Favores 
@@ -9823,7 +10036,7 @@ if (dentroDeHorario) {
  appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
  };
 
- let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable;
+ let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable;
  try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
@@ -9833,6 +10046,9 @@ if (dentroDeHorario) {
  girarRuletaCallable = httpsCallable(functions, 'girarRuleta');
  servibotChatCallable = httpsCallable(functions, 'servibotChat');
  confirmarAgendaConBarriosCallable = httpsCallable(functions, 'confirmarAgendaConBarrios');
+ miAgendaProgramadaCallable = httpsCallable(functions, 'miAgendaProgramada');
+ cancelarAgendaDirectoCallable = httpsCallable(functions, 'cancelarAgendaDirecto');
+ editarAgendaProgramadaCallable = httpsCallable(functions, 'editarAgendaProgramada');
  console.log(' Firebase inicializado correctamente');
  } catch(e) {
  console.error(' Firebase no pudo iniciar:', e.message);
@@ -9842,6 +10058,9 @@ if (dentroDeHorario) {
  window.girarRuletaCallable = girarRuletaCallable;
  window.servibotChatCallable = servibotChatCallable;
  window.confirmarAgendaConBarriosCallable = confirmarAgendaConBarriosCallable;
+ window.miAgendaProgramadaCallable = miAgendaProgramadaCallable;
+ window.cancelarAgendaDirectoCallable = cancelarAgendaDirectoCallable;
+ window.editarAgendaProgramadaCallable = editarAgendaProgramadaCallable;
  window.consultarServibot = async function(mensaje, historial) {
    const res = await servibotChatCallable({ mensaje, historial });
    window._sbAccionPendiente = res.data.accion || null;

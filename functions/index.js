@@ -214,6 +214,16 @@ async function cargarBarriosBackend() {
   return resultado;
 }
 
+async function resolverCoordsBarrio(nombreBarrio) {
+  const clave = normalizarTexto(nombreBarrio);
+  const barriosDB = await cargarBarriosBackend();
+  if (barriosDB[clave]) return barriosDB[clave];
+  for (const [key, c] of Object.entries(barriosDB)) {
+    if (key.includes(clave) || clave.includes(key)) return c;
+  }
+  return await geocodificarTexto(nombreBarrio); // último respaldo, no debería usarse casi nunca
+}
+
 async function geocodificarTexto(texto) {
   if (!texto) return null;
   const clave = normalizarTexto(texto);
@@ -271,21 +281,16 @@ const herramientas = [
         },
       },
       {
-        name: 'agendarPedido',
-        description: 'Agenda un pedido COMPLETO para una hora exacta más tarde: hora, lugar de recogida, lugar de entrega y datos de quien recibe. Úsala SOLO cuando ya tengas todos los datos requeridos confirmados por el cliente (resume y confirma antes de llamarla). El cliente puede describir todo junto en un solo mensaje (ej: "recoger en mi casa y llevar a la Patria manzana 41 casa 20, teléfono 3236742133, Laura"); en ese caso extrae tú los campos.',
+        name: 'iniciarAgendaProgramada',
+        description: 'Verifica si se puede agendar un pedido para una hora exacta más tarde. Solo pide la HORA; nunca pidas dirección, barrio, nombre ni teléfono por chat, eso se llena en un formulario que se abre automáticamente si la hora es válida.',
         parameters: {
           type: 'object',
           properties: {
             hora: { type: 'integer', description: 'Hora en formato 24h (0-23) a la que quiere que pasen a recoger.' },
             minuto: { type: 'integer', description: 'Minutos (0-59).' },
             dia: { type: 'string', enum: ['hoy', 'mañana'], description: 'Si el pedido es para hoy o mañana.' },
-            recogidaEnCasa: { type: 'boolean', description: 'true si el cliente pide recoger en la dirección que registró al crear su cuenta ("mi casa", "donde vivo").' },
-            direccionRecogida: { type: 'string', description: 'Dirección exacta de recogida CON barrio. Requerida solo si recogidaEnCasa es false.' },
-            direccionEntrega: { type: 'string', description: 'Dirección exacta de entrega, con barrio (ej: "La Patria manzana 41 casa 20").' },
-            nombreRecibe: { type: 'string', description: 'Nombre de quien recibe el pedido.' },
-            telefonoRecibe: { type: 'string', description: 'Teléfono de quien recibe el pedido.' },
           },
-          required: ['hora', 'minuto', 'dia', 'recogidaEnCasa', 'direccionEntrega', 'nombreRecibe', 'telefonoRecibe'],
+          required: ['hora', 'minuto', 'dia'],
         },
       },
       {
@@ -348,26 +353,22 @@ function calcularTimestampAgenda(dia, hora, minuto) {
   return new Date(iso).getTime();
 }
 
-async function agendarPedido(clienteAuthUID, clienteEmail, args) {
-  const { hora, minuto, dia, recogidaEnCasa, direccionRecogida, direccionEntrega, nombreRecibe, telefonoRecibe } = args || {};
+async function iniciarAgendaProgramada(clienteAuthUID, args) {
+  const { hora, minuto, dia } = args || {};
 
   if (!clienteAuthUID) {
-    return { agendado: false, mensaje: 'El cliente no ha iniciado sesión, no se puede agendar. Pídele que inicie sesión primero.' };
+    return { disponible: false, mensaje: 'El cliente no ha iniciado sesión, no se puede agendar. Pídele que inicie sesión primero.' };
   }
   if (typeof hora !== 'number' || typeof minuto !== 'number' || hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
-    return { agendado: false, mensaje: 'La hora indicada no es válida.' };
+    return { disponible: false, mensaje: 'La hora indicada no es válida.' };
   }
   if (hora < 8 || hora >= 23) {
-    return { agendado: false, mensaje: 'El servicio solo opera de 8:00 AM a 11:00 PM. Pide otra hora dentro de ese rango.' };
-  }
-  if (!direccionEntrega || !nombreRecibe || !telefonoRecibe) {
-    return { agendado: false, mensaje: 'Faltan datos: dirección de entrega, nombre de quien recibe o su teléfono. Pídeselos al cliente antes de agendar.' };
+    return { disponible: false, mensaje: 'El servicio solo opera de 8:00 AM a 11:00 PM. Pide otra hora dentro de ese rango.' };
   }
 
   const timestampAgenda = calcularTimestampAgenda(dia, hora, minuto);
-  const ahora = Date.now();
-  if (timestampAgenda <= ahora + 15 * 60000) {
-    return { agendado: false, mensaje: 'Esa hora está muy cerca o ya pasó. Debe agendarse con al menos 15 minutos de anticipación.' };
+  if (timestampAgenda <= Date.now() + 15 * 60000) {
+    return { disponible: false, mensaje: 'Esa hora está muy cerca o ya pasó. Debe agendarse con al menos 15 minutos de anticipación.' };
   }
 
   // ¿Ya tiene una agenda activa (sin cancelar/completar)?
@@ -375,28 +376,63 @@ async function agendarPedido(clienteAuthUID, clienteEmail, args) {
   if (agendaExistente.exists()) {
     const ae = agendaExistente.val();
     if (ae.estado === 'programada' || ae.estado === 'vinculada') {
-      return { agendado: false, mensaje: 'Ya tienes un pedido programado activo. Si quieres cambiarlo, primero pide cancelarlo.' };
+      return { disponible: false, mensaje: 'Ya tienes un pedido programado activo. Si quieres cambiarlo, primero pide cancelarlo.' };
     }
   }
 
-  // Resolver dirección de recogida
-  let dirRecogidaTexto = direccionRecogida;
+  return { disponible: true, hora, minuto, dia };
+}
+
+async function confirmarAgendaConBarrios(clienteAuthUID, clienteEmail, args) {
+  const {
+    hora, minuto, dia, recogidaEnCasa,
+    barrioRecogida, manzanaCasaRecogida, nombreRecogida, telefonoRecogida,
+    barrioEntrega, manzanaCasaEntrega, nombreRecibe, telefonoRecibe,
+  } = args || {};
+
+  if (!clienteAuthUID) {
+    return { agendado: false, mensaje: 'El cliente no ha iniciado sesión, no se puede agendar.' };
+  }
+
+  const timestampAgenda = calcularTimestampAgenda(dia, hora, minuto);
+  const ahora = Date.now();
+  if (timestampAgenda <= ahora + 15 * 60000) {
+    return { agendado: false, mensaje: 'Esa hora ya no es válida, debe agendarse con al menos 15 minutos de anticipación.' };
+  }
+
+  const agendaExistente = await admin.database().ref(`agendas_programadas/${clienteAuthUID}`).get();
+  if (agendaExistente.exists()) {
+    const ae = agendaExistente.val();
+    if (ae.estado === 'programada' || ae.estado === 'vinculada') {
+      return { agendado: false, mensaje: 'Ya tienes un pedido programado activo.' };
+    }
+  }
+
+  // --- Recogida ---
+  let dirRecogidaTexto, coordsRec = null, nombreRecogidaFinal = null, telefonoRecogidaFinal = null;
   if (recogidaEnCasa) {
     const dirSnap = await admin.database().ref(`usuarios/${clienteAuthUID}/direccion`).get();
     if (!dirSnap.exists() || !dirSnap.val()) {
-      return { agendado: false, mensaje: 'No encontré ninguna dirección registrada en el perfil de este cliente. Pídele la dirección exacta de recogida (con barrio).' };
+      return { agendado: false, mensaje: 'No hay ninguna dirección registrada en tu perfil.' };
     }
     dirRecogidaTexto = dirSnap.val();
-  }
-  if (!dirRecogidaTexto) {
-    return { agendado: false, mensaje: 'Necesito la dirección exacta de recogida (con barrio) antes de agendar.' };
+    coordsRec = await geocodificarTexto(dirRecogidaTexto);
+  } else {
+    if (!barrioRecogida || !manzanaCasaRecogida || !nombreRecogida || !telefonoRecogida) {
+      return { agendado: false, mensaje: 'Faltan datos de recogida (barrio, manzana/casa, nombre o teléfono).' };
+    }
+    coordsRec = await resolverCoordsBarrio(barrioRecogida);
+    dirRecogidaTexto = `${barrioRecogida}, ${manzanaCasaRecogida}`;
+    nombreRecogidaFinal = nombreRecogida;
+    telefonoRecogidaFinal = telefonoRecogida;
   }
 
-  // Geocodificar ambos puntos para estimar el precio automáticamente
-  const [coordsRec, coordsEnt] = await Promise.all([
-    geocodificarTexto(dirRecogidaTexto),
-    geocodificarTexto(direccionEntrega),
-  ]);
+  // --- Entrega ---
+  if (!barrioEntrega || !manzanaCasaEntrega || !nombreRecibe || !telefonoRecibe) {
+    return { agendado: false, mensaje: 'Faltan datos de entrega (barrio, manzana/casa, nombre o teléfono).' };
+  }
+  const coordsEnt = await resolverCoordsBarrio(barrioEntrega);
+  const direccionEntrega = `${barrioEntrega}, ${manzanaCasaEntrega}`;
 
   let montoTotal = null;
   let razonPrecio = 'Pendiente de confirmar por el administrador';
@@ -423,6 +459,8 @@ async function agendarPedido(clienteAuthUID, clienteEmail, args) {
     programadoPara: timestampAgenda,
     codigoEntrega,
     dirRecogida: dirRecogidaTexto,
+    nombreRecogida: nombreRecogidaFinal,
+    telefonoRecogida: telefonoRecogidaFinal,
     direccionCliente: direccionEntrega,
     nombreRecibe,
     telefonoCliente: telefonoRecibe,
@@ -455,12 +493,13 @@ async function agendarPedido(clienteAuthUID, clienteEmail, args) {
 
   return {
     agendado: true,
+    pedidoId,
     horaProgramada: horaTexto,
     montoEstimado: montoTotal,
     requiereMapeador,
     mensaje: requiereMapeador
-      ? `Tu pedido quedó agendado para las ${horaTexto}, pero no pude calcular el precio exacto automáticamente. Por favor abre el "Mapeador" en la app para marcar la ubicación exacta de recogida o entrega y así confirmar la tarifa; mientras tanto tu pedido queda guardado con el precio pendiente de confirmar.`
-      : `¡Listo! Tu pedido se ha programado con éxito para las ${horaTexto}. Recogida: ${dirRecogidaTexto}. Entrega: ${direccionEntrega}, para ${nombreRecibe}. Tarifa estimada: $${montoTotal.toLocaleString('es-CO')}. El sistema asignará un repartidor automáticamente cerca de la hora, según la demanda del momento.`,
+      ? `Tu pedido quedó agendado para las ${horaTexto}, pero no pude calcular el precio exacto automáticamente; el valor queda pendiente de confirmar.`
+      : `¡Listo! Tu pedido se ha programado con éxito para las ${horaTexto}. Recogida: ${dirRecogidaTexto}. Entrega: ${direccionEntrega}, para ${nombreRecibe}. Tarifa estimada: $${montoTotal.toLocaleString('es-CO')}.`,
   };
 }
 
@@ -556,24 +595,15 @@ WhatsApp del encargado: 3137065977
 5. Elige el tamaño del paquete si aplica
 6. Confirma y envía
 
-— PEDIDOS PROGRAMADOS (AGENDAR PARA UNA HORA EXACTA, TODO POR CHAT) —
-Si el cliente quiere agendar un pedido (ej: "necesito agendar un pedido para recoger a las
-7:30 pm"), recoge TODOS estos datos antes de llamar a agendarPedido:
-  1. Hora exacta (hora, minuto, si es hoy o mañana)
-  2. Lugar de recogida: si dice "en mi casa"/"donde vivo", pon recogidaEnCasa=true y NO pidas
-     la dirección (se toma de su registro). Si es otro lugar, pide la dirección exacta con barrio.
-  3. Dirección de entrega exacta, con barrio.
-  4. Nombre y teléfono de quien recibe.
-El cliente puede dar todo junto en un solo mensaje (ej: "recoger en mi casa y llevar a la
-Patria manzana 41 casa 20, teléfono 3236742133, Laura"): en ese caso EXTRAE tú los campos y
-solo pregunta por lo que falte. Antes de llamar a la herramienta, resume en un mensaje corto
-lo que entendiste y pide confirmación ("¿Confirmas: recogida en tu casa, entrega en [dirección]
-para [nombre], a las [hora]?"). Solo llama a agendarPedido cuando el cliente confirme.
-Si la respuesta de la herramienta trae requiereMapeador=true, dile con claridad que debe abrir
-el "Mapeador" en la app para marcar la ubicación exacta y así confirmar la tarifa.
-Si el cliente pide cancelar un pedido agendado, usa cancelarPedidoProgramado. Si la respuesta
-indica que ya tiene repartidor asignado, explícale que ya no se puede cancelar por chat y
-que debe escribir al chat de soporte.
+— PEDIDOS PROGRAMADOS (AGENDAR PARA UNA HORA EXACTA) —
+Si el cliente quiere agendar, pide SOLO la hora exacta (hora, minuto, hoy o mañana) y llama a
+iniciarAgendaProgramada. NUNCA pidas barrio, dirección, nombre ni teléfono por chat: esos datos
+se llenan en un formulario que se abre solo en la app justo después de confirmar la hora. Si la
+hora no es válida o ya tiene agenda activa, explícalo con claridad. Si es válida, dile brevemente
+que complete el barrio de recogida y entrega en el formulario que se acaba de abrir.
+Si el cliente pide cancelar, usa cancelarPedidoProgramado. Si la respuesta indica que ya tiene
+repartidor asignado, explícale que ya no se puede cancelar por chat y que debe escribir al chat
+de soporte.
 
 — SEGUIMIENTO DEL PEDIDO —
 En la pestaña "Seguir" el cliente ingresa su correo para ver:
@@ -641,12 +671,16 @@ exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => 
     return { respuesta: result2.response.text() };
   }
 
-  if (call && call.name === 'agendarPedido') {
-    const datosAgenda = await agendarPedido(clienteAuthUID, clienteEmail, call.args || {});
+  if (call && call.name === 'iniciarAgendaProgramada') {
+    const disp = await iniciarAgendaProgramada(clienteAuthUID, call.args || {});
     const result2 = await chat.sendMessage([
-      { functionResponse: { name: 'agendarPedido', response: datosAgenda } },
+      { functionResponse: { name: 'iniciarAgendaProgramada', response: disp } },
     ]);
-    return { respuesta: result2.response.text() };
+    return {
+      respuesta: result2.response.text(),
+      accion: disp.disponible ? 'mostrarSelectorBarrios' : null,
+      datosAgenda: disp.disponible ? { hora: disp.hora, minuto: disp.minuto, dia: disp.dia } : null,
+    };
   }
 
   if (call && call.name === 'cancelarPedidoProgramado') {
@@ -658,6 +692,24 @@ exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => 
   }
 
   return { respuesta: result.response.text() };
+});
+
+// ======================================================================
+// CONFIRMAR AGENDA CON BARRIOS SELECCIONADOS MANUALMENTE (sin IA) —
+// llamada directamente por el formulario del chat una vez el cliente
+// elige barrio de recogida/entrega de la lista, sin pasar por Gemini.
+// ======================================================================
+exports.confirmarAgendaConBarrios = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  const clienteAuthUID = `cliente_auth_${uid}`;
+  const clienteEmail = request.auth?.token?.email || null;
+
+  const resultado = await confirmarAgendaConBarrios(clienteAuthUID, clienteEmail, request.data || {});
+  if (!resultado.agendado) {
+    throw new HttpsError('failed-precondition', resultado.mensaje || 'No se pudo agendar.');
+  }
+  return resultado;
 });
 
 // ======================================================================

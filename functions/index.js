@@ -963,8 +963,7 @@ exports.asignarPedidosProgramados = functions.pubsub
           mensaje: `El pedido ${pedidoId} debía recogerse a las ${new Date(pedido.programadoPara).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' })} y no hay repartidores disponibles.`,
           timestamp: ahora,
         });
-grep -rn "girarRuleta\|contarPedidoCompletado" ~/servi-aliados/functions --include="*.js" | grep -v node_modules
-pm        await admin.database().ref(`pedidos_historial/${pedidoId}/avisoRetrasoEnviado`).set(true);
+        await admin.database().ref(`pedidos_historial/${pedidoId}/avisoRetrasoEnviado`).set(true);
         const clienteUID = obtenerClienteUID(pedido);
         if (clienteUID) {
           await enviarPush(clienteUID, 'Seguimos en eso', 'Estamos buscando repartidor disponible para tu pedido agendado, te avisamos apenas se asigne.', { pedidoId, tipo: 'pedido_programado_retraso' });

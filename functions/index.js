@@ -178,6 +178,87 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
+// ----------------------------------------------------------------------
+// GEOCODIFICACIÓN — misma estrategia que usa el cliente (index.html):
+// Firebase /barrios/ (con coordenadas) → Nominatim. El diccionario local
+// grande del cliente no se duplica aquí para no inflar el backend; si
+// Firebase y Nominatim fallan, el pedido queda marcado "requiereMapeador".
+// ----------------------------------------------------------------------
+function normalizarTexto(s) {
+  return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+let _barriosCacheBackend = null;
+async function cargarBarriosBackend() {
+  if (_barriosCacheBackend) return _barriosCacheBackend;
+  const resultado = {};
+  try {
+    const snap = await admin.database().ref('barrios').get();
+    if (snap.exists()) {
+      snap.forEach(child => {
+        const d = child.val();
+        let lat = null, lng = null;
+        if (d.lat && (d.lng || d.lon)) { lat = parseFloat(d.lat); lng = parseFloat(d.lng || d.lon); }
+        else if (d.coordenadas) { lat = parseFloat(d.coordenadas.lat); lng = parseFloat(d.coordenadas.lng || d.coordenadas.lon); }
+        else if (d.ubicacion) { lat = parseFloat(d.ubicacion.lat); lng = parseFloat(d.ubicacion.lng || d.ubicacion.lon); }
+        if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+          const nombre = normalizarTexto(d.nombre || child.key || '');
+          resultado[nombre] = { lat, lng };
+          const keyNorm = normalizarTexto(child.key);
+          if (keyNorm !== nombre) resultado[keyNorm] = { lat, lng };
+        }
+      });
+    }
+  } catch (e) { console.warn('Error cargando /barrios/ en backend:', e); }
+  _barriosCacheBackend = resultado;
+  return resultado;
+}
+
+async function geocodificarTexto(texto) {
+  if (!texto) return null;
+  const clave = normalizarTexto(texto);
+
+  // Estrategia 1: barrios con coordenadas guardados en Firebase
+  const barriosDB = await cargarBarriosBackend();
+  for (const [key, coords] of Object.entries(barriosDB)) {
+    if (clave.includes(key) || key.includes(clave)) return coords;
+  }
+
+  // Estrategia 2: Nominatim (mismo servicio que usa el cliente)
+  const variantes = [
+    texto + ', Armenia, Quindio, Colombia',
+    texto + ', Armenia, Colombia',
+  ];
+  for (const q of variantes) {
+    try {
+      const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=co&q=' + encodeURIComponent(q);
+      const r = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'ServiAliados-Bot/1.0' } });
+      const d = await r.json();
+      if (d && d.length > 0) return { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon) };
+    } catch (e) { console.warn('Nominatim error backend:', e); }
+    await new Promise(res => setTimeout(res, 350));
+  }
+  return null;
+}
+
+function calcularDistanciaKm(a, b) {
+  const R = 6371;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
+
+function precioSegunKm(km) {
+  if (km <= 1.0) return 4000;
+  if (km <= 3.1) return 5000;
+  if (km <= 5.9) return 6000;
+  if (km <= 7.5) return 7000;
+  if (km <= 9.0) return 8000;
+  if (km <= 10.5) return 9000;
+  return 10000;
+}
+
 const herramientas = [
   {
     functionDeclarations: [
@@ -191,15 +272,28 @@ const herramientas = [
       },
       {
         name: 'agendarPedido',
-        description: 'Agenda un pedido para una hora exacta más tarde. Úsala cuando el cliente pida programar/agendar un pedido a una hora específica (ej: "agendar para recoger a las 7:30 pm de hoy"). NUNCA pidas dirección de recogida, entrega, ni otros datos del pedido: eso lo completa el cliente en el formulario normal.',
+        description: 'Agenda un pedido COMPLETO para una hora exacta más tarde: hora, lugar de recogida, lugar de entrega y datos de quien recibe. Úsala SOLO cuando ya tengas todos los datos requeridos confirmados por el cliente (resume y confirma antes de llamarla). El cliente puede describir todo junto en un solo mensaje (ej: "recoger en mi casa y llevar a la Patria manzana 41 casa 20, teléfono 3236742133, Laura"); en ese caso extrae tú los campos.',
         parameters: {
           type: 'object',
           properties: {
             hora: { type: 'integer', description: 'Hora en formato 24h (0-23) a la que quiere que pasen a recoger.' },
             minuto: { type: 'integer', description: 'Minutos (0-59).' },
             dia: { type: 'string', enum: ['hoy', 'mañana'], description: 'Si el pedido es para hoy o mañana.' },
+            recogidaEnCasa: { type: 'boolean', description: 'true si el cliente pide recoger en la dirección que registró al crear su cuenta ("mi casa", "donde vivo").' },
+            direccionRecogida: { type: 'string', description: 'Dirección exacta de recogida CON barrio. Requerida solo si recogidaEnCasa es false.' },
+            direccionEntrega: { type: 'string', description: 'Dirección exacta de entrega, con barrio (ej: "La Patria manzana 41 casa 20").' },
+            nombreRecibe: { type: 'string', description: 'Nombre de quien recibe el pedido.' },
+            telefonoRecibe: { type: 'string', description: 'Teléfono de quien recibe el pedido.' },
           },
-          required: ['hora', 'minuto', 'dia'],
+          required: ['hora', 'minuto', 'dia', 'recogidaEnCasa', 'direccionEntrega', 'nombreRecibe', 'telefonoRecibe'],
+        },
+      },
+      {
+        name: 'cancelarPedidoProgramado',
+        description: 'Cancela el pedido agendado/programado del cliente autenticado, solo si todavía no tiene repartidor asignado. Úsala cuando el cliente pida cancelar su pedido agendado.',
+        parameters: {
+          type: 'object',
+          properties: {},
         },
       },
     ],
@@ -254,7 +348,9 @@ function calcularTimestampAgenda(dia, hora, minuto) {
   return new Date(iso).getTime();
 }
 
-async function agendarPedido(clienteAuthUID, clienteEmail, hora, minuto, dia) {
+async function agendarPedido(clienteAuthUID, clienteEmail, args) {
+  const { hora, minuto, dia, recogidaEnCasa, direccionRecogida, direccionEntrega, nombreRecibe, telefonoRecibe } = args || {};
+
   if (!clienteAuthUID) {
     return { agendado: false, mensaje: 'El cliente no ha iniciado sesión, no se puede agendar. Pídele que inicie sesión primero.' };
   }
@@ -264,6 +360,9 @@ async function agendarPedido(clienteAuthUID, clienteEmail, hora, minuto, dia) {
   if (hora < 8 || hora >= 23) {
     return { agendado: false, mensaje: 'El servicio solo opera de 8:00 AM a 11:00 PM. Pide otra hora dentro de ese rango.' };
   }
+  if (!direccionEntrega || !nombreRecibe || !telefonoRecibe) {
+    return { agendado: false, mensaje: 'Faltan datos: dirección de entrega, nombre de quien recibe o su teléfono. Pídeselos al cliente antes de agendar.' };
+  }
 
   const timestampAgenda = calcularTimestampAgenda(dia, hora, minuto);
   const ahora = Date.now();
@@ -271,19 +370,137 @@ async function agendarPedido(clienteAuthUID, clienteEmail, hora, minuto, dia) {
     return { agendado: false, mensaje: 'Esa hora está muy cerca o ya pasó. Debe agendarse con al menos 15 minutos de anticipación.' };
   }
 
+  // ¿Ya tiene una agenda activa (sin cancelar/completar)?
+  const agendaExistente = await admin.database().ref(`agendas_programadas/${clienteAuthUID}`).get();
+  if (agendaExistente.exists()) {
+    const ae = agendaExistente.val();
+    if (ae.estado === 'programada' || ae.estado === 'vinculada') {
+      return { agendado: false, mensaje: 'Ya tienes un pedido programado activo. Si quieres cambiarlo, primero pide cancelarlo.' };
+    }
+  }
+
+  // Resolver dirección de recogida
+  let dirRecogidaTexto = direccionRecogida;
+  if (recogidaEnCasa) {
+    const dirSnap = await admin.database().ref(`usuarios/${clienteAuthUID}/direccion`).get();
+    if (!dirSnap.exists() || !dirSnap.val()) {
+      return { agendado: false, mensaje: 'No encontré ninguna dirección registrada en el perfil de este cliente. Pídele la dirección exacta de recogida (con barrio).' };
+    }
+    dirRecogidaTexto = dirSnap.val();
+  }
+  if (!dirRecogidaTexto) {
+    return { agendado: false, mensaje: 'Necesito la dirección exacta de recogida (con barrio) antes de agendar.' };
+  }
+
+  // Geocodificar ambos puntos para estimar el precio automáticamente
+  const [coordsRec, coordsEnt] = await Promise.all([
+    geocodificarTexto(dirRecogidaTexto),
+    geocodificarTexto(direccionEntrega),
+  ]);
+
+  let montoTotal = null;
+  let razonPrecio = 'Pendiente de confirmar por el administrador';
+  let requiereMapeador = false;
+
+  if (coordsRec && coordsEnt) {
+    const km = calcularDistanciaKm(coordsRec, coordsEnt);
+    montoTotal = precioSegunKm(km);
+    razonPrecio = `Estimado automáticamente por distancia (${km.toFixed(1)} km)`;
+  } else {
+    requiereMapeador = true;
+    razonPrecio = 'No se pudo ubicar automáticamente una de las direcciones; falta confirmar en el mapa';
+  }
+
+  let clienteNombre = 'Cliente';
+  const uSnap = await admin.database().ref(`usuarios/${clienteAuthUID}`).get();
+  if (uSnap.exists()) clienteNombre = uSnap.val().nombre || 'Cliente';
+
+  const codigoEntrega = String(Math.floor(1000 + Math.random() * 9000));
+
+  const pedidoData = {
+    tipo: 'domicilio_chatbot',
+    estado: 'programado',
+    programadoPara: timestampAgenda,
+    codigoEntrega,
+    dirRecogida: dirRecogidaTexto,
+    direccionCliente: direccionEntrega,
+    nombreRecibe,
+    telefonoCliente: telefonoRecibe,
+    montoTotal,
+    montoOriginal: montoTotal,
+    razonPrecio,
+    requiereMapeador,
+    descripcion: `De "${dirRecogidaTexto}" a "${direccionEntrega}" (agendado por ServiBot)`,
+    clienteIdAsignado: clienteAuthUID,
+    clienteNombre,
+    clienteEmail: clienteEmail || null,
+    repartidorUID: null,
+    repartidorNombre: 'Sin asignar',
+    timestampCreacion: ahora,
+    fecha: new Date().toISOString(),
+  };
+
+  const nuevoPedido = await admin.database().ref('pedidos_historial').push(pedidoData);
+  const pedidoId = nuevoPedido.key;
+
   await admin.database().ref(`agendas_programadas/${clienteAuthUID}`).set({
     horaProgramada: timestampAgenda,
-    estado: 'programada',
+    estado: 'vinculada',
+    pedidoId,
     creadoEn: ahora,
     clienteEmail: clienteEmail || null,
   });
 
   const horaTexto = new Date(timestampAgenda).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+
   return {
     agendado: true,
     horaProgramada: horaTexto,
-    mensaje: `Pedido agendado para las ${horaTexto}. Ahora debe ir a la pestaña "Servicio" y llenar el formulario normal (recogida y entrega); el sistema activará el pedido automáticamente cerca de la hora, asignando repartidor según la demanda del momento.`,
+    montoEstimado: montoTotal,
+    requiereMapeador,
+    mensaje: requiereMapeador
+      ? `Tu pedido quedó agendado para las ${horaTexto}, pero no pude calcular el precio exacto automáticamente. Por favor abre el "Mapeador" en la app para marcar la ubicación exacta de recogida o entrega y así confirmar la tarifa; mientras tanto tu pedido queda guardado con el precio pendiente de confirmar.`
+      : `¡Listo! Tu pedido se ha programado con éxito para las ${horaTexto}. Recogida: ${dirRecogidaTexto}. Entrega: ${direccionEntrega}, para ${nombreRecibe}. Tarifa estimada: $${montoTotal.toLocaleString('es-CO')}. El sistema asignará un repartidor automáticamente cerca de la hora, según la demanda del momento.`,
   };
+}
+
+async function cancelarPedidoProgramado(clienteAuthUID) {
+  if (!clienteAuthUID) {
+    return { cancelado: false, mensaje: 'El cliente no ha iniciado sesión, no se puede cancelar.' };
+  }
+
+  const agendaSnap = await admin.database().ref(`agendas_programadas/${clienteAuthUID}`).get();
+  if (!agendaSnap.exists()) {
+    return { cancelado: false, mensaje: 'No tienes ningún pedido programado activo.' };
+  }
+  const agenda = agendaSnap.val();
+  if (agenda.estado === 'cancelada') {
+    return { cancelado: false, mensaje: 'Ese pedido programado ya estaba cancelado.' };
+  }
+  if (!agenda.pedidoId) {
+    await admin.database().ref(`agendas_programadas/${clienteAuthUID}`).update({ estado: 'cancelada' });
+    return { cancelado: true, mensaje: 'Tu pedido programado fue cancelado.' };
+  }
+
+  const pedidoSnap = await admin.database().ref(`pedidos_historial/${agenda.pedidoId}`).get();
+  if (!pedidoSnap.exists()) {
+    await admin.database().ref(`agendas_programadas/${clienteAuthUID}`).update({ estado: 'cancelada' });
+    return { cancelado: true, mensaje: 'Tu pedido programado fue cancelado.' };
+  }
+  const pedido = pedidoSnap.val();
+
+  // Solo se puede cancelar por chat si NINGÚN repartidor lo ha aceptado todavía
+  if (pedido.estado !== 'programado' || pedido.repartidorUID) {
+    return {
+      cancelado: false,
+      mensaje: 'Tu pedido ya tiene un repartidor asignado (o está en curso), así que ya no se puede cancelar desde el chat. Escribe al chat de soporte para gestionarlo.',
+    };
+  }
+
+  await admin.database().ref(`pedidos_historial/${agenda.pedidoId}`).update({ estado: 'cancelado' });
+  await admin.database().ref(`agendas_programadas/${clienteAuthUID}`).update({ estado: 'cancelada' });
+
+  return { cancelado: true, mensaje: 'Listo, tu pedido agendado fue cancelado con éxito.' };
 }
 
 function buildSystemPrompt(logueado, clienteEmail) {
@@ -339,13 +556,24 @@ WhatsApp del encargado: 3137065977
 5. Elige el tamaño del paquete si aplica
 6. Confirma y envía
 
-— PEDIDOS PROGRAMADOS (AGENDAR PARA UNA HORA EXACTA) —
-Si el cliente quiere agendar un pedido para una hora exacta (ej: "necesito agendar un pedido
-para recoger a las 7:30 pm"), usa la herramienta agendarPedido con hora, minuto y si es hoy o
-mañana. NO le pidas dirección de recogida, entrega ni otros datos: eso lo completa el cliente
-en el formulario normal de la pestaña "Servicio". Después de agendar, dile que vaya a
-"Servicio" y llene el formulario normal como siempre; el sistema activará el pedido
-automáticamente cerca de la hora, asignando repartidor según la demanda del momento.
+— PEDIDOS PROGRAMADOS (AGENDAR PARA UNA HORA EXACTA, TODO POR CHAT) —
+Si el cliente quiere agendar un pedido (ej: "necesito agendar un pedido para recoger a las
+7:30 pm"), recoge TODOS estos datos antes de llamar a agendarPedido:
+  1. Hora exacta (hora, minuto, si es hoy o mañana)
+  2. Lugar de recogida: si dice "en mi casa"/"donde vivo", pon recogidaEnCasa=true y NO pidas
+     la dirección (se toma de su registro). Si es otro lugar, pide la dirección exacta con barrio.
+  3. Dirección de entrega exacta, con barrio.
+  4. Nombre y teléfono de quien recibe.
+El cliente puede dar todo junto en un solo mensaje (ej: "recoger en mi casa y llevar a la
+Patria manzana 41 casa 20, teléfono 3236742133, Laura"): en ese caso EXTRAE tú los campos y
+solo pregunta por lo que falte. Antes de llamar a la herramienta, resume en un mensaje corto
+lo que entendiste y pide confirmación ("¿Confirmas: recogida en tu casa, entrega en [dirección]
+para [nombre], a las [hora]?"). Solo llama a agendarPedido cuando el cliente confirme.
+Si la respuesta de la herramienta trae requiereMapeador=true, dile con claridad que debe abrir
+el "Mapeador" en la app para marcar la ubicación exacta y así confirmar la tarifa.
+Si el cliente pide cancelar un pedido agendado, usa cancelarPedidoProgramado. Si la respuesta
+indica que ya tiene repartidor asignado, explícale que ya no se puede cancelar por chat y
+que debe escribir al chat de soporte.
 
 — SEGUIMIENTO DEL PEDIDO —
 En la pestaña "Seguir" el cliente ingresa su correo para ver:
@@ -414,10 +642,17 @@ exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => 
   }
 
   if (call && call.name === 'agendarPedido') {
-    const { hora, minuto, dia } = call.args || {};
-    const datosAgenda = await agendarPedido(clienteAuthUID, clienteEmail, hora, minuto, dia);
+    const datosAgenda = await agendarPedido(clienteAuthUID, clienteEmail, call.args || {});
     const result2 = await chat.sendMessage([
       { functionResponse: { name: 'agendarPedido', response: datosAgenda } },
+    ]);
+    return { respuesta: result2.response.text() };
+  }
+
+  if (call && call.name === 'cancelarPedidoProgramado') {
+    const datosCancel = await cancelarPedidoProgramado(clienteAuthUID);
+    const result2 = await chat.sendMessage([
+      { functionResponse: { name: 'cancelarPedidoProgramado', response: datosCancel } },
     ]);
     return { respuesta: result2.response.text() };
   }

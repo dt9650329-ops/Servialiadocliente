@@ -881,7 +881,7 @@ exports.editarAgendaProgramada = onCall(async (request) => {
 // AGENDA — Activa automáticamente los pedidos programados según demanda
 // ======================================================================
 exports.asignarPedidosProgramados = functions.pubsub
-  .schedule('every 5 minutes')
+  .schedule('every 2 minutes')
   .timeZone('America/Bogota')
   .onRun(async () => {
     const progSnap = await admin.database()

@@ -9823,7 +9823,7 @@ if (dentroDeHorario) {
  appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
  };
 
- let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable;
+ let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable;
  try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
@@ -9832,6 +9832,7 @@ if (dentroDeHorario) {
  functions = getFunctions(app, 'us-central1');
  girarRuletaCallable = httpsCallable(functions, 'girarRuleta');
  servibotChatCallable = httpsCallable(functions, 'servibotChat');
+ confirmarAgendaConBarriosCallable = httpsCallable(functions, 'confirmarAgendaConBarrios');
  console.log(' Firebase inicializado correctamente');
  } catch(e) {
  console.error(' Firebase no pudo iniciar:', e.message);
@@ -9840,8 +9841,11 @@ if (dentroDeHorario) {
  window.db = db;
  window.girarRuletaCallable = girarRuletaCallable;
  window.servibotChatCallable = servibotChatCallable;
+ window.confirmarAgendaConBarriosCallable = confirmarAgendaConBarriosCallable;
  window.consultarServibot = async function(mensaje, historial) {
    const res = await servibotChatCallable({ mensaje, historial });
+   window._sbAccionPendiente = res.data.accion || null;
+   window._sbDatosAgendaPendiente = res.data.datosAgenda || null;
    return res.data.respuesta;
  };
  window.push = push;
@@ -16585,6 +16589,10 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  aiHistory.push({ role: 'assistant', content: respuesta });
  updateBotMessage(typingId, respuesta);
+ if (window._sbAccionPendiente === 'mostrarSelectorBarrios' && window._sbDatosAgendaPendiente) {
+   mostrarTarjetaAgendaChat(window._sbDatosAgendaPendiente);
+   window._sbAccionPendiente = null;
+ }
  aiWorking = false;
  }, 600);
  };
@@ -16736,6 +16744,10 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const container = document.getElementById('servibot-tab-messages');
  if (container) container.scrollTop = container.scrollHeight;
  }
+ if (window._sbAccionPendiente === 'mostrarSelectorBarrios' && window._sbDatosAgendaPendiente) {
+   mostrarTarjetaAgendaChat(window._sbDatosAgendaPendiente);
+   window._sbAccionPendiente = null;
+ }
  aiWorking = false;
  }, 600);
  };
@@ -16752,6 +16764,164 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (qbtns) qbtns.style.display = 'flex';
  // Mostrar saludo de nuevo
  window.sincronizarMensajesServibotTab && window.sincronizarMensajesServibotTab();
+ };
+
+ // ================================================================
+ // TARJETA DE AGENDA — selección manual de barrio (recogida/entrega)
+ // Reemplaza la extracción de dirección por texto libre: el cliente
+ // elige el barrio de una lista real (BARRIOS_ARMENIA), así el backend
+ // siempre encuentra coordenadas exactas sin pasar por el Mapeador.
+ // ================================================================
+ window.mostrarTarjetaAgendaChat = function(datosAgenda) {
+ const tabMsgs = document.getElementById('servibot-tab-messages');
+ const container = (tabMsgs && tabMsgs.offsetParent !== null) ? tabMsgs : document.getElementById('ai-messages');
+ if (!container) return;
+
+ const existente = document.getElementById('sb-agenda-card');
+ if (existente) existente.remove();
+
+ window._sbAgenda = { hora: datosAgenda.hora, minuto: datosAgenda.minuto, dia: datosAgenda.dia, recogidaEnCasa: true };
+
+ const horaTxt = String(datosAgenda.hora).padStart(2,'0') + ':' + String(datosAgenda.minuto).padStart(2,'0');
+ const diaTxt = datosAgenda.dia === 'mañana' ? 'mañana' : 'hoy';
+
+ const div = document.createElement('div');
+ div.id = 'sb-agenda-card';
+ div.className = 'ai-msg bot';
+ div.style.cssText = 'max-width:100%; padding:12px; background:var(--color-surface2,#161b22); border:1px solid var(--color-border2,#30363d); border-radius:10px;';
+ div.innerHTML =
+ '<div style="font-weight:bold; color:var(--color-primary,#F59E0B); margin-bottom:10px;"> Agenda para ' + diaTxt + ' a las ' + horaTxt + '</div>' +
+ '<div style="display:flex; gap:8px; margin-bottom:10px;">' +
+ '<button type="button" id="sb-btn-en-casa" onclick="sbSetRecogidaEnCasa(true)" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--color-primary,#F59E0B); background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:12px;">En mi casa</button>' +
+ '<button type="button" id="sb-btn-otro-lugar" onclick="sbSetRecogidaEnCasa(false)" style="flex:1; padding:8px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:bold; font-size:12px;">Otro lugar</button>' +
+ '</div>' +
+ '<div id="sb-recogida-otro" style="display:none; margin-bottom:12px;">' +
+ '<div style="position:relative; margin-bottom:8px;">' +
+ '<input type="text" id="sb-barrio-recogida" placeholder="Barrio de recogida" autocomplete="off" oninput="sbFiltrarBarrios(\'recogida\')" onfocus="sbMostrarDropdown(\'recogida\')" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; box-sizing:border-box;">' +
+ '<div class="barrio-dropdown" id="sb-dropdown-recogida"></div>' +
+ '</div>' +
+ '<input type="text" id="sb-manzana-recogida" placeholder="Manzana / casa / dirección exacta" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
+ '<input type="text" id="sb-nombre-recogida" placeholder="Nombre de quien entrega" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
+ '<input type="tel" id="sb-tel-recogida" placeholder="Teléfono de quien entrega" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; box-sizing:border-box;">' +
+ '</div>' +
+ '<div style="font-weight:bold; color:#10B981; margin:12px 0 8px;"> Entrega</div>' +
+ '<div style="position:relative; margin-bottom:8px;">' +
+ '<input type="text" id="sb-barrio-entrega" placeholder="Barrio de entrega" autocomplete="off" oninput="sbFiltrarBarrios(\'entrega\')" onfocus="sbMostrarDropdown(\'entrega\')" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; box-sizing:border-box;">' +
+ '<div class="barrio-dropdown" id="sb-dropdown-entrega"></div>' +
+ '</div>' +
+ '<input type="text" id="sb-manzana-entrega" placeholder="Manzana / casa / dirección exacta" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
+ '<input type="text" id="sb-nombre-entrega" placeholder="Nombre de quien recibe" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
+ '<input type="tel" id="sb-tel-entrega" placeholder="Teléfono de quien recibe" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:10px; box-sizing:border-box;">' +
+ '<div id="sb-agenda-error" style="display:none; color:#ef4444; font-size:12px; margin-bottom:8px;"></div>' +
+ '<button type="button" id="sb-btn-confirmar" onclick="sbConfirmarAgenda()" style="width:100%; padding:11px; border-radius:8px; border:none; background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:14px;"> Confirmar y agendar</button>';
+
+ container.appendChild(div);
+ container.scrollTop = container.scrollHeight;
+ };
+
+ window.sbSetRecogidaEnCasa = function(val) {
+ if (!window._sbAgenda) return;
+ window._sbAgenda.recogidaEnCasa = val;
+ const otro = document.getElementById('sb-recogida-otro');
+ const btnCasa = document.getElementById('sb-btn-en-casa');
+ const btnOtro = document.getElementById('sb-btn-otro-lugar');
+ if (otro) otro.style.display = val ? 'none' : 'block';
+ if (btnCasa) { btnCasa.style.background = val ? 'var(--color-primary,#F59E0B)' : 'transparent'; btnCasa.style.color = val ? '#000' : '#9ca3af'; }
+ if (btnOtro) { btnOtro.style.background = val ? 'transparent' : 'var(--color-primary,#F59E0B)'; btnOtro.style.color = val ? '#9ca3af' : '#000'; }
+ };
+
+ window.sbFiltrarBarrios = function(tipo) {
+ const inputEl = document.getElementById('sb-barrio-' + tipo);
+ const dd = document.getElementById('sb-dropdown-' + tipo);
+ if (!inputEl || !dd) return;
+ const q = inputEl.value.toLowerCase().trim();
+ dd.innerHTML = '';
+ if (q.length < 2) { dd.classList.remove('show'); return; }
+ const lista = (typeof BARRIOS_ARMENIA !== 'undefined') ? BARRIOS_ARMENIA : [];
+ const opciones = lista.filter(b => b.n.toLowerCase().includes(q)).slice(0, 8);
+ if (!opciones.length) {
+ const nada = document.createElement('div');
+ nada.style.cssText = 'padding:9px 12px; color:#9ca3af; font-size:12px;';
+ nada.textContent = 'Sin coincidencias, prueba otro nombre';
+ dd.appendChild(nada);
+ } else {
+ opciones.forEach(b => {
+ const d = document.createElement('div');
+ d.className = 'barrio-option';
+ d.innerHTML = b.n + '<span class="barrio-comuna">' + (b.z||'').charAt(0).toUpperCase() + (b.z||'').slice(1) + '</span>';
+ d.onclick = function() {
+ inputEl.value = b.n;
+ window._sbAgenda[tipo === 'recogida' ? 'barrioRecogida' : 'barrioEntrega'] = b.n;
+ dd.classList.remove('show');
+ };
+ dd.appendChild(d);
+ });
+ }
+ dd.classList.add('show');
+ };
+
+ window.sbMostrarDropdown = function(tipo) {
+ const inputEl = document.getElementById('sb-barrio-' + tipo);
+ if (inputEl && inputEl.value.trim().length >= 2) sbFiltrarBarrios(tipo);
+ };
+
+ window.sbConfirmarAgenda = async function() {
+ const st = window._sbAgenda || {};
+ const errEl = document.getElementById('sb-agenda-error');
+ if (errEl) errEl.style.display = 'none';
+
+ const barrioEntrega = (document.getElementById('sb-barrio-entrega').value || '').trim();
+ const manzanaEntrega = (document.getElementById('sb-manzana-entrega').value || '').trim();
+ const nombreRecibe = (document.getElementById('sb-nombre-entrega').value || '').trim();
+ const telEntrega = (document.getElementById('sb-tel-entrega').value || '').trim();
+
+ if (!barrioEntrega || !manzanaEntrega || !nombreRecibe || !telEntrega) {
+ if (errEl) { errEl.textContent = 'Completa todos los datos de entrega.'; errEl.style.display = 'block'; }
+ return;
+ }
+
+ const payload = {
+ hora: st.hora, minuto: st.minuto, dia: st.dia,
+ recogidaEnCasa: !!st.recogidaEnCasa,
+ barrioEntrega, manzanaCasaEntrega: manzanaEntrega, nombreRecibe, telefonoRecibe: telEntrega,
+ };
+
+ if (!st.recogidaEnCasa) {
+ const barrioRecogida = (document.getElementById('sb-barrio-recogida').value || '').trim();
+ const manzanaRecogida = (document.getElementById('sb-manzana-recogida').value || '').trim();
+ const nombreRecogida = (document.getElementById('sb-nombre-recogida').value || '').trim();
+ const telRecogida = (document.getElementById('sb-tel-recogida').value || '').trim();
+ if (!barrioRecogida || !manzanaRecogida || !nombreRecogida || !telRecogida) {
+ if (errEl) { errEl.textContent = 'Completa todos los datos de recogida.'; errEl.style.display = 'block'; }
+ return;
+ }
+ Object.assign(payload, { barrioRecogida, manzanaCasaRecogida: manzanaRecogida, nombreRecogida, telefonoRecogida: telRecogida });
+ }
+
+ const btn = document.getElementById('sb-btn-confirmar');
+ if (btn) { btn.disabled = true; btn.textContent = 'Agendando...'; }
+
+ try {
+ if (!window.confirmarAgendaConBarriosCallable) throw new Error('No se pudo conectar con el servidor.');
+ const res = await window.confirmarAgendaConBarriosCallable(payload);
+ const card = document.getElementById('sb-agenda-card');
+ if (card) card.remove();
+ const msg = res.data.requiereMapeador
+ ? '¡Listo! Tu pedido quedó agendado, pero no logré ubicar automáticamente uno de los barrios. El valor se confirmará manualmente.'
+ : ('¡Listo! Tu pedido quedó agendado con éxito. Tarifa estimada: $' + (res.data.montoEstimado||0).toLocaleString('es-CO') + '.');
+ const tabMsgs = document.getElementById('servibot-tab-messages');
+ if (tabMsgs && tabMsgs.offsetParent !== null) {
+ renderMsgEnTab('bot', msg);
+ } else {
+ addBotMessage(msg);
+ }
+ aiHistory.push({ role: 'assistant', content: msg });
+ window._sbAgenda = null;
+ } catch (e) {
+ console.error('[Agenda barrios] Error:', e);
+ if (errEl) { errEl.textContent = (e && e.message) || 'No se pudo agendar. Intenta de nuevo.'; errEl.style.display = 'block'; }
+ if (btn) { btn.disabled = false; btn.textContent = ' Confirmar y agendar'; }
+ }
  };
 
 })();

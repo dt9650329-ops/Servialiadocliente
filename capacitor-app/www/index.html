@@ -6664,6 +6664,22 @@ window._domiPendiente = { nombreEntrega, dirRecogida, telEntrega, zonaRecogida, 
  repartidorAsignado = menosOcupado;
  }
 
+ // [AGENDA] Si el cliente tiene un pedido programado pendiente, este
+ // pedido queda "programado" y NO se asigna repartidor de una vez.
+ let agendaActiva = null;
+ try {
+ if (window.currentUserID) {
+ const agendaSnap = await window.get(window.ref(window.db, `agendas_programadas/${window.currentUserID}`));
+ if (agendaSnap.exists()) {
+ const agenda = agendaSnap.val();
+ if (agenda.estado === 'programada' && agenda.horaProgramada > Date.now()) {
+ agendaActiva = agenda;
+ repartidorAsignado = null;
+ }
+ }
+ }
+ } catch(eAg) { console.warn(' No se pudo verificar agenda programada:', eAg); }
+
  // Obtener datos del cliente autenticado 
  let clienteNombre = 'Cliente';
  let clienteEmail = '';
@@ -6875,7 +6891,8 @@ window._domiPendiente = { nombreEntrega, dirRecogida, telEntrega, zonaRecogida, 
 
  const pedidoData = {
  tipo: 'domicilio_formulario',
- estado: repartidorAsignado ? 'pendiente' : 'sin_repartidor',
+ estado: agendaActiva ? 'programado' : (repartidorAsignado ? 'pendiente' : 'sin_repartidor'),
+ programadoPara: agendaActiva ? agendaActiva.horaProgramada : null,
  codigoEntrega: codigoEntrega,
 
  // Quien entrega
@@ -6969,12 +6986,22 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
 
  console.log(' Pedido guardado:', pedidoId);
 
+ if (agendaActiva) {
+ // No se publica en pedidos_pendientes todavía: la función programada
+ // lo activará automáticamente cerca de la hora, según la demanda.
+ await window.update(
+ window.ref(window.db, `agendas_programadas/${window.currentUserID}`),
+ { estado: 'vinculada', pedidoId }
+ );
+ console.log(' Pedido vinculado a agenda programada:', pedidoId);
+ } else {
  // SIEMPRE guardar en pedidos_pendientes global (para que repartidores lo vean) 
  await window.update(
  window.ref(window.db, `pedidos_pendientes/${pedidoId}`),
  { ...pedidoData, pedidoId, historialId: pedidoId }
  );
  console.log(' Pedido guardado en pedidos_pendientes globales');
+ }
 
  // Si hay repartidor, incrementar sus pedidos activos 
  if (repartidorAsignado) {

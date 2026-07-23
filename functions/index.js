@@ -972,3 +972,29 @@ exports.asignarPedidosProgramados = functions.pubsub
     }
     return null;
   });
+
+exports.redimirCupon = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  const { codigo } = request.data || {};
+  if (!codigo) throw new HttpsError('invalid-argument', 'Falta el código del cupón.');
+
+  const clienteAuthUID = `cliente_auth_${uid}`;
+  const premiosRef = admin.database().ref(`usuarios/${clienteAuthUID}/premios`);
+
+  const result = await premiosRef.transaction((premios) => {
+    if (!premios) return premios;
+    const bonosAcum = premios.bonosAcum || [];
+    const idx = bonosAcum.findIndex(b => b.codigo === codigo && !b.redimido);
+    if (idx === -1) return;
+    bonosAcum[idx].redimido = true;
+    premios.bonosAcum = bonosAcum;
+    premios.creditos = Math.max(0, (premios.creditos || 0) - (bonosAcum[idx].monto || 0));
+    return premios;
+  });
+
+  if (!result.committed) {
+    return { ok: false, mensaje: 'Ese cupón no existe o ya fue usado.' };
+  }
+  return { ok: true };
+});

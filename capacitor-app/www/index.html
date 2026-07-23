@@ -3450,6 +3450,58 @@
  Cancelar
  </button>
  </div>
+ <!-- ===== Mis direcciones guardadas (Casa, Trabajo, Casa novia/o, etc.) ===== -->
+ <div id="perfil-direcciones-card" style="margin-top:18px; background:rgba(255,255,255,0.04); border-radius:14px; padding:14px 16px;">
+ <h3 style="font-size:15px; margin:0 0 10px 0; display:flex; align-items:center; justify-content:space-between;">
+ Mis direcciones guardadas
+ <button type="button" onclick="window.toggleFormNuevaDireccion()" id="btn-add-direccion"
+ style="width:auto; padding:5px 12px; margin:0; font-size:12px; border-radius:20px;
+ background:var(--accent-dim); color:var(--color-primary);
+ border:1px solid var(--color-primary); font-weight:bold;">
+ + Agregar
+ </button>
+ </h3>
+
+ <div id="lista-direcciones-guardadas" style="display:flex; flex-direction:column; gap:8px;">
+ <div style="font-size:12px; color:var(--color-text-3);">Aún no tienes direcciones guardadas.</div>
+ </div>
+
+ <div id="form-nueva-direccion" style="display:none; margin-top:12px;">
+ <label>Etiqueta</label>
+ <select id="etiqueta-nueva-direccion" style="width:100%; margin-bottom:8px;" onchange="document.getElementById('etiqueta-otra-direccion').style.display = (this.value==='Otra')?'block':'none';">
+ <option value="Casa">Casa</option>
+ <option value="Trabajo">Trabajo</option>
+ <option value="Casa pareja">Casa pareja</option>
+ <option value="Otra">Otra (escribir)</option>
+ </select>
+ <input type="text" id="etiqueta-otra-direccion" placeholder="Ej: Casa de mi mamá" style="display:none; margin-bottom:8px;">
+ <label>Dirección / barrio</label>
+ <input type="text" id="texto-nueva-direccion" placeholder="Ej: Barrio Los Álamos, mz 4 casa 12">
+ <div id="gps-nueva-direccion-estado" style="font-size:12px; color:var(--color-text-3); margin-top:6px;"></div>
+ <button type="button" onclick="window.guardarNuevaDireccion()"
+ style="margin-top:10px; background:linear-gradient(135deg,var(--color-primary),#E08B00); color:var(--color-secondary); font-weight:800;">
+ Guardar dirección
+ </button>
+ <button type="button" onclick="window.toggleFormNuevaDireccion()" class="back-btn" style="margin-top:6px;">
+ Cancelar
+ </button>
+ </div>
+ </div>
+
+ <!-- Aviso: cliente lejos de su última dirección usada -->
+ <div id="aviso-ubicacion-lejana" style="display:none; margin-top:14px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.4); border-radius:12px; padding:12px 14px; font-size:13px;">
+ <div style="font-weight:800; color:#F59E0B; margin-bottom:4px;">📍 Estás lejos de tu última dirección guardada</div>
+ <div id="aviso-ubicacion-lejana-texto" style="color:var(--color-text-2); margin-bottom:10px;"></div>
+ <button type="button" onclick="document.getElementById('aviso-ubicacion-lejana').style.display='none'"
+ style="width:auto; padding:6px 14px; margin:0 8px 0 0; font-size:12px; border-radius:20px; background:rgba(255,255,255,0.08); color:var(--color-text-2); border:none; font-weight:bold;">
+ Pedir aquí de todas formas
+ </button>
+ <button type="button" onclick="document.getElementById('aviso-ubicacion-lejana').style.display='none'; window.toggleFormNuevaDireccion(true);"
+ style="width:auto; padding:6px 14px; margin:0; font-size:12px; border-radius:20px; background:var(--color-primary); color:var(--color-secondary); border:none; font-weight:bold;">
+ Cambiar dirección
+ </button>
+ </div>
+
  <button type="button" class="support-btn" onclick="window.open('https://wa.me/3137065977', '_blank')">
  Soporte WhatsApp
  </button>
@@ -10671,6 +10723,8 @@ if (dentroDeHorario) {
  console.log(' Usuario completo - Mostrando perfil');
  if (window._iniciarUbicacionCliente) window._iniciarUbicacionCliente();
  if (typeof window._escucharActivacionCuenta === 'function') window._escucharActivacionCuenta();
+ if (window.cargarDireccionesGuardadas) window.cargarDireccionesGuardadas();
+ if (window._verificarUbicacionVsGuardada) window._verificarUbicacionVsGuardada();
  } else {
  console.log(' Usuario sin datos completos - Mostrando registro');
  const existingData = snap.exists() ? snap.val() : {};
@@ -10876,6 +10930,164 @@ if (dentroDeHorario) {
  } catch(e) {
  msg.style.cssText = 'display:block; background:rgba(239,68,68,0.12); color:#ef4444; padding:8px 12px; border-radius:8px; font-size:13px;';
  msg.textContent = ' Error al guardar: ' + e.message;
+ }
+ };
+
+ // ======================================================================
+ // MIS DIRECCIONES GUARDADAS (Casa, Trabajo, Casa pareja, etc.)
+ // Guardadas en usuarios/{uid}/direccionesGuardadas/{id} con lat/lng
+ // capturados por GPS al momento de guardar.
+ // ======================================================================
+ function _distanciaKmClienteDir(a, b) {
+ const R = 6371;
+ const dLat = (b.lat - a.lat) * Math.PI / 180;
+ const dLng = (b.lng - a.lng) * Math.PI / 180;
+ const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+ return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+ }
+
+ window.toggleFormNuevaDireccion = function(forzarAbrir) {
+ const forma = document.getElementById('form-nueva-direccion');
+ if (!forma) return;
+ const abriendo = forzarAbrir === true || forma.style.display === 'none';
+ forma.style.display = abriendo ? 'block' : 'none';
+ if (abriendo) {
+ document.getElementById('texto-nueva-direccion').value = '';
+ document.getElementById('gps-nueva-direccion-estado').textContent = '';
+ forma.scrollIntoView({ behavior: 'smooth', block: 'center' });
+ }
+ };
+
+ window.guardarNuevaDireccion = async function() {
+ const selectEtiqueta = document.getElementById('etiqueta-nueva-direccion').value;
+ const etiquetaOtra = document.getElementById('etiqueta-otra-direccion').value.trim();
+ const etiqueta = (selectEtiqueta === 'Otra') ? (etiquetaOtra || 'Otra') : selectEtiqueta;
+ const texto = document.getElementById('texto-nueva-direccion').value.trim();
+ const estadoDiv = document.getElementById('gps-nueva-direccion-estado');
+
+ if (!texto) {
+ estadoDiv.style.color = '#ef4444';
+ estadoDiv.textContent = ' Escribe la dirección o el barrio.';
+ return;
+ }
+ if (!navigator.geolocation) {
+ estadoDiv.style.color = '#ef4444';
+ estadoDiv.textContent = ' Tu dispositivo no soporta ubicación GPS.';
+ return;
+ }
+ estadoDiv.style.color = '#F59E0B';
+ estadoDiv.textContent = '📍 Activa tu ubicación y quédate en el sitio para guardarla con precisión...';
+
+ navigator.geolocation.getCurrentPosition(async (pos) => {
+ try {
+ const lat = parseFloat(pos.coords.latitude.toFixed(6));
+ const lng = parseFloat(pos.coords.longitude.toFixed(6));
+ const nuevaRef = window.push(window.ref(window.db, `usuarios/${window.currentUserID}/direccionesGuardadas`));
+ await window.set(nuevaRef, { etiqueta, texto, lat, lng, ts: Date.now() });
+ estadoDiv.style.color = '#10B981';
+ estadoDiv.textContent = ' Dirección guardada.';
+ setTimeout(() => window.toggleFormNuevaDireccion(), 900);
+ window.cargarDireccionesGuardadas();
+ } catch (e) {
+ estadoDiv.style.color = '#ef4444';
+ estadoDiv.textContent = ' Error al guardar: ' + e.message;
+ }
+ }, (err) => {
+ estadoDiv.style.color = '#ef4444';
+ estadoDiv.textContent = err && err.code === 1
+ ? ' Debes permitir el acceso a tu ubicación para guardar la dirección.'
+ : ' No se pudo obtener tu ubicación, intenta de nuevo.';
+ }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+ };
+
+ window.eliminarDireccionGuardada = async function(id) {
+ if (!confirm('¿Eliminar esta dirección guardada?')) return;
+ try {
+ await window.remove(window.ref(window.db, `usuarios/${window.currentUserID}/direccionesGuardadas/${id}`));
+ const ultimaSnap = await window.get(window.ref(window.db, `usuarios/${window.currentUserID}/ultimaDireccionUsadaId`));
+ if (ultimaSnap.exists() && ultimaSnap.val() === id) {
+ await window.remove(window.ref(window.db, `usuarios/${window.currentUserID}/ultimaDireccionUsadaId`));
+ }
+ window.cargarDireccionesGuardadas();
+ } catch (e) {
+ alert('No se pudo eliminar: ' + e.message);
+ }
+ };
+
+ // Marca una dirección como "la que estoy usando ahora" — esto es lo que se
+ // compara la próxima vez que el cliente abre la app, para avisarle si está
+ // lejos de ahí. También copia el texto al portapapeles como ayuda rápida
+ // para pegarlo en el formulario de pedido.
+ window.usarDireccionGuardada = async function(id, texto) {
+ try {
+ await window.set(window.ref(window.db, `usuarios/${window.currentUserID}/ultimaDireccionUsadaId`), id);
+ if (navigator.clipboard && texto) {
+ try { await navigator.clipboard.writeText(texto); } catch (_) {}
+ }
+ alert('Listo, quedó marcada como tu dirección actual. El texto se copió para que lo pegues en el formulario de pedido.');
+ } catch (e) {
+ alert('No se pudo actualizar: ' + e.message);
+ }
+ };
+
+ window.cargarDireccionesGuardadas = async function() {
+ const cont = document.getElementById('lista-direcciones-guardadas');
+ if (!cont || !window.currentUserID) return;
+ try {
+ const snap = await window.get(window.ref(window.db, `usuarios/${window.currentUserID}/direccionesGuardadas`));
+ if (!snap.exists()) {
+ cont.innerHTML = '<div style="font-size:12px; color:var(--color-text-3);">Aún no tienes direcciones guardadas.</div>';
+ return;
+ }
+ const direcciones = Object.entries(snap.val()).map(([id, d]) => ({ id, ...d }));
+ cont.innerHTML = direcciones.map(d => `
+ <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; background:rgba(255,255,255,0.03); border-radius:10px; padding:8px 10px;">
+ <div style="min-width:0;">
+ <div style="font-weight:800; font-size:13px; color:var(--color-primary);">${d.etiqueta}</div>
+ <div style="font-size:12px; color:var(--color-text-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${d.texto}</div>
+ </div>
+ <div style="display:flex; gap:6px; flex-shrink:0;">
+ <button type="button" onclick="window.usarDireccionGuardada('${d.id}', '${(d.texto || '').replace(/'/g, "\\'")}')"
+ style="width:auto; padding:5px 10px; margin:0; font-size:11px; border-radius:16px; background:var(--accent-dim); color:var(--color-primary); border:1px solid var(--color-primary); font-weight:bold;">Usar</button>
+ <button type="button" onclick="window.eliminarDireccionGuardada('${d.id}')"
+ style="width:auto; padding:5px 10px; margin:0; font-size:11px; border-radius:16px; background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid #ef4444; font-weight:bold;">✕</button>
+ </div>
+ </div>
+ `).join('');
+ } catch (e) {
+ console.warn('No se pudieron cargar direcciones guardadas:', e?.message || e);
+ }
+ };
+
+ // Al abrir la app, si el cliente ya dio permiso de ubicación antes (no se
+ // le vuelve a pedir para no ser invasivos) y está a más de 300 m de la
+ // dirección que marcó como "última usada", se le avisa.
+ window._verificarUbicacionVsGuardada = async function() {
+ try {
+ if (!navigator.permissions || !navigator.geolocation || !window.currentUserID) return;
+ const permiso = await navigator.permissions.query({ name: 'geolocation' });
+ if (permiso.state !== 'granted') return; // no interrumpir pidiendo permiso al abrir
+
+ const ultimaIdSnap = await window.get(window.ref(window.db, `usuarios/${window.currentUserID}/ultimaDireccionUsadaId`));
+ if (!ultimaIdSnap.exists()) return;
+ const ultimaId = ultimaIdSnap.val();
+ const dirSnap = await window.get(window.ref(window.db, `usuarios/${window.currentUserID}/direccionesGuardadas/${ultimaId}`));
+ if (!dirSnap.exists()) return;
+ const dir = dirSnap.val();
+ if (typeof dir.lat !== 'number' || typeof dir.lng !== 'number') return;
+
+ navigator.geolocation.getCurrentPosition((pos) => {
+ const actual = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+ const distKm = _distanciaKmClienteDir(actual, { lat: dir.lat, lng: dir.lng });
+ if (distKm >= 0.3) {
+ const texto = document.getElementById('aviso-ubicacion-lejana-texto');
+ const box = document.getElementById('aviso-ubicacion-lejana');
+ if (texto) texto.textContent = `Tu última dirección marcada fue "${dir.etiqueta}" (${dir.texto}). ¿Vas a pedir el servicio ahí de todas formas o prefieres cambiarla?`;
+ if (box) box.style.display = 'block';
+ }
+ }, () => {}, { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
+ } catch (e) {
+ console.warn('No se pudo verificar ubicación vs. dirección guardada:', e?.message || e);
  }
  };
 

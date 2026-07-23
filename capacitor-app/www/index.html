@@ -10036,7 +10036,7 @@ if (dentroDeHorario) {
  appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
  };
 
- let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable;
+ let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable;
  try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
@@ -10049,6 +10049,7 @@ if (dentroDeHorario) {
  miAgendaProgramadaCallable = httpsCallable(functions, 'miAgendaProgramada');
  cancelarAgendaDirectoCallable = httpsCallable(functions, 'cancelarAgendaDirecto');
  editarAgendaProgramadaCallable = httpsCallable(functions, 'editarAgendaProgramada');
+ redimirCuponCallable = httpsCallable(functions, 'redimirCupon');
  console.log(' Firebase inicializado correctamente');
  } catch(e) {
  console.error(' Firebase no pudo iniciar:', e.message);
@@ -10061,6 +10062,7 @@ if (dentroDeHorario) {
  window.miAgendaProgramadaCallable = miAgendaProgramadaCallable;
  window.cancelarAgendaDirectoCallable = cancelarAgendaDirectoCallable;
  window.editarAgendaProgramadaCallable = editarAgendaProgramadaCallable;
+ window.redimirCuponCallable = redimirCuponCallable;
  window.consultarServibot = async function(mensaje, historial) {
    const res = await servibotChatCallable({ mensaje, historial });
    window._sbAccionPendiente = res.data.accion || null;
@@ -14805,17 +14807,25 @@ if (window.db) {
  return false;
  }
  } else {
- const est = _premiosGetEstado();
- const b = (est.bonosAcum || []).find(x => x.codigo === codigo);
- if (!b) return false;
- b.redimido = true;
- // Descontar el monto del bono de los créditos acumulados, para que
- // "Mis créditos" refleje el gasto real (antes se quedaba pegado porque
- // el monto se sumaba al otorgar el bono pero nunca se restaba al usarlo).
- est.creditos = Math.max(0, (est.creditos || 0) - (b.monto || 0));
- await _premiosSetEstado(est);
+ // Corregido: ya no se escribe "creditos"/"bonosAcum" directo desde el
+ // cliente (las reglas lo bloquean). Se le pide al servidor que haga la
+ // resta y el marcado en una sola transaccion atomica.
+ if (!window.redimirCuponCallable) {
+ console.warn(' redimirCuponCallable no esta disponible.');
+ return false;
+ }
+ try {
+ const res = await window.redimirCuponCallable({ codigo: codigo });
+ if (res && res.data && res.data.ok) {
  _actualizarBonosUI();
  return true;
+ }
+ console.warn(' No se pudo redimir el cupon:', res && res.data && res.data.mensaje);
+ return false;
+ } catch(e) {
+ console.warn(' Error llamando redimirCupon:', e);
+ return false;
+ }
  }
  }
  window._marcarBonoUsado = _marcarBonoUsado;

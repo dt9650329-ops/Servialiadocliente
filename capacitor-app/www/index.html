@@ -3157,7 +3157,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Cliente v1.0.0 - Tienda Única</small>
+ <small>Versión 1.0.0</small>
  </div>
  </div>
  </div>
@@ -9966,7 +9966,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.0.0 - Tienda Única');
+ console.log(' Sistema del cliente inicializado v1.0.0');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10054,6 +10054,59 @@ if (dentroDeHorario) {
  } catch(e) {
  console.error(' Firebase no pudo iniciar:', e.message);
  } 
+
+ // ============================================================
+ // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
+ // ============================================================
+ const APP_VERSION = "1.0.0";
+
+ function compararVersiones(a, b) {
+   const pa = a.split('.').map(Number);
+   const pb = b.split('.').map(Number);
+   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+     const na = pa[i] || 0, nb = pb[i] || 0;
+     if (na < nb) return -1;
+     if (na > nb) return 1;
+   }
+   return 0;
+ }
+
+ function mostrarBloqueoActualizacion(versionMinima, urlDescarga) {
+   if (document.getElementById('bloqueoActualizacionOverlay')) return;
+   const overlay = document.createElement('div');
+   overlay.id = 'bloqueoActualizacionOverlay';
+   overlay.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(5,8,15,0.96);display:flex;align-items:center;justify-content:center;padding:24px;';
+   overlay.innerHTML = `
+     <div style="background:var(--color-surface2,#131F36);border:1px solid var(--color-surface3,#1A2845);border-radius:16px;padding:28px 24px;max-width:360px;width:100%;text-align:center;">
+       <div style="font-size:42px;margin-bottom:12px;">⚠️</div>
+       <h2 style="color:var(--color-text-light,#E2E8F0);font-size:20px;margin:0 0 10px;">Actualización requerida</h2>
+       <p style="color:var(--color-text-dark,#94A3B8);font-size:14px;line-height:1.5;margin:0 0 6px;">
+         Tu versión (<strong>${APP_VERSION}</strong>) está desactualizada.
+       </p>
+       <p style="color:var(--color-text-dark,#94A3B8);font-size:14px;line-height:1.5;margin:0 0 20px;">
+         Necesitas la versión <strong>${versionMinima}</strong> o superior para seguir usando Servi Aliados.
+       </p>
+       <a href="${urlDescarga || '#'}" target="_blank" rel="noopener" style="display:block;background:var(--color-primary,#F59E0B);color:#0D1526;font-weight:700;padding:14px;border-radius:10px;text-decoration:none;font-size:15px;">
+         Descargar última versión
+       </a>
+     </div>`;
+   document.body.appendChild(overlay);
+ }
+
+ async function verificarVersionObligatoria() {
+   try {
+     const snap = await get(ref(db, 'config'));
+     if (!snap.exists()) return;
+     const cfg = snap.val();
+     const versionMinima = cfg.versionMinima;
+     if (versionMinima && compararVersiones(APP_VERSION, versionMinima) < 0) {
+       mostrarBloqueoActualizacion(versionMinima, cfg.urlDescargaApk);
+     }
+   } catch (e) {
+     console.error('No se pudo verificar la versión mínima:', e.message);
+   }
+ }
+ verificarVersionObligatoria();
 
  window.db = db;
  window.girarRuletaCallable = girarRuletaCallable;
@@ -12009,7 +12062,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.0.0 TIENDA ÚNICA');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.0.0');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');

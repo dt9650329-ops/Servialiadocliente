@@ -124,11 +124,27 @@ exports.onNuevaNotificacionUsuario = functions.database
   .onCreate(async (snap, context) => {
     const n = snap.val();
     if (!n) return null;
-    const uid = _uidBase(context.params.path);
-    if (!uid) return null;
+    const pathCrudo = context.params.path;
+    if (!pathCrudo) return null;
+
+    // Probar primero la clave TAL CUAL llegó (así quedan guardados los
+    // clientes en usuarios/, con el prefijo cliente_auth_ incluido).
+    // Solo si ahí no hay token, probar sin el prefijo (repartidores u
+    // otros casos). Esto evita el bug de buscar en la ruta equivocada
+    // y que el push nunca se envíe aunque el dato sí se haya guardado.
+    let tokenSnap = await admin.database().ref(`usuarios/${pathCrudo}/fcmToken`).get();
+    let uidFinal = pathCrudo;
+    if (!tokenSnap.exists()) {
+      const uidSinPrefijo = _uidBase(pathCrudo);
+      if (uidSinPrefijo !== pathCrudo) {
+        tokenSnap = await admin.database().ref(`usuarios/${uidSinPrefijo}/fcmToken`).get();
+        uidFinal = uidSinPrefijo;
+      }
+    }
+    if (!tokenSnap.exists()) return null;
 
     await enviarPush(
-      uid,
+      uidFinal,
       n.titulo || 'Notificación',
       n.mensaje || n.texto || '',
       { tipo: 'notificacion_usuario' }
@@ -978,10 +994,26 @@ exports.redimirCupon = onCall(async (request) => {
   if (!uid) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
   const { codigo } = request.data || {};
   if (!codigo) throw new HttpsError('invalid-argument', 'Falta el código del cupón.');
-
   const clienteAuthUID = `cliente_auth_${uid}`;
+  const otorgadosRef = admin.database().ref(`bonosOtorgados/${clienteAuthUID}`);
+  const otorgadosSnap = await otorgadosRef.once('value');
+  if (otorgadosSnap.exists()) {
+    const bonos = otorgadosSnap.val();
+    const bonoId = Object.keys(bonos).find(id => bonos[id] && bonos[id].codigo === codigo && !bonos[id].usado);
+    if (bonoId) {
+      const bonoRef = admin.database().ref(`bonosOtorgados/${clienteAuthUID}/${bonoId}`);
+      const resultOtorgado = await bonoRef.transaction((bono) => {
+        if (!bono || bono.usado) return bono;
+        bono.usado = true;
+        return bono;
+      });
+      if (resultOtorgado.committed && resultOtorgado.snapshot.val() && resultOtorgado.snapshot.val().usado === true) {
+        return { ok: true };
+      }
+      return { ok: false, mensaje: 'Ese cupón no existe o ya fue usado.' };
+    }
+  }
   const premiosRef = admin.database().ref(`usuarios/${clienteAuthUID}/premios`);
-
   const result = await premiosRef.transaction((premios) => {
     if (!premios) return premios;
     const bonosAcum = premios.bonosAcum || [];
@@ -992,7 +1024,6 @@ exports.redimirCupon = onCall(async (request) => {
     premios.creditos = Math.max(0, (premios.creditos || 0) - (bonosAcum[idx].monto || 0));
     return premios;
   });
-
   if (!result.committed) {
     return { ok: false, mensaje: 'Ese cupón no existe o ya fue usado.' };
   }

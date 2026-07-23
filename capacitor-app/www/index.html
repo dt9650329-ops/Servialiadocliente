@@ -14790,26 +14790,15 @@ if (window.db) {
  }
  };
 
- // Marca un bono como usado, sin importar si es del sistema nuevo (bonosOtorgados,
- // escritura segura vía update — la regla solo permite false→true) o del array
- // histórico "bonosAcum" (compatibilidad con bonos ganados antes de la migración).
+ // Marca un bono como usado, sin importar si viene del sistema nuevo
+ // (bonosOtorgados: ruleta/nivel/admin) o del array histórico "bonosAcum".
+ // Ya NO se escribe nada directo desde el cliente en ninguno de los dos
+ // casos — siempre se le pide al servidor (redimirCupon) que confirme y
+ // haga el marcado/descuento de forma atómica, para que el saldo de
+ // créditos nunca lo pueda tocar el cliente por su cuenta.
  async function _marcarBonoUsado(codigo) {
  const bono = _bonosCombinados().find(b => b.codigo === codigo && !b.usado);
  if (!bono) return false;
- if (bono._fuente === 'otorgado') {
- const uid = window.currentUserID;
- if (!uid || !window.db || !window.ref || !window.update) return false;
- try {
- await window.update(window.ref(window.db, `bonosOtorgados/${uid}/${bono._bonoId}`), { usado: true });
- return true;
- } catch(e) {
- console.warn(' Error marcando bono como usado:', e);
- return false;
- }
- } else {
- // Corregido: ya no se escribe "creditos"/"bonosAcum" directo desde el
- // cliente (las reglas lo bloquean). Se le pide al servidor que haga la
- // resta y el marcado en una sola transaccion atomica.
  if (!window.redimirCuponCallable) {
  console.warn(' redimirCuponCallable no esta disponible.');
  return false;
@@ -14825,7 +14814,6 @@ if (window.db) {
  } catch(e) {
  console.warn(' Error llamando redimirCupon:', e);
  return false;
- }
  }
  }
  window._marcarBonoUsado = _marcarBonoUsado;

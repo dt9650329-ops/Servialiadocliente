@@ -17217,6 +17217,27 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (typeof window._dictadoStopFn === 'function') { try { window._dictadoStopFn(); } catch (e) {} }
  };
 
+ // Al reiniciar el reconocedor tras una pausa, el micrófono a veces vuelve a
+ // captar el final de lo que ya se dijo antes de limpiarse. Esta función
+ // detecta ese solape entre el texto ya acumulado y el nuevo fragmento, y
+ // descarta la parte repetida en vez de pegarla de nuevo.
+ function _fusionarTextoDictado(previo, nuevoFragmento) {
+ const p = (previo || '').trim();
+ const n = (nuevoFragmento || '').trim();
+ if (!p) return n;
+ if (!n) return p;
+ if (p.toLowerCase().endsWith(n.toLowerCase())) return p;
+ const maxSolape = Math.min(p.length, n.length);
+ for (let len = maxSolape; len > 3; len--) {
+ if (p.slice(-len).toLowerCase() === n.slice(0, len).toLowerCase()) {
+ return (p + n.slice(len)).trim();
+ }
+ }
+ return (p + ' ' + n).trim();
+ }
+
+ function _esperar(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
  async function _iniciarDictadoGenerico(input, micBtn, onFinal) {
  if (!input || !micBtn) return;
 
@@ -17262,20 +17283,24 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  while (!window._dictadoDebeParar) {
  const listener = await SR.addListener('partialResults', (data) => {
  if (data && data.matches && data.matches[0]) {
- input.value = (textoAcumulado + data.matches[0]).trim();
+ input.value = _fusionarTextoDictado(textoAcumulado, data.matches[0]);
  }
  });
  try {
  const resultado = await SR.start({ language: 'es-CO', maxResults: 1, partialResults: true, popup: false });
  if (resultado && resultado.matches && resultado.matches[0]) {
- textoAcumulado = (textoAcumulado + resultado.matches[0] + ' ');
+ textoAcumulado = _fusionarTextoDictado(textoAcumulado, resultado.matches[0]) + ' ';
  input.value = textoAcumulado.trim();
  }
  } catch (errCiclo) {
  // Un silencio sin voz detectada no debe cortar el ciclo de escucha
  } finally {
  listener.remove();
+ try { await SR.stop(); } catch (e) {}
  }
+ // Pausa breve para que el micrófono se libere antes de reiniciar;
+ // evita que vuelva a captar el final de lo que ya se transcribió.
+ if (!window._dictadoDebeParar) await _esperar(350);
  }
 
  marcarEscuchando(false);
@@ -17298,7 +17323,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  rec.onresult = function(e) {
  let textoNuevo = '';
  for (let i = 0; i < e.results.length; i++) textoNuevo += e.results[i][0].transcript;
- input.value = (textoAcumulado + textoNuevo).trim();
+ input.value = _fusionarTextoDictado(textoAcumulado, textoNuevo);
  };
  rec.onerror = function() {
  // errores puntuales de silencio se resuelven en onend, reintentando
@@ -17307,7 +17332,8 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (!window._dictadoDebeParar) {
  // El navegador cortó la sesión por pausa larga: reiniciar automáticamente
  textoAcumulado = input.value ? input.value.trim() + ' ' : textoAcumulado;
- try { rec.start(); return; } catch (e) {}
+ _esperar(350).then(() => { try { rec.start(); } catch (e) {} });
+ return;
  }
  marcarEscuchando(false);
  input.placeholder = placeholderOriginal;

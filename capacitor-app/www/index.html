@@ -4679,6 +4679,9 @@
  <input type="text" id="servibot-tab-input" placeholder="Escribe tu pregunta..." maxlength="400"
  style="flex:1; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:12px 18px; font-size:15px; outline:none; width:auto; margin:0;"
  onkeydown="if(event.key==='Enter') sendAIMessageTab()">
+ <button id="servibot-mic-btn" onclick="iniciarDictadoServiBot()" title="Dictar por voz" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:46px !important; height:46px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+ </button>
  <button onclick="sendAIMessageTab()" style="background:linear-gradient(135deg,#FFD700,#ff9800); border:none; border-radius:50%; width:46px !important; height:46px; color:#111; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset;">
  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
  </button>
@@ -17187,6 +17190,90 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  aiHistory.forEach(function(m) {
  renderMsgEnTab(m.role, m.content);
  });
+ };
+
+ // Dictado por voz: usa el plugin nativo de Capacitor en el APK, y cae a la
+ // Web Speech API del navegador cuando se prueba fuera de la app (sandbox).
+ window._dictadoActivo = false;
+ window.iniciarDictadoServiBot = async function() {
+ if (window._dictadoActivo) return;
+ const input = document.getElementById('servibot-tab-input');
+ const micBtn = document.getElementById('servibot-mic-btn');
+ if (!input || !micBtn) return;
+
+ function marcarEscuchando(activo) {
+ window._dictadoActivo = activo;
+ micBtn.style.background = activo ? '#d32f2f' : '#2a2a2a';
+ micBtn.style.borderColor = activo ? '#d32f2f' : '#555';
+ }
+
+ const SR = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition;
+
+ try {
+ if (SR) {
+ // --- Plugin nativo (APK Android) ---
+ const disponible = await SR.available();
+ if (!disponible || disponible.available === false) {
+ alert('El reconocimiento de voz no está disponible en este dispositivo.');
+ return;
+ }
+ const permiso = await SR.checkPermissions();
+ if (permiso.speechRecognition !== 'granted') {
+ const solicitado = await SR.requestPermissions();
+ if (solicitado.speechRecognition !== 'granted') {
+ alert('Necesitas darle permiso de micrófono a la app para usar el dictado por voz.');
+ return;
+ }
+ }
+
+ marcarEscuchando(true);
+ input.placeholder = ' Escuchando...';
+
+ const listener = await SR.addListener('partialResults', (data) => {
+ if (data && data.matches && data.matches[0]) input.value = data.matches[0];
+ });
+
+ try {
+ const resultado = await SR.start({ language: 'es-CO', maxResults: 1, partialResults: true, popup: false });
+ if (resultado && resultado.matches && resultado.matches[0]) input.value = resultado.matches[0];
+ } finally {
+ listener.remove();
+ marcarEscuchando(false);
+ input.placeholder = 'Escribe tu pregunta...';
+ input.focus();
+ }
+ } else if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+ // --- Respaldo navegador (solo para pruebas fuera del APK) ---
+ const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+ const rec = new Rec();
+ rec.lang = 'es-CO';
+ rec.interimResults = true;
+ rec.maxAlternatives = 1;
+
+ marcarEscuchando(true);
+ input.placeholder = ' Escuchando...';
+
+ rec.onresult = function(e) {
+ input.value = Array.from(e.results).map(r => r[0].transcript).join('');
+ };
+ rec.onerror = function() {
+ marcarEscuchando(false);
+ input.placeholder = 'Escribe tu pregunta...';
+ };
+ rec.onend = function() {
+ marcarEscuchando(false);
+ input.placeholder = 'Escribe tu pregunta...';
+ input.focus();
+ };
+ rec.start();
+ } else {
+ alert('El dictado por voz no está disponible en este dispositivo o navegador.');
+ }
+ } catch (e) {
+ console.warn(' Error en dictado por voz:', e);
+ marcarEscuchando(false);
+ input.placeholder = 'Escribe tu pregunta...';
+ }
  };
 
  // Enviar mensaje desde el tab de ServiBot

@@ -333,6 +333,20 @@ const herramientas = [
           properties: {},
         },
       },
+      {
+        name: 'avisarRepartidorOlvido',
+        description: 'Envía una notificación push URGENTE al repartidor que tiene el pedido activo del cliente, para casos como: se le olvidó algo al cliente, el repartidor se fue sin el pedido completo, o necesita devolverse. Úsala SOLO cuando el cliente pida explícitamente avisarle algo al repartidor sobre su pedido en curso. No la uses para quejas generales ni para hablar del estado del pedido.',
+        parameters: {
+          type: 'object',
+          properties: {
+            mensajeParaRepartidor: {
+              type: 'string',
+              description: 'Resumen corto y claro (máx 100 caracteres) de lo que el repartidor debe saber o hacer, en base a lo que dijo el cliente. Ej: "El cliente olvidó darte una bolsa adicional, por favor regresa por ella." o "Salió sin el pedido completo, por favor confirma con el cliente."',
+            },
+          },
+          required: ['mensajeParaRepartidor'],
+        },
+      },
     ],
   },
 ];
@@ -367,6 +381,48 @@ async function consultarEstadoPedido(clienteEmail) {
     montoTotal: p.montoTotal || 0,
     tiempoEstimadoEntrega: p.tiempoEstimadoEntrega || null,
   };
+}
+
+async function avisarRepartidorOlvido(clienteEmail, mensajeParaRepartidor) {
+  if (!clienteEmail) {
+    return { enviado: false, mensaje: 'El cliente no ha iniciado sesión, no se puede avisar al repartidor.' };
+  }
+
+  const snap = await admin.database()
+    .ref('pedidos_historial')
+    .orderByChild('clienteEmail')
+    .equalTo(clienteEmail)
+    .limitToLast(5)
+    .once('value');
+
+  if (!snap.exists()) {
+    return { enviado: false, mensaje: 'No encontré ningún pedido activo tuyo en este momento.' };
+  }
+
+  const pedidos = Object.entries(snap.val())
+    .map(([id, p]) => ({ id, ...p }))
+    .filter(p => !['entregado', 'cancelado', 'programado'].includes(p.estado))
+    .sort((a, b) => (b.timestampCreacion || 0) - (a.timestampCreacion || 0));
+
+  if (pedidos.length === 0) {
+    return { enviado: false, mensaje: 'No tienes un pedido en curso en este momento, así que no hay repartidor al cual avisar.' };
+  }
+
+  const pedido = pedidos[0];
+  const repartidorUID = obtenerRepartidorUID(pedido);
+  if (!repartidorUID) {
+    return { enviado: false, mensaje: 'Tu pedido todavía no tiene un repartidor asignado. Escribe al chat de soporte para que gestionen esto de inmediato.' };
+  }
+
+  const texto = (mensajeParaRepartidor || 'El cliente necesita avisarte algo sobre el pedido, por favor contáctalo.').slice(0, 150);
+  await enviarPush(
+    repartidorUID,
+    '⚠️ Aviso urgente del cliente',
+    texto,
+    { pedidoId: pedido.id, tipo: 'aviso_cliente_devolver' }
+  );
+
+  return { enviado: true, mensaje: 'Listo, ya le avisé directamente a tu repartidor. Si no responde en unos minutos, escribe al chat de soporte.' };
 }
 
 function obtenerFechaBogota(offsetDias = 0) {
@@ -656,6 +712,18 @@ Cuando aplique, ofrece ambas opciones:
 - El chat de soporte dentro de la app (botones "Soporte WhatsApp" / "Soporte para Pedidos" en Perfil)
 - WhatsApp directo del encargado: 3137065977
 
+— VACANTES / TRABAJAR COMO REPARTIDOR —
+Si preguntan si hay vacantes, cómo ser repartidor, o cómo trabajar en Servi Aliados, dile que escriba
+directamente al WhatsApp 3137065977 para que le den la información y el proceso de vinculación.
+No des detalles de requisitos ni pagos porque no los tienes confirmados.
+
+— AVISAR ALGO AL REPARTIDOR EN CURSO —
+Si el cliente dice que se le olvidó algo, que el repartidor se fue sin el pedido completo, o pide
+que le avises al repartidor sobre su pedido EN CURSO (no programado), usa la herramienta
+avisarRepartidorOlvido con un resumen corto y claro de la situación. Esto le manda una notificación
+urgente directa al repartidor, así el cliente no tiene que llamar a soporte. Si la herramienta indica
+que no hay repartidor asignado o no hay pedido activo, explícaselo y ofrece el chat de soporte.
+
 — TIEMPOS ESTIMADOS —
 • Recogida: 5–25 min según distancia y pedidos en cola del repartidor
 • Entrega total: 15–45 min
@@ -679,11 +747,18 @@ repartidor asignado, explícale que ya no se puede cancelar por chat y que debe 
 de soporte.
 
 — SEGUIMIENTO DEL PEDIDO —
-En la pestaña "Seguir" el cliente ingresa su correo para ver:
-- Estado actual: Pendiente → Aceptado → Esperando → En Camino → Completado
-- Ubicación del repartidor en tiempo real en el mapa
-Si el cliente está autenticado y pregunta por su pedido, usa la herramienta
-consultarEstadoPedido en vez de mandarlo a la pestaña "Seguir".
+Si el cliente está autenticado y pregunta por su pedido, usa la herramienta consultarEstadoPedido.
+Al responder, SIEMPRE incluye TODOS estos datos sin resumir ni omitir ninguno, cada vez que te
+pregunten, sin importar si ya los diste antes en la misma conversación:
+- Estado actual del pedido
+- Repartidor asignado (o "sin asignar" si no tiene)
+- Descripción del pedido
+- Valor total
+- Tiempo estimado de entrega
+Después de dar esos datos completos, SIEMPRE recuérdale que también puede ver la ubicación de
+su repartidor en tiempo real en el mapa, en la pestaña "Seguir".
+Si el cliente NO está autenticado y pregunta por su pedido, pídele que inicie sesión, o dile que
+puede ir a la pestaña "Seguir" e ingresar su correo para ver el estado y el mapa ahí mismo.
 
 — SISTEMA DE NIVELES DE EXPERIENCIA —
 Nivel 1 · Cliente Nuevo (0-50 dom): 1 giro de ruleta + cupón $600 de descuento.
@@ -698,7 +773,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 - Si te preguntan algo que no sabes responder (peso máximo, políticas especiales, etc.), responde
   que no tienes esa información en este momento pero que puede escribir al chat de soporte para
   que le respondan de inmediato.
-- Respuestas concisas: máximo 3–4 párrafos cortos. Usa emojis con moderación.
+- Respuestas concisas: máximo 3–4 párrafos cortos en temas generales. EXCEPCIÓN: cuando informes
+  el estado de un pedido con consultarEstadoPedido, NO apliques este límite — da siempre todos
+  los datos completos aunque ocupe más espacio, la brevedad no aplica ahí.
 - [MODO PRUEBAS: sin restricción de horario por ahora]
 - Mantente siempre en temas de Servi Aliados (precios, zonas, tiempos, pedidos, cuenta, etc). Si
   te preguntan algo totalmente ajeno (chistes, tareas, trivia, clima), redirige amablemente al tema.`;
@@ -760,6 +837,16 @@ exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => 
     const datosCancel = await cancelarPedidoProgramado(clienteAuthUID);
     const result2 = await chat.sendMessage([
       { functionResponse: { name: 'cancelarPedidoProgramado', response: datosCancel } },
+    ]);
+    return { respuesta: result2.response.text() };
+  }
+
+  if (call && call.name === 'avisarRepartidorOlvido') {
+    const datosAviso = logueado
+      ? await avisarRepartidorOlvido(clienteEmail, (call.args || {}).mensajeParaRepartidor)
+      : { enviado: false, mensaje: 'El cliente no ha iniciado sesión, no se puede avisar al repartidor.' };
+    const result2 = await chat.sendMessage([
+      { functionResponse: { name: 'avisarRepartidorOlvido', response: datosAviso } },
     ]);
     return { respuesta: result2.response.text() };
   }
@@ -935,9 +1022,26 @@ exports.asignarPedidosProgramados = functions.pubsub
       const minutosRestantes = (pedido.programadoPara - ahora) / 60000;
       if (minutosRestantes > ventanaMin) continue; // todavía no toca
 
+      // Ordena por carga (menos pedidos activos primero) y, entre repartidores
+      // con la misma carga, prioriza al que está más cerca del punto de
+      // recogida (mejor ruteo, menos tiempo muerto llegando al origen).
       const candidatos = disponibles
         .slice()
-        .sort((a, b) => (a.pedidosActivos || 0) - (b.pedidosActivos || 0));
+        .map(r => ({
+          ...r,
+          _distKm: (r.ubicacionActual && pedido.gpsRecogida)
+            ? calcularDistanciaKm(r.ubicacionActual, pedido.gpsRecogida)
+            : null,
+        }))
+        .sort((a, b) => {
+          const cargaA = a.pedidosActivos || 0;
+          const cargaB = b.pedidosActivos || 0;
+          if (cargaA !== cargaB) return cargaA - cargaB;
+          if (a._distKm !== null && b._distKm !== null) return a._distKm - b._distKm;
+          if (a._distKm !== null) return -1;
+          if (b._distKm !== null) return 1;
+          return 0;
+        });
 
       let repartidorGanador = null;
       for (const cand of candidatos) {
@@ -986,6 +1090,38 @@ exports.asignarPedidosProgramados = functions.pubsub
         }
       }
     }
+    return null;
+  });
+
+// ======================================================================
+// SOS DEL REPARTIDOR → PUSH DIRECTO AL CLIENTE AFECTADO
+// Cuando un repartidor activa el SOS, si en ese momento tiene un pedido
+// activo asignado, se le manda un push (no solo chat) al cliente de ESE
+// pedido para que sepa que puede haber demora, sin exponer detalles del
+// contratiempo. No se notifica a otros clientes.
+// ======================================================================
+exports.onNuevaAlertaSOS = functions.database
+  .ref('/sos_alertas/{alertaId}')
+  .onCreate(async (snap) => {
+    const alerta = snap.val();
+    if (!alerta) return null;
+
+    // El campo puede venir con distintos nombres según quién la creó.
+    const repartidorUID = alerta.repartidorUID || alerta.repartidorId || alerta.uid || alerta.repUid;
+    if (!repartidorUID) return null;
+
+    const infoSnap = await admin.database().ref(`repartidores_info/${repartidorUID}/pedidoActivoClienteId`).get();
+    if (!infoSnap.exists()) return null; // el repartidor no tenía pedido activo en ese momento
+
+    const clienteUID = infoSnap.val();
+    if (!clienteUID) return null;
+
+    await enviarPush(
+      clienteUID,
+      'Tu pedido puede tardar un poco más',
+      'Tu repartidor tuvo un contratiempo en el camino. Ya estamos al tanto y coordinando ayuda, tu pedido sigue en curso.',
+      { tipo: 'sos_repartidor' }
+    );
     return null;
   });
 

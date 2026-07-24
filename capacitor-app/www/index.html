@@ -17377,7 +17377,10 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const existente = document.getElementById('sb-agenda-card');
  if (existente) existente.remove();
 
- window._sbAgenda = { hora: datosAgenda.hora, minuto: datosAgenda.minuto, dia: datosAgenda.dia, recogidaEnCasa: true };
+ window._sbAgenda = {
+ hora: datosAgenda.hora, minuto: datosAgenda.minuto, dia: datosAgenda.dia, recogidaEnCasa: true,
+ nombreEntrega: datosAgenda.nombreEntrega || '', telefonoEntrega: datosAgenda.telefonoEntrega || '', direccionEntrega: datosAgenda.direccionEntrega || '',
+ };
 
  const horaTxt = String(datosAgenda.hora).padStart(2,'0') + ':' + String(datosAgenda.minuto).padStart(2,'0');
  const diaTxt = datosAgenda.dia === 'mañana' ? 'mañana' : 'hoy';
@@ -17414,6 +17417,10 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  container.appendChild(div);
  container.scrollTop = container.scrollHeight;
+
+ if (window._sbAgenda.nombreEntrega) document.getElementById('sb-nombre-entrega').value = window._sbAgenda.nombreEntrega;
+ if (window._sbAgenda.telefonoEntrega) document.getElementById('sb-tel-entrega').value = window._sbAgenda.telefonoEntrega;
+ if (window._sbAgenda.direccionEntrega) document.getElementById('sb-manzana-entrega').value = window._sbAgenda.direccionEntrega;
  };
 
  window.sbSetRecogidaEnCasa = function(val) {

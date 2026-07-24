@@ -4073,8 +4073,13 @@
  <div id="ocr-status" style="display:none; margin-top:6px; background:rgba(40,167,69,0.12); border-radius:6px; padding:8px; font-size:12px; color:#28a745;"></div>
  </div>
 
- <label>Pega aquí los datos de quien recibe (nombre, dirección y teléfono): <span style="color:#888;font-size:11px;">(opcional si subes foto)</span></label>
- <textarea id="domi-datos-destinatario-raw" rows="4" oninput="parsearDatosDestinatario()" placeholder="Pega el mensaje del cliente tal cual, por ejemplo:&#10;María López&#10;Cll 25 #8-12, Barrio Norte&#10;310 987 6543"></textarea>
+ <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px;">
+ <label style="margin:0;">Pega aquí los datos de quien recibe (nombre, dirección y teléfono): <span style="color:#888;font-size:11px;">(opcional si subes foto)</span></label>
+ <button type="button" id="domi-mic-destinatario-btn" onclick="iniciarDictadoDestinatario()" title="Dictar por voz" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:38px !important; height:38px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+ </button>
+ </div>
+ <textarea id="domi-datos-destinatario-raw" rows="4" oninput="parsearDatosDestinatario()" placeholder="Toca el micrófono y dicta nombre, dirección y teléfono seguidos, o pégalo tal cual:&#10;María López&#10;Cll 25 #8-12, Barrio Norte&#10;310 987 6543"></textarea>
  <div id="preview-datos-destinatario" style="display:none; margin-top:6px; background:rgba(40,167,69,0.08); border:1px solid rgba(40,167,69,0.25); border-radius:8px; padding:8px 10px; font-size:12px; color:#ccc;"></div>
  <input type="hidden" id="domi-nombre-recibe" value="" />
  <input type="hidden" id="domi-dir-entrega" value="" />
@@ -17194,12 +17199,15 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  // Dictado por voz: usa el plugin nativo de Capacitor en el APK, y cae a la
  // Web Speech API del navegador cuando se prueba fuera de la app (sandbox).
+ // _iniciarDictadoGenerico() es reutilizable: recibe el input/textarea a
+ // llenar, el botón de micrófono a animar, y un callback opcional que se
+ // dispara con el texto final ya dictado (por ejemplo, para auto-parsear
+ // nombre/dirección/teléfono apenas termine de hablar).
  window._dictadoActivo = false;
- window.iniciarDictadoServiBot = async function() {
+ async function _iniciarDictadoGenerico(input, micBtn, onFinal) {
  if (window._dictadoActivo) return;
- const input = document.getElementById('servibot-tab-input');
- const micBtn = document.getElementById('servibot-mic-btn');
  if (!input || !micBtn) return;
+ const placeholderOriginal = input.placeholder;
 
  function marcarEscuchando(activo) {
  window._dictadoActivo = activo;
@@ -17239,8 +17247,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  } finally {
  listener.remove();
  marcarEscuchando(false);
- input.placeholder = 'Escribe tu pregunta...';
+ input.placeholder = placeholderOriginal;
  input.focus();
+ if (typeof onFinal === 'function') onFinal();
  }
  } else if (window.SpeechRecognition || window.webkitSpeechRecognition) {
  // --- Respaldo navegador (solo para pruebas fuera del APK) ---
@@ -17255,14 +17264,15 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  rec.onresult = function(e) {
  input.value = Array.from(e.results).map(r => r[0].transcript).join('');
+ if (typeof onFinal === 'function') onFinal();
  };
  rec.onerror = function() {
  marcarEscuchando(false);
- input.placeholder = 'Escribe tu pregunta...';
+ input.placeholder = placeholderOriginal;
  };
  rec.onend = function() {
  marcarEscuchando(false);
- input.placeholder = 'Escribe tu pregunta...';
+ input.placeholder = placeholderOriginal;
  input.focus();
  };
  rec.start();
@@ -17272,8 +17282,26 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  } catch (e) {
  console.warn(' Error en dictado por voz:', e);
  marcarEscuchando(false);
- input.placeholder = 'Escribe tu pregunta...';
+ input.placeholder = placeholderOriginal;
  }
+ }
+
+ window.iniciarDictadoServiBot = async function() {
+ const input = document.getElementById('servibot-tab-input');
+ const micBtn = document.getElementById('servibot-mic-btn');
+ await _iniciarDictadoGenerico(input, micBtn);
+ };
+
+ // Dictado del destinatario (Punto B): llena el textarea de "quien recibe"
+ // y, apenas termina de hablar, dispara el auto-parser que ya existía
+ // (parsearDatosDestinatario) para separar nombre/dirección/teléfono.
+ // El barrio sigue siendo 100% manual, tal como se pidió.
+ window.iniciarDictadoDestinatario = async function() {
+ const input = document.getElementById('domi-datos-destinatario-raw');
+ const micBtn = document.getElementById('domi-mic-destinatario-btn');
+ await _iniciarDictadoGenerico(input, micBtn, function() {
+ if (typeof window.parsearDatosDestinatario === 'function') window.parsearDatosDestinatario();
+ });
  };
 
  // Enviar mensaje desde el tab de ServiBot

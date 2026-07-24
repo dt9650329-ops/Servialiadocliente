@@ -17199,15 +17199,36 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  // Dictado por voz: usa el plugin nativo de Capacitor en el APK, y cae a la
  // Web Speech API del navegador cuando se prueba fuera de la app (sandbox).
- // _iniciarDictadoGenerico() es reutilizable: recibe el input/textarea a
+ // MODO CONTINUO: el reconocedor nativo de Android (y algunos navegadores)
+ // se detiene solo tras un par de segundos de silencio. Para que no se corte
+ // a medias cuando el cliente hace una pausa al hablar, este dictado se
+ // reinicia automáticamente en un ciclo y va acumulando el texto, hasta que
+ // el usuario toca el botón del micrófono de nuevo (o le da a enviar) para
+ // terminar. _iniciarDictadoGenerico() es reutilizable: recibe el input a
  // llenar, el botón de micrófono a animar, y un callback opcional que se
- // dispara con el texto final ya dictado (por ejemplo, para auto-parsear
- // nombre/dirección/teléfono apenas termine de hablar).
+ // dispara cuando el usuario termina el dictado.
  window._dictadoActivo = false;
+ window._dictadoDebeParar = false;
+ window._dictadoStopFn = null;
+
+ window.detenerDictadoActivo = function() {
+ if (!window._dictadoActivo) return;
+ window._dictadoDebeParar = true;
+ if (typeof window._dictadoStopFn === 'function') { try { window._dictadoStopFn(); } catch (e) {} }
+ };
+
  async function _iniciarDictadoGenerico(input, micBtn, onFinal) {
- if (window._dictadoActivo) return;
  if (!input || !micBtn) return;
+
+ // Si ya está escuchando, este toque actúa como botón de "detener".
+ if (window._dictadoActivo) {
+ window.detenerDictadoActivo();
+ return;
+ }
+
  const placeholderOriginal = input.placeholder;
+ window._dictadoDebeParar = false;
+ let textoAcumulado = input.value ? input.value.trim() + ' ' : '';
 
  function marcarEscuchando(activo) {
  window._dictadoActivo = activo;
@@ -17235,45 +17256,63 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  }
 
  marcarEscuchando(true);
- input.placeholder = ' Escuchando...';
+ input.placeholder = ' Escuchando... (toca el micrófono para terminar)';
+ window._dictadoStopFn = () => { try { SR.stop(); } catch (e) {} };
 
+ while (!window._dictadoDebeParar) {
  const listener = await SR.addListener('partialResults', (data) => {
- if (data && data.matches && data.matches[0]) input.value = data.matches[0];
+ if (data && data.matches && data.matches[0]) {
+ input.value = (textoAcumulado + data.matches[0]).trim();
+ }
  });
-
  try {
  const resultado = await SR.start({ language: 'es-CO', maxResults: 1, partialResults: true, popup: false });
- if (resultado && resultado.matches && resultado.matches[0]) input.value = resultado.matches[0];
+ if (resultado && resultado.matches && resultado.matches[0]) {
+ textoAcumulado = (textoAcumulado + resultado.matches[0] + ' ');
+ input.value = textoAcumulado.trim();
+ }
+ } catch (errCiclo) {
+ // Un silencio sin voz detectada no debe cortar el ciclo de escucha
  } finally {
  listener.remove();
+ }
+ }
+
  marcarEscuchando(false);
  input.placeholder = placeholderOriginal;
  input.focus();
  if (typeof onFinal === 'function') onFinal();
- }
  } else if (window.SpeechRecognition || window.webkitSpeechRecognition) {
  // --- Respaldo navegador (solo para pruebas fuera del APK) ---
  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
  const rec = new Rec();
  rec.lang = 'es-CO';
+ rec.continuous = true;
  rec.interimResults = true;
  rec.maxAlternatives = 1;
 
  marcarEscuchando(true);
- input.placeholder = ' Escuchando...';
+ input.placeholder = ' Escuchando... (toca el micrófono para terminar)';
+ window._dictadoStopFn = () => { try { rec.stop(); } catch (e) {} };
 
  rec.onresult = function(e) {
- input.value = Array.from(e.results).map(r => r[0].transcript).join('');
- if (typeof onFinal === 'function') onFinal();
+ let textoNuevo = '';
+ for (let i = 0; i < e.results.length; i++) textoNuevo += e.results[i][0].transcript;
+ input.value = (textoAcumulado + textoNuevo).trim();
  };
  rec.onerror = function() {
- marcarEscuchando(false);
- input.placeholder = placeholderOriginal;
+ // errores puntuales de silencio se resuelven en onend, reintentando
  };
  rec.onend = function() {
+ if (!window._dictadoDebeParar) {
+ // El navegador cortó la sesión por pausa larga: reiniciar automáticamente
+ textoAcumulado = input.value ? input.value.trim() + ' ' : textoAcumulado;
+ try { rec.start(); return; } catch (e) {}
+ }
  marcarEscuchando(false);
  input.placeholder = placeholderOriginal;
  input.focus();
+ if (typeof onFinal === 'function') onFinal();
  };
  rec.start();
  } else {
@@ -17307,6 +17346,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // Enviar mensaje desde el tab de ServiBot
  window.sendAIMessageTab = function() {
  if (aiWorking) return;
+ // Si el cliente todavía está dictando por voz, dar clic en enviar corta
+ // el dictado ahí mismo y se envía lo que alcanzó a decir hasta ese punto.
+ if (window._dictadoActivo) window.detenerDictadoActivo();
  const input = document.getElementById('servibot-tab-input');
  if (!input) return;
  const text = input.value.trim();

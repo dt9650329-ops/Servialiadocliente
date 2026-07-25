@@ -17288,9 +17288,12 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  }
 
  // 2) Sin repetición grande: solape normal al final (se pega solo la parte
- // realmente nueva), probando desde el solape más largo posible.
+ // realmente nueva), probando desde el solape más largo posible. Se admite
+ // solape de UNA sola palabra (no solo de 2+) porque el reconocedor suele
+ // repetir apenas la última palabra al reiniciar tras un corte de silencio
+ // (ej: "Hola" seguido de "Hola" de nuevo, o "estás" repetido solo).
  const maxSolape = Math.min(pNorm.length, nNorm.length);
- for (let len = maxSolape; len >= 2; len--) {
+ for (let len = maxSolape; len >= 1; len--) {
  const colaP = pNorm.slice(-len).join(' ');
  const inicioN = nNorm.slice(0, len).join(' ');
  if (colaP === inicioN) {
@@ -17345,27 +17348,33 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  input.placeholder = ' Escuchando... (toca el micrófono para terminar)';
  window._dictadoStopFn = () => { try { SR.stop(); } catch (e) {} };
 
- while (!window._dictadoDebeParar) {
- const listener = await SR.addListener('partialResults', (data) => {
+ // Por seguridad, limpia cualquier oyente que haya quedado pegado de una
+ // sesión anterior (algunos dispositivos no limpian bien con .remove()).
+ try { await SR.removeAllListeners(); } catch (e) {}
+
+ // Se registra UN SOLO oyente para toda la sesión de dictado (no uno por
+ // cada reinicio del ciclo): así nunca quedan oyentes viejos acumulados
+ // reescribiendo el texto con datos desactualizados.
+ const refTexto = { valor: textoAcumulado };
+ await SR.addListener('partialResults', (data) => {
  if (data && data.matches && data.matches[0] && !window._dictadoIgnorarSalida) {
- // Vista previa simple mientras se habla: NO pasa por el algoritmo de
- // fusión (ese es solo para cuando termina la sesión y el micro se
- // reinicia). Aquí solo mostramos lo ya fijado + lo que se lleva dicho.
- const previo = _separarDigitosPegados((textoAcumulado || '').trim());
+ const previo = _separarDigitosPegados((refTexto.valor || '').trim());
  const parcial = _separarDigitosPegados(data.matches[0].trim());
  input.value = (previo ? previo + ' ' : '') + parcial;
  }
  });
+
+ while (!window._dictadoDebeParar) {
  try {
  const resultado = await SR.start({ language: 'es-CO', maxResults: 1, partialResults: true, popup: false });
  if (resultado && resultado.matches && resultado.matches[0] && !window._dictadoIgnorarSalida) {
  textoAcumulado = _fusionarTextoDictado(textoAcumulado, resultado.matches[0]) + ' ';
+ refTexto.valor = textoAcumulado;
  input.value = textoAcumulado.trim();
  }
  } catch (errCiclo) {
  // Un silencio sin voz detectada no debe cortar el ciclo de escucha
  } finally {
- listener.remove();
  try { await SR.stop(); } catch (e) {}
  }
  // Pausa breve para que el micrófono se libere antes de reiniciar;
@@ -17373,6 +17382,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (!window._dictadoDebeParar) await _esperar(550);
  }
 
+ try { await SR.removeAllListeners(); } catch (e) {}
  marcarEscuchando(false);
  input.placeholder = placeholderOriginal;
  input.focus();
@@ -17393,13 +17403,20 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  rec.onresult = function(e) {
  if (window._dictadoIgnorarSalida) return;
- let textoNuevo = '';
- for (let i = 0; i < e.results.length; i++) textoNuevo += e.results[i][0].transcript;
- // Vista previa simple (sin pasar por el algoritmo de fusión, igual que
- // en el plugin nativo): evita duplicados mientras el resultado parcial
- // sigue creciendo.
+ // En algunos dispositivos Android, cada fragmento "final" que entrega el
+ // reconocedor del navegador no es solo la parte nueva: repite también lo
+ // ya dicho antes (a veces la frase completa desde el inicio). Concatenar
+ // los fragmentos tal cual (como se hacía antes) provoca que las palabras
+ // se acumulen dobles, triples, etc. Por eso aquí se funde cada fragmento
+ // con el acumulado usando el mismo algoritmo que ya usa el dictado nativo
+ // (detecta el tramo repetido y se queda con la versión más completa en
+ // vez de pegarlas).
+ let textoSesion = '';
+ for (let i = 0; i < e.results.length; i++) {
+ textoSesion = _fusionarTextoDictado(textoSesion, e.results[i][0].transcript);
+ }
  const previo = (textoAcumulado || '').trim();
- input.value = (previo ? previo + ' ' : '') + textoNuevo.trim();
+ input.value = _fusionarTextoDictado(previo, textoSesion);
  };
  rec.onerror = function() {
  // errores puntuales de silencio se resuelven en onend, reintentando
@@ -17423,6 +17440,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  }
  } catch (e) {
  console.warn(' Error en dictado por voz:', e);
+ try { if (SR) await SR.removeAllListeners(); } catch (e2) {}
  marcarEscuchando(false);
  input.placeholder = placeholderOriginal;
  }
@@ -17549,6 +17567,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  '<input type="text" id="sb-nombre-recogida" placeholder="Nombre de quien entrega" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
  '<input type="tel" id="sb-tel-recogida" placeholder="Teléfono de quien entrega" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; box-sizing:border-box;">' +
  '</div>' +
+ '<button type="button" id="sb-btn-rellenar" onclick="sbRellenarDatosDesdeChat()" style="width:100%; padding:9px; border-radius:8px; border:1px dashed var(--color-primary,#F59E0B); background:transparent; color:var(--color-primary,#F59E0B); font-weight:bold; font-size:12px; margin-bottom:12px; cursor:pointer;">✍️ Rellenar datos del chat</button>' +
  '<div style="font-weight:bold; color:#10B981; margin:12px 0 8px;"> Entrega</div>' +
  '<div style="position:relative; margin-bottom:8px;">' +
  '<input type="text" id="sb-barrio-entrega" placeholder="Barrio de entrega" autocomplete="off" oninput="sbFiltrarBarrios(\'entrega\')" onfocus="sbMostrarDropdown(\'entrega\')" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; box-sizing:border-box;">' +
@@ -17568,6 +17587,106 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  try { if (window._sbAgenda.nombreEntrega) { const el = document.getElementById('sb-nombre-entrega'); if (el) el.value = window._sbAgenda.nombreEntrega; } } catch(e) { console.warn('No se pudo prellenar nombre:', e); }
  try { if (window._sbAgenda.telefonoEntrega) { const el = document.getElementById('sb-tel-entrega'); if (el) el.value = window._sbAgenda.telefonoEntrega; } } catch(e) { console.warn('No se pudo prellenar teléfono:', e); }
  try { if (window._sbAgenda.direccionEntrega) { const el = document.getElementById('sb-manzana-entrega'); if (el) el.value = window._sbAgenda.direccionEntrega; } } catch(e) { console.warn('No se pudo prellenar dirección:', e); }
+
+ // Respaldo automático: si el backend no logró extraer algún dato (nombre,
+ // teléfono o dirección), se intenta rellenar leyendo directamente lo que
+ // el cliente ya escribió en el chat. Solo toca los campos que sigan vacíos,
+ // para no pisar lo que ya vino de window._sbAgenda.
+ try { sbRellenarDatosDesdeChat(true); } catch(e) { console.warn('No se pudo autocompletar desde el chat:', e); }
+ };
+
+ // ================================================================
+ // RELLENAR DATOS DEL CHAT — botón manual (y respaldo automático)
+ // Busca en todo lo que el cliente ha escrito en el chat (sin importar
+ // el orden en que dio los datos) el nombre de quien recibe, el teléfono
+ // y la dirección exacta (manzana/casa/cra/calle). El barrio se sigue
+ // seleccionando siempre a mano, como está diseñado.
+ // ================================================================
+ function _sbCapitalizar(s) {
+ return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+ }
+
+ function _sbExtraerDatosChat(texto) {
+ const resultado = { nombre: null, telefono: null, direccion: null };
+ if (!texto) return resultado;
+
+ // --- Teléfono: cualquier secuencia que al quitarle espacios/puntos/
+ // guiones deje exactamente 10 dígitos (formato celular colombiano) ---
+ const telCandidatos = texto.match(/\d[\d\s.\-]{7,14}\d/g) || [];
+ for (let i = 0; i < telCandidatos.length; i++) {
+ const soloDigitos = telCandidatos[i].replace(/\D/g, '');
+ if (soloDigitos.length === 10) { resultado.telefono = soloDigitos; break; }
+ }
+
+ // --- Dirección: manzana/casa, o nomenclatura urbana (cra/cll/calle/kr) ---
+ const patronesDir = [
+ /manzana\s*\d+[^\d]{0,15}casa\s*\d+/i,
+ /(?:cra|carrera|cll|calle|cl|kr|diagonal|dg|transversal|tv)\.?\s*\d+\s*[a-z]?\s*(?:bis)?\s*#?\s*-?\s*\d+[a-z]?\s*-?\s*\d*/i,
+ /manzana\s*\d+/i,
+ /casa\s*\d+/i,
+ ];
+ for (let i = 0; i < patronesDir.length; i++) {
+ const m = texto.match(patronesDir[i]);
+ if (m) { resultado.direccion = m[0].replace(/\s+/g, ' ').trim(); break; }
+ }
+
+ // --- Nombre: primero frases explícitas (funcionan aunque esté en
+ // minúsculas), y si no aparece ninguna, se usa "a/para NombreConMayuscula"
+ // como respaldo (igual criterio que usa el backend) ---
+ const stop = new Set(['mi','la','el','los','las','un','una','su','sus','que','casa','manzana','calle','carrera','vereda','apto','favor','domicilio','ahi','ahí','misma','direccion','dirección','recogerlo','recogerla','llevarlo','llevarla']);
+ const frasesExplicitas = /(?:se llama|nombre de|entreg[aá]rselo a|llev[aá]rselo a|es para|recibe|entregar a|entregarlo a|entregarla a)\s+([A-Za-zÁÉÍÓÚÑáéíóúñ]{2,20})/i;
+ const mExplicito = texto.match(frasesExplicitas);
+ if (mExplicito && !stop.has(mExplicito[1].toLowerCase())) {
+ resultado.nombre = _sbCapitalizar(mExplicito[1]);
+ } else {
+ const mFallback = texto.match(/\b(?:a|para)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/);
+ if (mFallback && !stop.has(mFallback[1].toLowerCase())) {
+ resultado.nombre = mFallback[1];
+ }
+ }
+
+ return resultado;
+ }
+
+ window.sbRellenarDatosDesdeChat = function(soloVacios) {
+ const textoChat = (typeof aiHistory !== 'undefined' ? aiHistory : [])
+ .filter(function (m) { return m && m.role === 'user' && typeof m.content === 'string'; })
+ .map(function (m) { return m.content; })
+ .join('. ');
+
+ const datos = _sbExtraerDatosChat(textoChat);
+ let algoLleno = false;
+
+ function rellenar(id, valor) {
+ if (!valor) return;
+ const el = document.getElementById(id);
+ if (!el) return;
+ if (soloVacios && el.value.trim()) return; // no pisar lo ya escrito/prellenado
+ el.value = valor;
+ algoLleno = true;
+ }
+
+ rellenar('sb-nombre-entrega', datos.nombre);
+ rellenar('sb-tel-entrega', datos.telefono);
+ rellenar('sb-manzana-entrega', datos.direccion);
+
+ // Si el panel de recogida "Otro lugar" está visible, se rellena también
+ // (solo los campos vacíos, para no sobrescribir un lugar distinto).
+ const panelOtro = document.getElementById('sb-recogida-otro');
+ if (panelOtro && panelOtro.style.display !== 'none') {
+ rellenar('sb-nombre-recogida', datos.nombre);
+ rellenar('sb-tel-recogida', datos.telefono);
+ rellenar('sb-manzana-recogida', datos.direccion);
+ }
+
+ const btn = document.getElementById('sb-btn-rellenar');
+ if (btn && !soloVacios) {
+ const original = btn.textContent;
+ btn.textContent = algoLleno ? '✅ Datos rellenados' : ' No encontré esos datos en el chat';
+ setTimeout(function () { if (btn) btn.textContent = original; }, 2200);
+ }
+
+ return algoLleno;
  };
 
  window.sbSetRecogidaEnCasa = function(val) {

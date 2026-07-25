@@ -17210,11 +17210,21 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  window._dictadoActivo = false;
  window._dictadoDebeParar = false;
  window._dictadoStopFn = null;
+ window._dictadoIgnorarSalida = false;
 
  window.detenerDictadoActivo = function() {
  if (!window._dictadoActivo) return;
  window._dictadoDebeParar = true;
  if (typeof window._dictadoStopFn === 'function') { try { window._dictadoStopFn(); } catch (e) {} }
+ };
+
+ // Al enviar el mensaje mientras todavía se está dictando, corta el dictado
+ // pero además marca que cualquier resultado que llegue tarde (el reconocedor
+ // sigue procesando el audio unos milisegundos más) debe descartarse, para
+ // que no reaparezca texto en la barra ya vacía tras enviar.
+ window.detenerDictadoParaEnvio = function() {
+ window._dictadoIgnorarSalida = true;
+ window.detenerDictadoActivo();
  };
 
  // Al reiniciar el reconocedor tras una pausa, el micrófono a veces vuelve a
@@ -17282,13 +17292,13 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  while (!window._dictadoDebeParar) {
  const listener = await SR.addListener('partialResults', (data) => {
- if (data && data.matches && data.matches[0]) {
+ if (data && data.matches && data.matches[0] && !window._dictadoIgnorarSalida) {
  input.value = _fusionarTextoDictado(textoAcumulado, data.matches[0]);
  }
  });
  try {
  const resultado = await SR.start({ language: 'es-CO', maxResults: 1, partialResults: true, popup: false });
- if (resultado && resultado.matches && resultado.matches[0]) {
+ if (resultado && resultado.matches && resultado.matches[0] && !window._dictadoIgnorarSalida) {
  textoAcumulado = _fusionarTextoDictado(textoAcumulado, resultado.matches[0]) + ' ';
  input.value = textoAcumulado.trim();
  }
@@ -17306,6 +17316,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  marcarEscuchando(false);
  input.placeholder = placeholderOriginal;
  input.focus();
+ window._dictadoIgnorarSalida = false;
  if (typeof onFinal === 'function') onFinal();
  } else if (window.SpeechRecognition || window.webkitSpeechRecognition) {
  // --- Respaldo navegador (solo para pruebas fuera del APK) ---
@@ -17321,6 +17332,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  window._dictadoStopFn = () => { try { rec.stop(); } catch (e) {} };
 
  rec.onresult = function(e) {
+ if (window._dictadoIgnorarSalida) return;
  let textoNuevo = '';
  for (let i = 0; i < e.results.length; i++) textoNuevo += e.results[i][0].transcript;
  input.value = _fusionarTextoDictado(textoAcumulado, textoNuevo);
@@ -17338,6 +17350,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  marcarEscuchando(false);
  input.placeholder = placeholderOriginal;
  input.focus();
+ window._dictadoIgnorarSalida = false;
  if (typeof onFinal === 'function') onFinal();
  };
  rec.start();
@@ -17374,7 +17387,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (aiWorking) return;
  // Si el cliente todavía está dictando por voz, dar clic en enviar corta
  // el dictado ahí mismo y se envía lo que alcanzó a decir hasta ese punto.
- if (window._dictadoActivo) window.detenerDictadoActivo();
+ if (window._dictadoActivo) window.detenerDictadoParaEnvio();
  const input = document.getElementById('servibot-tab-input');
  if (!input) return;
  const text = input.value.trim();

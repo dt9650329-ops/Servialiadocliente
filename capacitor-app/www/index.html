@@ -17348,7 +17348,12 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  while (!window._dictadoDebeParar) {
  const listener = await SR.addListener('partialResults', (data) => {
  if (data && data.matches && data.matches[0] && !window._dictadoIgnorarSalida) {
- input.value = _fusionarTextoDictado(textoAcumulado, data.matches[0]);
+ // Vista previa simple mientras se habla: NO pasa por el algoritmo de
+ // fusión (ese es solo para cuando termina la sesión y el micro se
+ // reinicia). Aquí solo mostramos lo ya fijado + lo que se lleva dicho.
+ const previo = _separarDigitosPegados((textoAcumulado || '').trim());
+ const parcial = _separarDigitosPegados(data.matches[0].trim());
+ input.value = (previo ? previo + ' ' : '') + parcial;
  }
  });
  try {
@@ -17390,7 +17395,11 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (window._dictadoIgnorarSalida) return;
  let textoNuevo = '';
  for (let i = 0; i < e.results.length; i++) textoNuevo += e.results[i][0].transcript;
- input.value = _fusionarTextoDictado(textoAcumulado, textoNuevo);
+ // Vista previa simple (sin pasar por el algoritmo de fusión, igual que
+ // en el plugin nativo): evita duplicados mientras el resultado parcial
+ // sigue creciendo.
+ const previo = (textoAcumulado || '').trim();
+ input.value = (previo ? previo + ' ' : '') + textoNuevo.trim();
  };
  rec.onerror = function() {
  // errores puntuales de silencio se resuelven en onend, reintentando

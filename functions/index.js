@@ -314,13 +314,16 @@ const herramientas = [
       },
       {
         name: 'iniciarAgendaProgramada',
-        description: 'Verifica si se puede agendar un pedido para una hora exacta más tarde. Solo pide la HORA; nunca pidas dirección, barrio, nombre ni teléfono por chat, eso se llena en un formulario que se abre automáticamente si la hora es válida.',
+        description: 'Verifica si se puede agendar un pedido para una hora exacta más tarde. SIEMPRE pide la HORA. NUNCA pidas el barrio por chat (eso siempre se selecciona manualmente en el formulario que se abre). Pero si el cliente YA mencionó en su mensaje el nombre de quien recibe, su teléfono, y/o la dirección exacta (manzana/casa/referencia, sin incluir el barrio), extráelos y pásalos como argumentos para que el formulario se abra pre-llenado con esos datos.',
         parameters: {
           type: 'object',
           properties: {
             hora: { type: 'integer', description: 'Hora en formato 24h (0-23) a la que quiere que pasen a recoger.' },
             minuto: { type: 'integer', description: 'Minutos (0-59).' },
             dia: { type: 'string', enum: ['hoy', 'mañana'], description: 'Si el pedido es para hoy o mañana.' },
+            nombreEntrega: { type: 'string', description: 'Nombre de quien recibe el pedido, SOLO si el cliente ya lo mencionó en el mensaje.' },
+            telefonoEntrega: { type: 'string', description: 'Teléfono de quien recibe, SOLO si el cliente ya lo mencionó en el mensaje.' },
+            direccionEntrega: { type: 'string', description: 'Manzana/casa/dirección exacta de entrega (SIN el barrio), SOLO si el cliente ya la mencionó en el mensaje.' },
           },
           required: ['hora', 'minuto', 'dia'],
         },
@@ -328,6 +331,14 @@ const herramientas = [
       {
         name: 'cancelarPedidoProgramado',
         description: 'Cancela el pedido agendado/programado del cliente autenticado, solo si todavía no tiene repartidor asignado. Úsala cuando el cliente pida cancelar su pedido agendado.',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'consultarUbicacionPedido',
+        description: 'Consulta la ubicación GPS actual del repartidor del pedido activo del cliente, para mostrarle un mini-mapa en el chat con dónde va. Úsala cuando el cliente pregunte cosas como "¿dónde va mi pedido?", "¿ya viene el repartidor?", "¿cuánto falta?", "¿dónde está mi domicilio?".',
         parameters: {
           type: 'object',
           properties: {},
@@ -380,6 +391,63 @@ async function consultarEstadoPedido(clienteEmail) {
     descripcion: p.descripcion || '',
     montoTotal: p.montoTotal || 0,
     tiempoEstimadoEntrega: p.tiempoEstimadoEntrega || null,
+  };
+}
+
+async function consultarUbicacionPedido(clienteEmail) {
+  const snap = await admin.database()
+    .ref('pedidos_historial')
+    .orderByChild('clienteEmail')
+    .equalTo(clienteEmail)
+    .limitToLast(5)
+    .once('value');
+
+  if (!snap.exists()) {
+    return { encontrado: false, mensaje: 'No se encontró ningún pedido reciente para este cliente.' };
+  }
+
+  const pedidos = Object.entries(snap.val())
+    .map(([id, p]) => ({ id, ...p }))
+    .filter(p => !['entregado', 'cancelado'].includes(p.estado))
+    .sort((a, b) => (b.timestampCreacion || 0) - (a.timestampCreacion || 0));
+
+  if (pedidos.length === 0) {
+    return { encontrado: false, mensaje: 'No tienes pedidos activos en este momento.' };
+  }
+
+  const p = pedidos[0];
+  const repartidorUID = p.repartidorIdAsignado || p.repartidorUID || p.repartidorId;
+  if (!repartidorUID) {
+    return {
+      encontrado: true,
+      tieneRepartidor: false,
+      estado: p.estado,
+      mensaje: 'Tu pedido todavía no tiene repartidor asignado, así que todavía no hay ubicación en tiempo real para mostrar.',
+    };
+  }
+
+  const repSnap = await admin.database().ref(`repartidores_info/${repartidorUID}`).get();
+  let coords = null;
+  if (repSnap.exists()) {
+    const r = repSnap.val();
+    if (r.ubicacionActual && r.ubicacionActual.lat && r.ubicacionActual.lng) {
+      coords = { lat: r.ubicacionActual.lat, lng: r.ubicacionActual.lng };
+    } else if (r.ubicacion && r.ubicacion.lat && r.ubicacion.lng) {
+      coords = { lat: r.ubicacion.lat, lng: r.ubicacion.lng };
+    }
+  }
+
+  return {
+    encontrado: true,
+    tieneRepartidor: true,
+    tieneUbicacion: !!coords,
+    estado: p.estado,
+    repartidorNombre: p.repartidorNombre || 'Tu repartidor',
+    lat: coords ? coords.lat : null,
+    lng: coords ? coords.lng : null,
+    mensaje: coords
+      ? undefined
+      : 'Tu repartidor está asignado, pero por ahora no tengo su ubicación GPS disponible.',
   };
 }
 
@@ -442,7 +510,7 @@ function calcularTimestampAgenda(dia, hora, minuto) {
 }
 
 async function iniciarAgendaProgramada(clienteAuthUID, args) {
-  const { hora, minuto, dia } = args || {};
+  const { hora, minuto, dia, nombreEntrega, telefonoEntrega, direccionEntrega } = args || {};
 
   if (!clienteAuthUID) {
     return { disponible: false, mensaje: 'El cliente no ha iniciado sesión, no se puede agendar. Pídele que inicie sesión primero.' };
@@ -471,7 +539,12 @@ async function iniciarAgendaProgramada(clienteAuthUID, args) {
     }
   }
 
-  return { disponible: true, hora, minuto, dia };
+  return {
+    disponible: true, hora, minuto, dia,
+    nombreEntrega: nombreEntrega || null,
+    telefonoEntrega: telefonoEntrega || null,
+    direccionEntrega: direccionEntrega || null,
+  };
 }
 
 async function confirmarAgendaConBarrios(clienteAuthUID, clienteEmail, args) {
@@ -737,11 +810,16 @@ que no hay repartidor asignado o no hay pedido activo, explícaselo y ofrece el 
 6. Confirma y envía
 
 — PEDIDOS PROGRAMADOS (AGENDAR PARA UNA HORA EXACTA) —
-Si el cliente quiere agendar, pide SOLO la hora exacta (hora, minuto, hoy o mañana) y llama a
-iniciarAgendaProgramada. NUNCA pidas barrio, dirección, nombre ni teléfono por chat: esos datos
-se llenan en un formulario que se abre solo en la app justo después de confirmar la hora. Si la
-hora no es válida o ya tiene agenda activa, explícalo con claridad. Si es válida, dile brevemente
-que complete el barrio de recogida y entrega en el formulario que se acaba de abrir.
+Si el cliente quiere agendar, necesitas al menos la hora exacta (hora, minuto, hoy o mañana) y
+llamas a iniciarAgendaProgramada. NUNCA preguntes proactivamente por el barrio (eso SIEMPRE se
+selecciona manualmente en el formulario). Tampoco preguntes proactivamente por nombre, teléfono
+o dirección exacta si el cliente no los ha dado. PERO si el cliente ya mencionó en su mensaje el
+nombre de quien recibe, su teléfono, y/o la dirección exacta (manzana/casa/referencia, sin
+barrio), extráelos tal cual y pásalos en los argumentos nombreEntrega, telefonoEntrega y
+direccionEntrega para que el formulario se abra ya pre-llenado con esos datos — así el cliente
+solo tiene que buscar y seleccionar el barrio. Si la hora no es válida o ya tiene agenda activa,
+explícalo con claridad. Si es válida, dile brevemente que complete lo que falte (como mínimo el
+barrio) en el formulario que se acaba de abrir.
 Si el cliente pide cancelar, usa cancelarPedidoProgramado. Si la respuesta indica que ya tiene
 repartidor asignado, explícale que ya no se puede cancelar por chat y que debe escribir al chat
 de soporte.
@@ -755,8 +833,11 @@ pregunten, sin importar si ya los diste antes en la misma conversación:
 - Descripción del pedido
 - Valor total
 - Tiempo estimado de entrega
-Después de dar esos datos completos, SIEMPRE recuérdale que también puede ver la ubicación de
-su repartidor en tiempo real en el mapa, en la pestaña "Seguir".
+Si el cliente pregunta específicamente DÓNDE va su repartidor o pide ver su ubicación (ej. "¿dónde
+va mi pedido?", "¿ya viene?", "muéstrame dónde está"), usa la herramienta consultarUbicacionPedido
+en vez de (o además de) consultarEstadoPedido — esta le muestra un mini-mapa directo en el chat.
+Después de mostrar el mini-mapa, recuérdale que puede tocar "Ver seguimiento completo" para ver el
+mapa grande con la ruta, o ir a la pestaña "Seguir" manualmente.
 Si el cliente NO está autenticado y pregunta por su pedido, pídele que inicie sesión, o dile que
 puede ir a la pestaña "Seguir" e ingresar su correo para ver el estado y el mapa ahí mismo.
 
@@ -779,6 +860,26 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 - [MODO PRUEBAS: sin restricción de horario por ahora]
 - Mantente siempre en temas de Servi Aliados (precios, zonas, tiempos, pedidos, cuenta, etc). Si
   te preguntan algo totalmente ajeno (chistes, tareas, trivia, clima), redirige amablemente al tema.`;
+}
+
+// Respaldo por si Gemini no extrae el teléfono o la dirección del mensaje del
+// cliente (la extracción del modelo no es 100% consistente). Busca patrones
+// directos en el texto para no depender solo de que la IA decida hacerlo.
+function extraerFallbackEntrega(texto) {
+  const resultado = { telefonoEntrega: null, direccionEntrega: null, nombreEntrega: null };
+  if (!texto) return resultado;
+  const telMatch = texto.match(/(\d{3}[\s.-]?\d{3}[\s.-]?\d{4})/);
+  if (telMatch) resultado.telefonoEntrega = telMatch[1].replace(/[\s.-]/g, '');
+  const dirMatch = texto.match(/manzana\s*\d+[^\d]{0,12}casa\s*\d+/i);
+  if (dirMatch) resultado.direccionEntrega = dirMatch[0];
+  // Nombre: busca "a/para <Nombre>" con mayúscula inicial, evitando palabras
+  // comunes que no son nombres propios (mi, la, el, un, una, etc).
+  const stopwords = new Set(['Mi', 'La', 'El', 'Un', 'Una', 'Su', 'Que', 'Casa', 'Manzana']);
+  const nombreMatch = texto.match(/\b(?:a|para)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/);
+  if (nombreMatch && !stopwords.has(nombreMatch[1])) {
+    resultado.nombreEntrega = nombreMatch[1];
+  }
+  return resultado;
 }
 
 exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => {
@@ -822,14 +923,22 @@ exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => 
   }
 
   if (call && call.name === 'iniciarAgendaProgramada') {
-    const disp = await iniciarAgendaProgramada(clienteAuthUID, call.args || {});
+    const args = { ...(call.args || {}) };
+    const fallback = extraerFallbackEntrega(mensaje);
+    if (!args.telefonoEntrega && fallback.telefonoEntrega) args.telefonoEntrega = fallback.telefonoEntrega;
+    if (!args.direccionEntrega && fallback.direccionEntrega) args.direccionEntrega = fallback.direccionEntrega;
+    if (!args.nombreEntrega && fallback.nombreEntrega) args.nombreEntrega = fallback.nombreEntrega;
+    const disp = await iniciarAgendaProgramada(clienteAuthUID, args);
     const result2 = await chat.sendMessage([
       { functionResponse: { name: 'iniciarAgendaProgramada', response: disp } },
     ]);
     return {
       respuesta: result2.response.text(),
       accion: disp.disponible ? 'mostrarSelectorBarrios' : null,
-      datosAgenda: disp.disponible ? { hora: disp.hora, minuto: disp.minuto, dia: disp.dia } : null,
+      datosAgenda: disp.disponible ? {
+        hora: disp.hora, minuto: disp.minuto, dia: disp.dia,
+        nombreEntrega: disp.nombreEntrega, telefonoEntrega: disp.telefonoEntrega, direccionEntrega: disp.direccionEntrega,
+      } : null,
     };
   }
 
@@ -839,6 +948,24 @@ exports.servibotChat = onCall({ secrets: [GEMINI_API_KEY] }, async (request) => 
       { functionResponse: { name: 'cancelarPedidoProgramado', response: datosCancel } },
     ]);
     return { respuesta: result2.response.text() };
+  }
+
+  if (call && call.name === 'consultarUbicacionPedido') {
+    const datosUbicacion = logueado
+      ? await consultarUbicacionPedido(clienteEmail)
+      : { encontrado: false, mensaje: 'El cliente no ha iniciado sesión, no se puede consultar su pedido.' };
+    const result2 = await chat.sendMessage([
+      { functionResponse: { name: 'consultarUbicacionPedido', response: datosUbicacion } },
+    ]);
+    const mostrarMapa = !!(datosUbicacion.encontrado && datosUbicacion.tieneRepartidor && datosUbicacion.tieneUbicacion);
+    return {
+      respuesta: result2.response.text(),
+      accion: mostrarMapa ? 'mostrarUbicacionPedido' : null,
+      datosUbicacion: mostrarMapa ? {
+        lat: datosUbicacion.lat, lng: datosUbicacion.lng,
+        repartidorNombre: datosUbicacion.repartidorNombre, estado: datosUbicacion.estado,
+      } : null,
+    };
   }
 
   if (call && call.name === 'avisarRepartidorOlvido') {

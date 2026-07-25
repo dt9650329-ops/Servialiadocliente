@@ -17228,21 +17228,52 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  };
 
  // Al reiniciar el reconocedor tras una pausa, el micrófono a veces vuelve a
- // captar el final de lo que ya se dijo antes de limpiarse. Esta función
- // detecta ese solape entre el texto ya acumulado y el nuevo fragmento, y
- // descarta la parte repetida en vez de pegarla de nuevo.
+ // captar el final (o incluso toda) la frase ya dicha antes de limpiarse.
+ // Esta función compara por PALABRAS (no caracteres) para que pequeñas
+ // diferencias de transcripción ("es" vs "esy") no rompan la detección de
+ // solape, y además revisa si el fragmento nuevo ya está casi completo
+ // dentro de lo acumulado, para descartarlo en vez de pegarlo de nuevo.
+ function _normalizarPalabra(w) {
+ return w.toLowerCase().replace(/[.,!?¿¡]/g, '');
+ }
+
  function _fusionarTextoDictado(previo, nuevoFragmento) {
  const p = (previo || '').trim();
  const n = (nuevoFragmento || '').trim();
  if (!p) return n;
  if (!n) return p;
- if (p.toLowerCase().endsWith(n.toLowerCase())) return p;
- const maxSolape = Math.min(p.length, n.length);
- for (let len = maxSolape; len > 3; len--) {
- if (p.slice(-len).toLowerCase() === n.slice(0, len).toLowerCase()) {
- return (p + n.slice(len)).trim();
+
+ const pWords = p.split(/\s+/);
+ const nWords = n.split(/\s+/);
+ const pNorm = pWords.map(_normalizarPalabra);
+ const nNorm = nWords.map(_normalizarPalabra);
+
+ // 1) ¿El fragmento nuevo ya está casi completo (80%+) en algún punto de lo
+ // acumulado? Si es así, es una repetición completa por reinicio del
+ // micrófono: se descarta entero, no se pega nada.
+ if (nNorm.length >= 3) {
+ const minCoincidencia = Math.ceil(nNorm.length * 0.8);
+ for (let start = 0; start <= pNorm.length - minCoincidencia; start++) {
+ let coincide = 0;
+ for (let i = 0; i < nNorm.length && (start + i) < pNorm.length; i++) {
+ if (pNorm[start + i] === nNorm[i]) coincide++;
+ }
+ if (coincide >= minCoincidencia) return p;
  }
  }
+
+ // 2) Solape normal: el final de lo acumulado coincide con el inicio de lo
+ // nuevo (comparando palabra por palabra). Se prueba desde el solape más
+ // largo posible hacia el más corto, para no cortar de más.
+ const maxSolape = Math.min(pNorm.length, nNorm.length);
+ for (let len = maxSolape; len >= 2; len--) {
+ const colaP = pNorm.slice(-len).join(' ');
+ const inicioN = nNorm.slice(0, len).join(' ');
+ if (colaP === inicioN) {
+ return (p + ' ' + nWords.slice(len).join(' ')).trim();
+ }
+ }
+
  return (p + ' ' + n).trim();
  }
 
@@ -17310,7 +17341,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  }
  // Pausa breve para que el micrófono se libere antes de reiniciar;
  // evita que vuelva a captar el final de lo que ya se transcribió.
- if (!window._dictadoDebeParar) await _esperar(350);
+ if (!window._dictadoDebeParar) await _esperar(550);
  }
 
  marcarEscuchando(false);
@@ -17344,7 +17375,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (!window._dictadoDebeParar) {
  // El navegador cortó la sesión por pausa larga: reiniciar automáticamente
  textoAcumulado = input.value ? input.value.trim() + ' ' : textoAcumulado;
- _esperar(350).then(() => { try { rec.start(); } catch (e) {} });
+ _esperar(550).then(() => { try { rec.start(); } catch (e) {} });
  return;
  }
  marcarEscuchando(false);

@@ -17499,9 +17499,11 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  container.appendChild(div);
  container.scrollTop = container.scrollHeight;
 
- if (window._sbAgenda.nombreEntrega) document.getElementById('sb-nombre-entrega').value = window._sbAgenda.nombreEntrega;
- if (window._sbAgenda.telefonoEntrega) document.getElementById('sb-tel-entrega').value = window._sbAgenda.telefonoEntrega;
- if (window._sbAgenda.direccionEntrega) document.getElementById('sb-manzana-entrega').value = window._sbAgenda.direccionEntrega;
+ // Se usa optional chaining por separado en cada línea: si un campo no
+ // se encuentra por cualquier motivo, no bloquea el llenado de los otros.
+ try { if (window._sbAgenda.nombreEntrega) { const el = document.getElementById('sb-nombre-entrega'); if (el) el.value = window._sbAgenda.nombreEntrega; } } catch(e) { console.warn('No se pudo prellenar nombre:', e); }
+ try { if (window._sbAgenda.telefonoEntrega) { const el = document.getElementById('sb-tel-entrega'); if (el) el.value = window._sbAgenda.telefonoEntrega; } } catch(e) { console.warn('No se pudo prellenar teléfono:', e); }
+ try { if (window._sbAgenda.direccionEntrega) { const el = document.getElementById('sb-manzana-entrega'); if (el) el.value = window._sbAgenda.direccionEntrega; } } catch(e) { console.warn('No se pudo prellenar dirección:', e); }
  };
 
  window.sbSetRecogidaEnCasa = function(val) {

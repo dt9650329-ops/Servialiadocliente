@@ -10180,6 +10180,7 @@ if (dentroDeHorario) {
    const res = await servibotChatCallable({ mensaje, historial });
    window._sbAccionPendiente = res.data.accion || null;
    window._sbDatosAgendaPendiente = res.data.datosAgenda || null;
+   window._sbDatosUbicacionPendiente = res.data.datosUbicacion || null;
    return res.data.respuesta;
  };
  window.push = push;
@@ -17082,6 +17083,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (window._sbAccionPendiente === 'mostrarSelectorBarrios' && window._sbDatosAgendaPendiente) {
    mostrarTarjetaAgendaChat(window._sbDatosAgendaPendiente);
    window._sbAccionPendiente = null;
+ } else if (window._sbAccionPendiente === 'mostrarUbicacionPedido' && window._sbDatosUbicacionPendiente) {
+   mostrarTarjetaUbicacionPedido(window._sbDatosUbicacionPendiente);
+   window._sbAccionPendiente = null;
  }
  aiWorking = false;
  }, 600);
@@ -17507,6 +17511,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (window._sbAccionPendiente === 'mostrarSelectorBarrios' && window._sbDatosAgendaPendiente) {
    mostrarTarjetaAgendaChat(window._sbDatosAgendaPendiente);
    window._sbAccionPendiente = null;
+ } else if (window._sbAccionPendiente === 'mostrarUbicacionPedido' && window._sbDatosUbicacionPendiente) {
+   mostrarTarjetaUbicacionPedido(window._sbDatosUbicacionPendiente);
+   window._sbAccionPendiente = null;
  }
  aiWorking = false;
  }, 600);
@@ -17687,6 +17694,71 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  }
 
  return algoLleno;
+ };
+
+ // ================================================================
+ // TARJETA DE UBICACIÓN — mini-mapa Leaflet embebido en el chat con
+ // la posición del repartidor. Reutiliza la misma librería Leaflet
+ // que ya carga toda la app (sin API keys ni costos nuevos).
+ // ================================================================
+ window.mostrarTarjetaUbicacionPedido = function(datosUbicacion) {
+ const tabMsgs = document.getElementById('servibot-tab-messages');
+ const container = (tabMsgs && tabMsgs.offsetParent !== null) ? tabMsgs : document.getElementById('ai-messages');
+ if (!container || !datosUbicacion || !datosUbicacion.lat || !datosUbicacion.lng) return;
+
+ const existente = document.getElementById('sb-ubicacion-card');
+ if (existente) existente.remove();
+ if (window._sbUbicacionMapa) {
+ try { window._sbUbicacionMapa.remove(); } catch (e) {}
+ window._sbUbicacionMapa = null;
+ }
+
+ const mapId = 'sb-ubicacion-mapa-' + Date.now();
+ const repNombre = datosUbicacion.repartidorNombre || 'Tu repartidor';
+ const estadoTxt = (datosUbicacion.estado || '').toLowerCase();
+ const estadoLabel = {
+ 'aceptado': 'va en camino a recoger tu pedido',
+ 'esperando': 'está en el punto de recogida',
+ 'en camino': 'va en camino hacia ti',
+ }[estadoTxt] || ('está en estado: ' + (datosUbicacion.estado || '—'));
+
+ const div = document.createElement('div');
+ div.id = 'sb-ubicacion-card';
+ div.className = 'ai-msg bot';
+ div.style.cssText = 'max-width:100%; padding:12px; background:var(--color-surface2,#161b22); border:1px solid var(--color-border2,#30363d); border-radius:10px;';
+ div.innerHTML =
+ '<div style="font-weight:bold; color:var(--color-primary,#F59E0B); margin-bottom:8px;"> ' + repNombre + '</div>' +
+ '<div style="font-size:13px; color:#d1d5db; margin-bottom:10px;">' + repNombre + ' ' + estadoLabel + '.</div>' +
+ '<div id="' + mapId + '" style="width:100%; height:160px; border-radius:8px; overflow:hidden; margin-bottom:10px;"></div>' +
+ '<button type="button" onclick="sbVerSeguimientoCompleto()" style="width:100%; padding:10px; border-radius:8px; border:none; background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:13px;"> Ver seguimiento completo</button>';
+
+ container.appendChild(div);
+ container.scrollTop = container.scrollHeight;
+
+ setTimeout(function () {
+ try {
+ const mapa = L.map(mapId, {
+ zoomControl: false,
+ attributionControl: false,
+ dragging: false,
+ scrollWheelZoom: false,
+ doubleClickZoom: false,
+ touchZoom: false,
+ }).setView([datosUbicacion.lat, datosUbicacion.lng], 15);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapa);
+ L.marker([datosUbicacion.lat, datosUbicacion.lng]).addTo(mapa);
+ window._sbUbicacionMapa = mapa;
+ } catch (e) {
+ console.warn('No se pudo inicializar el mini-mapa del chat:', e);
+ }
+ }, 50);
+ };
+
+ window.sbVerSeguimientoCompleto = function() {
+ if (typeof window.changeTab === 'function') window.changeTab('tracking');
+ setTimeout(function () {
+ if (typeof window.buscarPedidoPorCorreo === 'function') window.buscarPedidoPorCorreo();
+ }, 200);
  };
 
  window.sbSetRecogidaEnCasa = function(val) {

@@ -17227,19 +17227,49 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  window.detenerDictadoActivo();
  };
 
- // Al reiniciar el reconocedor tras una pausa, el micrófono a veces vuelve a
- // captar el final (o incluso toda) la frase ya dicha antes de limpiarse.
- // Esta función compara por PALABRAS (no caracteres) para que pequeñas
- // diferencias de transcripción ("es" vs "esy") no rompan la detección de
- // solape, y además revisa si el fragmento nuevo ya está casi completo
- // dentro de lo acumulado, para descartarlo en vez de pegarlo de nuevo.
+ // Al reiniciar el reconocedor tras una pausa, en algunos dispositivos
+ // Android vuelve a mandar la frase COMPLETA desde el inicio (un poco más
+ // larga cada vez), y a veces con pequeños empalmes raros (ej: un número
+ // que quedó cortado a la mitad reaparece pegado al inicio del siguiente
+ // fragmento, desalineando todo). Por eso esta función no compara solo el
+ // principio o el final: busca el tramo de palabras iguales más largo en
+ // CUALQUIER posición entre lo acumulado y lo nuevo. Si ese tramo es
+ // suficientemente largo, es la misma frase repitiéndose por el reinicio:
+ // se queda con la versión más completa (más larga) en vez de pegar las dos.
  function _normalizarPalabra(w) {
  return w.toLowerCase().replace(/[.,!?¿¡]/g, '');
  }
 
+ // Separa dígitos pegados a letras ("794para" -> "794 para") para que la
+ // comparación por palabras no se rompa por falta de espacio entre tandas.
+ function _separarDigitosPegados(s) {
+ return s
+ .replace(/(\d)([a-zA-Záéíóúñ])/gi, '$1 $2')
+ .replace(/([a-zA-Záéíóúñ])(\d)/gi, '$1 $2')
+ .replace(/\s+/g, ' ')
+ .trim();
+ }
+
+ function _tramoComunMasLargo(a, b) {
+ // Longitud del mayor tramo contiguo de palabras iguales entre dos listas.
+ // Los textos dictados son cortos (unas pocas decenas de palabras), así
+ // que un DP O(n*m) es más que suficiente aquí.
+ let mejor = 0;
+ const dp = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+ for (let i = 1; i <= a.length; i++) {
+ for (let j = 1; j <= b.length; j++) {
+ if (a[i - 1] === b[j - 1]) {
+ dp[i][j] = dp[i - 1][j - 1] + 1;
+ if (dp[i][j] > mejor) mejor = dp[i][j];
+ }
+ }
+ }
+ return mejor;
+ }
+
  function _fusionarTextoDictado(previo, nuevoFragmento) {
- const p = (previo || '').trim();
- const n = (nuevoFragmento || '').trim();
+ const p = _separarDigitosPegados((previo || '').trim());
+ const n = _separarDigitosPegados((nuevoFragmento || '').trim());
  if (!p) return n;
  if (!n) return p;
 
@@ -17248,23 +17278,17 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const pNorm = pWords.map(_normalizarPalabra);
  const nNorm = nWords.map(_normalizarPalabra);
 
- // 1) ¿El fragmento nuevo ya está casi completo (80%+) en algún punto de lo
- // acumulado? Si es así, es una repetición completa por reinicio del
- // micrófono: se descarta entero, no se pega nada.
- if (nNorm.length >= 3) {
- const minCoincidencia = Math.ceil(nNorm.length * 0.8);
- for (let start = 0; start <= pNorm.length - minCoincidencia; start++) {
- let coincide = 0;
- for (let i = 0; i < nNorm.length && (start + i) < pNorm.length; i++) {
- if (pNorm[start + i] === nNorm[i]) coincide++;
- }
- if (coincide >= minCoincidencia) return p;
- }
+ // 1) ¿Hay un tramo largo de palabras iguales en cualquier posición? Si es
+ // así, es la misma frase repitiéndose por el reinicio del micrófono: nos
+ // quedamos con la versión más completa (la más larga) en vez de pegarlas.
+ const tramo = _tramoComunMasLargo(pNorm, nNorm);
+ const umbral = Math.max(4, Math.min(6, Math.floor(Math.min(pNorm.length, nNorm.length) * 0.5)));
+ if (tramo >= umbral) {
+ return nWords.length >= pWords.length ? n : p;
  }
 
- // 2) Solape normal: el final de lo acumulado coincide con el inicio de lo
- // nuevo (comparando palabra por palabra). Se prueba desde el solape más
- // largo posible hacia el más corto, para no cortar de más.
+ // 2) Sin repetición grande: solape normal al final (se pega solo la parte
+ // realmente nueva), probando desde el solape más largo posible.
  const maxSolape = Math.min(pNorm.length, nNorm.length);
  for (let len = maxSolape; len >= 2; len--) {
  const colaP = pNorm.slice(-len).join(' ');

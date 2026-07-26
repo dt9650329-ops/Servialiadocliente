@@ -3157,7 +3157,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.0.2</small>
+ <small>Versión 1.0.3</small>
  </div>
  </div>
  </div>
@@ -4787,6 +4787,9 @@
  let watchPositionId = null;
  let locationPermissionGranted = false;
  let currentPedidoId = null;
+ // Repartidores/pedidos ADICIONALES cuando el cliente tiene 2+ pedidos activos a la vez.
+ // Cada entrada se guarda por pedidoId: { marker, listenerFn, repartidorUID }
+ let repartidorMarkersExtra = {};
  
  // TONOS DE NOTIFICACIÓN 
 const TONOS_NOTIFICACION = [
@@ -8317,9 +8320,31 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  console.log(' Marcador del cliente actualizado. clienteCoords guardadas:', clienteCoords);
  }
 
- function agregarMarcadorRepartidor(coords) {
- console.log(' Agregando marcador del repartidor:', coords);
- 
+ function agregarMarcadorRepartidor(coords, pedidoId = null, esAdicional = false) {
+ console.log(' Agregando marcador del repartidor:', coords, pedidoId ? `(pedido ${pedidoId})` : '(principal)');
+
+ // PEDIDO ADICIONAL (cliente con 2+ pedidos activos): marcador propio, no pisa el principal
+ if (esAdicional && pedidoId) {
+ const existente = repartidorMarkersExtra[pedidoId];
+ if (existente && existente.marker) {
+ existente.marker.setLatLng([coords.lat, coords.lng]);
+ } else {
+ const iconRepartidorExtra = L.divIcon({
+ className: 'custom-marker-repartidor',
+ html: '<div style="background-color: #9C27B0; width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 12px rgba(156,39,176,0.6); display:flex; align-items:center; justify-content:center; font-size:20px;"></div>',
+ iconSize: [40, 40],
+ iconAnchor: [20, 20]
+ });
+ const nuevoMarker = L.marker([coords.lat, coords.lng], { icon: iconRepartidorExtra, zIndexOffset: 950 })
+ .addTo(map)
+ .bindPopup(`<b> Repartidor</b><br><small>Pedido adicional</small>`);
+ repartidorMarkersExtra[pedidoId] = { ...(repartidorMarkersExtra[pedidoId] || {}), marker: nuevoMarker };
+ }
+ console.log(' Marcador de repartidor adicional actualizado:', pedidoId);
+ return;
+ }
+
+ // PEDIDO PRINCIPAL (el primero mostrado)
  if (repartidorMarker) {
  repartidorMarker.setLatLng([coords.lat, coords.lng]);
  } else {
@@ -8341,6 +8366,9 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  // MARCADOR DEL PUNTO DE ENTREGA (barrio / zona destino)
  let entregaMarker = null;
  let recogidaMarker = null;
+ // Marcadores adicionales de entrega/recogida cuando el cliente tiene 2+ pedidos activos
+ let entregaMarkersExtra = [];
+ let recogidaMarkersExtra = [];
 
  // Diccionario local de barrios de Armenia (fallback geocodificación) 
  const BARRIOS_ARMENIA_CLIENT = {
@@ -8592,6 +8620,8 @@ async function _cargarBarriosFirebaseCliente() {
 
  if (!esAdicional) {
  entregaMarker = nuevoMarker;
+ } else {
+ entregaMarkersExtra.push(nuevoMarker);
  }
 
  // Ajustar el mapa solo la primera vez (para no interrumpir zoom manual)
@@ -8609,6 +8639,21 @@ async function _cargarBarriosFirebaseCliente() {
  map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
  }
  }, 800);
+ } else if (esAdicional && mapaYaAjustado) {
+ // Si ya se ajustó el mapa, expandir el zoom para incluir este pedido extra también
+ setTimeout(() => {
+ const puntos = [];
+ if (clienteCoords && clienteCoords.lat) puntos.push([clienteCoords.lat, clienteCoords.lng]);
+ if (entregaMarker) puntos.push(entregaMarker.getLatLng());
+ if (recogidaMarker) puntos.push(recogidaMarker.getLatLng());
+ if (repartidorMarker) puntos.push(repartidorMarker.getLatLng());
+ entregaMarkersExtra.forEach(m => puntos.push(m.getLatLng()));
+ recogidaMarkersExtra.forEach(m => puntos.push(m.getLatLng()));
+ Object.values(repartidorMarkersExtra).forEach(entry => { if (entry.marker) puntos.push(entry.marker.getLatLng()); });
+ if (puntos.length >= 2) {
+ map.fitBounds(L.latLngBounds(puntos), { padding: [50, 50], maxZoom: 15 });
+ }
+ }, 900);
  }
 
  console.log(' Marcador de entrega agregado en:', lat, lng);
@@ -8620,6 +8665,10 @@ async function _cargarBarriosFirebaseCliente() {
  map.removeLayer(entregaMarker);
  entregaMarker = null;
  }
+ if (map) {
+ entregaMarkersExtra.forEach(m => { try { map.removeLayer(m); } catch(e){} });
+ }
+ entregaMarkersExtra = [];
  }
 
  // Marcador de RECOGIDA (punto A) 
@@ -8680,16 +8729,23 @@ async function _cargarBarriosFirebaseCliente() {
 
  if (!esAdicional) {
  recogidaMarker = nuevoRecogidaMarker;
+ } else {
+ recogidaMarkersExtra.push(nuevoRecogidaMarker);
  }
 
- // Reajustar bounds para incluir recogida, entrega y cliente
+ // Reajustar bounds para incluir recogida, entrega, cliente y TODOS los repartidores (pedidos múltiples)
  setTimeout(() => {
  if (!mapaYaAjustado) return;
  const puntos = [];
  if (clienteCoords && clienteCoords.lat) puntos.push([clienteCoords.lat, clienteCoords.lng]);
  if (recogidaMarker) puntos.push(recogidaMarker.getLatLng());
  if (entregaMarker) puntos.push(entregaMarker.getLatLng());
- if (repartidorMarker)puntos.push(repartidorMarker.getLatLng());
+ if (repartidorMarker) puntos.push(repartidorMarker.getLatLng());
+ entregaMarkersExtra.forEach(m => puntos.push(m.getLatLng()));
+ recogidaMarkersExtra.forEach(m => puntos.push(m.getLatLng()));
+ Object.values(repartidorMarkersExtra).forEach(entry => {
+ if (entry.marker) puntos.push(entry.marker.getLatLng());
+ });
  if (puntos.length >= 2) {
  map.fitBounds(L.latLngBounds(puntos), { padding: [50, 50], maxZoom: 15 });
  }
@@ -8703,6 +8759,10 @@ async function _cargarBarriosFirebaseCliente() {
  map.removeLayer(recogidaMarker);
  recogidaMarker = null;
  }
+ if (map) {
+ recogidaMarkersExtra.forEach(m => { try { map.removeLayer(m); } catch(e){} });
+ }
+ recogidaMarkersExtra = [];
  }
 
  // FUNCIÓN MEJORADA PARA TRAZAR RUTAS
@@ -8879,10 +8939,10 @@ async function _cargarBarriosFirebaseCliente() {
  // === SEGUIMIENTO DE UBICACIÓN DEL REPARTIDOR (MEJORADO) ===
  // ======================================================================
 
- function iniciarSeguimientoUbicacion(repartidorUID, pedidoId) {
+ function iniciarSeguimientoUbicacion(repartidorUID, pedidoId, esAdicional = false) {
  console.log('');
  console.log('');
- console.log(' INICIANDO SEGUIMIENTO DEL REPARTIDOR');
+ console.log(' INICIANDO SEGUIMIENTO DEL REPARTIDOR', esAdicional ? '(pedido adicional)' : '(principal)');
  console.log('');
  
  if (!clienteCoords || !clienteCoords.lat || !clienteCoords.lng) {
@@ -8901,6 +8961,40 @@ async function _cargarBarriosFirebaseCliente() {
  
  if (!repartidorUID) {
  console.error(' No se proporcionó repartidorUID');
+ return;
+ }
+
+ // PEDIDO ADICIONAL: listener independiente, NO toca el seguimiento del pedido principal
+ if (esAdicional && pedidoId) {
+ const existente = repartidorMarkersExtra[pedidoId];
+ if (existente && existente.listenerFn && existente.repartidorUID) {
+ const oldRef = window.ref(window.db, `repartidores_info/${existente.repartidorUID}`);
+ window.off(oldRef, 'value', existente.listenerFn);
+ }
+
+ const repartidorRefExtra = window.ref(window.db, `repartidores_info/${repartidorUID}`);
+ const listenerFnExtra = window.onValue(repartidorRefExtra, (snapshot) => {
+ if (!snapshot.exists()) return;
+ const repartidorData = snapshot.val();
+ let repartidorCoords = null;
+ if (repartidorData.ubicacionActual && repartidorData.ubicacionActual.lat && repartidorData.ubicacionActual.lng) {
+ repartidorCoords = { lat: repartidorData.ubicacionActual.lat, lng: repartidorData.ubicacionActual.lng };
+ } else if (repartidorData.ubicacion && repartidorData.ubicacion.lat && repartidorData.ubicacion.lng) {
+ repartidorCoords = { lat: repartidorData.ubicacion.lat, lng: repartidorData.ubicacion.lng };
+ }
+ if (!repartidorCoords) return;
+ agregarMarcadorRepartidor(repartidorCoords, pedidoId, true);
+ }, (error) => {
+ console.error(' Error en listener del repartidor (adicional):', error);
+ });
+
+ repartidorMarkersExtra[pedidoId] = {
+ ...(repartidorMarkersExtra[pedidoId] || {}),
+ listenerFn: listenerFnExtra,
+ repartidorUID: repartidorUID
+ };
+
+ console.log(` Listener adicional activado — Repartidor UID: ${repartidorUID}, Pedido: ${pedidoId}`);
  return;
  }
  
@@ -8999,6 +9093,22 @@ async function _cargarBarriosFirebaseCliente() {
  currentPedidoId = null;
  console.log(' Listener del repartidor detenido');
  }
+
+ // Limpiar listeners y marcadores de repartidores de PEDIDOS ADICIONALES
+ Object.keys(repartidorMarkersExtra).forEach(pedidoId => {
+ const entry = repartidorMarkersExtra[pedidoId];
+ if (entry.listenerFn && entry.repartidorUID && window.off && window.ref && window.db) {
+ try {
+ const refExtra = window.ref(window.db, `repartidores_info/${entry.repartidorUID}`);
+ window.off(refExtra, 'value', entry.listenerFn);
+ } catch (e) { console.warn('Error al detener listener adicional:', e); }
+ }
+ if (entry.marker && map) {
+ try { map.removeLayer(entry.marker); } catch (e) {}
+ }
+ });
+ repartidorMarkersExtra = {};
+ console.log(' Listeners y marcadores adicionales limpiados');
 
  if (watchPositionId !== null) {
  navigator.geolocation.clearWatch(watchPositionId);
@@ -9656,13 +9766,18 @@ if (dentroDeHorario) {
  agregarMarcadorEntrega(pedido, pedidoIndex > 0);
  agregarMarcadorRecogida(pedido, pedidoIndex > 0);
  
- // Seguimiento del repartidor: solo para el primer pedido con repartidor asignado
+ // Seguimiento del repartidor: el primer pedido usa el seguimiento "principal" (con ruta trazada);
+ // los pedidos adicionales (2do, 3ro, etc.) obtienen su propio marcador de repartidor en el mapa.
  if (tieneRepartidor && pedidoIndex === 0) {
  await new Promise(resolve => setTimeout(resolve, 1000));
  if (clienteCoords && clienteCoords.lat && clienteCoords.lng) {
    // Guardar nombre del repartidor para el listener SOS
    window._currentRepartidorNombre = pedido.repartidorNombre || '';
    iniciarSeguimientoUbicacion(tieneRepartidor, pedido.id);
+ }
+ } else if (tieneRepartidor && pedidoIndex > 0) {
+ if (clienteCoords && clienteCoords.lat && clienteCoords.lng) {
+   iniciarSeguimientoUbicacion(tieneRepartidor, pedido.id, true);
  }
  } else if (!tieneRepartidor && pedidoIndex === 0) {
  const mapDist = document.getElementById('map-distance');
@@ -10026,7 +10141,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.0.2');
+ console.log(' Sistema del cliente inicializado v1.0.3');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10118,7 +10233,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.0.2";
+ const APP_VERSION = "1.0.3";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -12283,7 +12398,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.0.2');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.0.3');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -12328,7 +12443,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.0.2  -  (Sin verificación admin)');
+ console.log(' VERSIÓN: 1.0.3  -  (Sin verificación admin)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -18607,9 +18722,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  + '<div class="notif-item-body">' + n.body + '</div>'
  + '<div class="notif-item-time">' + dateStr + ' · ' + timeStr + '</div>';
  div.addEventListener('click', () => {
+ // FIX: al tocarla solo se marca como vista (leída), ya NO se borra.
+ // Solo el botón "Limpiar todo" borra las notificaciones de forma permanente.
  n.read = true;
- // Al abrirla, se va directo a la papelera para no acumular notificaciones leídas
- _notifs = _notifs.filter(x => x.id !== n.id);
  _save(); _updateBadge(); _renderPanel();
  if (n.action === 'chat_p2p' && n.pedidoId) {
  _panelOpen = false;
@@ -18819,9 +18934,21 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // corresponden en vez de heredar el historial de otra cuenta.
  const vistasKey = 'sa_notif_vistas_' + (_uidBaseNotif || 'guest');
  const globalRef = window.ref(window.db, 'notificaciones_globales');
+ // ✅ FIX: si esta cuenta NUNCA ha inicializado su lista de "vistas" (cuenta
+ // recién creada en este dispositivo), significa que no debe recibir el
+ // historial completo de avisos globales anteriores a su registro. En ese
+ // caso, se marcan todos los avisos existentes como "ya vistos" SIN
+ // mostrarlos, y de ahí en adelante solo se muestran los avisos nuevos.
+ let esPrimeraInicializacion = localStorage.getItem(vistasKey) === null;
  window.onValue(globalRef, function(snap) {
  if (!snap.exists()) return;
  const vistas = JSON.parse(localStorage.getItem(vistasKey) || '{}');
+ if (esPrimeraInicializacion) {
+ snap.forEach(function(child) { vistas[child.key] = true; });
+ localStorage.setItem(vistasKey, JSON.stringify(vistas));
+ esPrimeraInicializacion = false;
+ return;
+ }
  snap.forEach(function(child) {
  const key = child.key;
  if (!vistas[key]) {

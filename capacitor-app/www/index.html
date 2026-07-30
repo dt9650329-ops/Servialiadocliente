@@ -10211,7 +10211,7 @@ if (dentroDeHorario) {
  appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
  };
 
- let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable;
+ let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable;
  try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
@@ -10225,6 +10225,7 @@ if (dentroDeHorario) {
  cancelarAgendaDirectoCallable = httpsCallable(functions, 'cancelarAgendaDirecto');
  editarAgendaProgramadaCallable = httpsCallable(functions, 'editarAgendaProgramada');
  redimirCuponCallable = httpsCallable(functions, 'redimirCupon');
+ confirmarPedidoTerceroCallable = httpsCallable(functions, 'confirmarPedidoTerceroDirecto');
  console.log(' Firebase inicializado correctamente');
  } catch(e) {
  console.error(' Firebase no pudo iniciar:', e.message);
@@ -10291,11 +10292,13 @@ if (dentroDeHorario) {
  window.cancelarAgendaDirectoCallable = cancelarAgendaDirectoCallable;
  window.editarAgendaProgramadaCallable = editarAgendaProgramadaCallable;
  window.redimirCuponCallable = redimirCuponCallable;
+ window.confirmarPedidoTerceroCallable = confirmarPedidoTerceroCallable;
  window.consultarServibot = async function(mensaje, historial) {
    const res = await servibotChatCallable({ mensaje, historial });
    window._sbAccionPendiente = res.data.accion || null;
    window._sbDatosAgendaPendiente = res.data.datosAgenda || null;
    window._sbDatosUbicacionPendiente = res.data.datosUbicacion || null;
+   window._sbDatosTerceroPendiente = res.data.datosTercero || null;
    return res.data.respuesta;
  };
  window.push = push;
@@ -17201,6 +17204,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  } else if (window._sbAccionPendiente === 'mostrarUbicacionPedido' && window._sbDatosUbicacionPendiente) {
    mostrarTarjetaUbicacionPedido(window._sbDatosUbicacionPendiente);
    window._sbAccionPendiente = null;
+ } else if (window._sbAccionPendiente === 'mostrarFormularioTercero' && window._sbDatosTerceroPendiente) {
+   mostrarTarjetaTerceroChat(window._sbDatosTerceroPendiente);
+   window._sbAccionPendiente = null;
  }
  aiWorking = false;
  }, 600);
@@ -17629,6 +17635,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  } else if (window._sbAccionPendiente === 'mostrarUbicacionPedido' && window._sbDatosUbicacionPendiente) {
    mostrarTarjetaUbicacionPedido(window._sbDatosUbicacionPendiente);
    window._sbAccionPendiente = null;
+ } else if (window._sbAccionPendiente === 'mostrarFormularioTercero' && window._sbDatosTerceroPendiente) {
+   mostrarTarjetaTerceroChat(window._sbDatosTerceroPendiente);
+   window._sbAccionPendiente = null;
  }
  aiWorking = false;
  }, 600);
@@ -17978,6 +17987,142 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  console.error('[Agenda barrios] Error:', e);
  if (errEl) { errEl.textContent = (e && e.message) || 'No se pudo agendar. Intenta de nuevo.'; errEl.style.display = 'block'; }
  if (btn) { btn.disabled = false; btn.textContent = ' Confirmar y agendar'; }
+ }
+ };
+
+ // ================================================================
+ // TARJETA "PEDIDO PARA TERCERO" — formulario rápido prellenado desde
+ // el chat cuando un LOCAL pide un domicilio para uno de sus clientes.
+ // El barrio siempre se selecciona/confirma a mano (autocompletado sobre
+ // BARRIOS_ARMENIA) y el tiempo de alistamiento con botones rápidos.
+ // La recogida siempre es en el local; para "otro lugar" se sigue usando
+ // el flujo conversacional (cotizarPedidoParaTercero/confirmarPedidoParaTercero).
+ // ================================================================
+ window.mostrarTarjetaTerceroChat = function(datos) {
+ const tabMsgs = document.getElementById('servibot-tab-messages');
+ const container = (tabMsgs && tabMsgs.offsetParent !== null) ? tabMsgs : document.getElementById('ai-messages');
+ if (!container || !datos) return;
+
+ const existente = document.getElementById('sb-tercero-card');
+ if (existente) existente.remove();
+
+ window._sbTercero = { minutos: null };
+
+ const nuevoTxt = datos.esContactoNuevo ? ' (cliente nuevo — se guardará en tu libreta)' : '';
+ const minutosBtns = [['Ya está', 0], ['5', 5], ['10', 10], ['15', 15], ['20', 20], ['25', 25], ['30', 30]]
+ .map(function (m) {
+ return '<button type="button" class="sb-t-min-btn" data-min="' + m[1] + '" onclick="sbSetMinutosTercero(' + m[1] + ')" style="padding:7px 10px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:bold; font-size:12px; cursor:pointer;">' + m[0] + (m[1] > 0 ? ' min' : '') + '</button>';
+ }).join('');
+
+ const div = document.createElement('div');
+ div.id = 'sb-tercero-card';
+ div.className = 'ai-msg bot';
+ div.style.cssText = 'max-width:100%; padding:12px; background:var(--color-surface2,#161b22); border:1px solid var(--color-border2,#30363d); border-radius:10px;';
+ div.innerHTML =
+ '<div style="font-weight:bold; color:var(--color-primary,#F59E0B); margin-bottom:10px;"> Pedido para tu cliente' + nuevoTxt + '</div>' +
+ '<input type="text" id="sb-t-nombre" placeholder="Nombre" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
+ '<input type="tel" id="sb-t-telefono" placeholder="Teléfono" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
+ '<input type="text" id="sb-t-direccion" placeholder="Dirección (manzana/casa, con o sin barrio)" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
+ '<div style="position:relative; margin-bottom:10px;">' +
+ '<input type="text" id="sb-t-barrio" placeholder="Barrio (escribe y selecciona de la lista)" autocomplete="off" oninput="sbFiltrarBarrioTercero()" onfocus="sbFiltrarBarrioTercero()" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; box-sizing:border-box;">' +
+ '<div class="barrio-dropdown" id="sb-t-dropdown"></div>' +
+ '</div>' +
+ '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;">¿En cuánto está listo el pedido?</div>' +
+ '<div id="sb-t-minutos" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">' + minutosBtns + '</div>' +
+ '<div id="sb-t-error" style="display:none; color:#ef4444; font-size:12px; margin-bottom:8px;"></div>' +
+ '<button type="button" id="sb-t-btn-enviar" onclick="sbConfirmarPedidoTercero()" style="width:100%; padding:11px; border-radius:8px; border:none; background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:14px;"> Enviar pedido</button>';
+
+ container.appendChild(div);
+ container.scrollTop = container.scrollHeight;
+
+ try { document.getElementById('sb-t-nombre').value = datos.nombreCliente || ''; } catch (e) { console.warn('No se pudo prellenar nombre:', e); }
+ try { document.getElementById('sb-t-telefono').value = datos.telefonoCliente || ''; } catch (e) { console.warn('No se pudo prellenar teléfono:', e); }
+ try { document.getElementById('sb-t-direccion').value = datos.direccionDetalle || ''; } catch (e) { console.warn('No se pudo prellenar dirección:', e); }
+ try { document.getElementById('sb-t-barrio').value = datos.barrioEntrega || ''; } catch (e) { console.warn('No se pudo prellenar barrio:', e); }
+ };
+
+ window.sbFiltrarBarrioTercero = function () {
+ const inputEl = document.getElementById('sb-t-barrio');
+ const dd = document.getElementById('sb-t-dropdown');
+ if (!inputEl || !dd) return;
+ const q = inputEl.value.toLowerCase().trim();
+ dd.innerHTML = '';
+ if (q.length < 2) { dd.classList.remove('show'); return; }
+ const lista = (typeof BARRIOS_ARMENIA !== 'undefined') ? BARRIOS_ARMENIA : [];
+ const opciones = lista.filter(b => b.n.toLowerCase().includes(q)).slice(0, 8);
+ if (!opciones.length) {
+ const nada = document.createElement('div');
+ nada.style.cssText = 'padding:9px 12px; color:#9ca3af; font-size:12px;';
+ nada.textContent = 'Sin coincidencias, prueba otro nombre';
+ dd.appendChild(nada);
+ } else {
+ opciones.forEach(b => {
+ const d = document.createElement('div');
+ d.className = 'barrio-option';
+ d.innerHTML = b.n + '<span class="barrio-comuna">' + (b.z || '').charAt(0).toUpperCase() + (b.z || '').slice(1) + '</span>';
+ d.onclick = function () {
+ inputEl.value = b.n;
+ dd.classList.remove('show');
+ };
+ dd.appendChild(d);
+ });
+ }
+ dd.classList.add('show');
+ };
+
+ window.sbSetMinutosTercero = function (min) {
+ if (!window._sbTercero) window._sbTercero = {};
+ window._sbTercero.minutos = min;
+ document.querySelectorAll('#sb-t-minutos .sb-t-min-btn').forEach(function (btn) {
+ const activo = Number(btn.getAttribute('data-min')) === min;
+ btn.style.background = activo ? 'var(--color-primary,#F59E0B)' : 'transparent';
+ btn.style.color = activo ? '#000' : '#9ca3af';
+ btn.style.borderColor = activo ? 'var(--color-primary,#F59E0B)' : '#374151';
+ });
+ };
+
+ window.sbConfirmarPedidoTercero = async function () {
+ const errEl = document.getElementById('sb-t-error');
+ if (errEl) errEl.style.display = 'none';
+
+ const nombreCliente = (document.getElementById('sb-t-nombre').value || '').trim();
+ const telefonoCliente = (document.getElementById('sb-t-telefono').value || '').trim();
+ const direccionDetalle = (document.getElementById('sb-t-direccion').value || '').trim();
+ const barrioEntrega = (document.getElementById('sb-t-barrio').value || '').trim();
+ const minutosPreparacion = window._sbTercero ? window._sbTercero.minutos : null;
+
+ if (!nombreCliente || !telefonoCliente || !direccionDetalle || !barrioEntrega) {
+ if (errEl) { errEl.textContent = 'Completa nombre, teléfono, dirección y barrio.'; errEl.style.display = 'block'; }
+ return;
+ }
+ if (minutosPreparacion === null || minutosPreparacion === undefined) {
+ if (errEl) { errEl.textContent = 'Selecciona en cuánto está listo el pedido.'; errEl.style.display = 'block'; }
+ return;
+ }
+
+ const btn = document.getElementById('sb-t-btn-enviar');
+ if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+ try {
+ if (!window.confirmarPedidoTerceroCallable) throw new Error('No se pudo conectar con el servidor.');
+ const res = await window.confirmarPedidoTerceroCallable({
+ nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion,
+ });
+ const card = document.getElementById('sb-tercero-card');
+ if (card) card.remove();
+ const msg = res.data.mensaje || '¡Listo! El pedido fue creado.';
+ const tabMsgs = document.getElementById('servibot-tab-messages');
+ if (tabMsgs && tabMsgs.offsetParent !== null) {
+ renderMsgEnTab('bot', msg);
+ } else {
+ addBotMessage(msg);
+ }
+ aiHistory.push({ role: 'assistant', content: msg });
+ window._sbTercero = null;
+ } catch (e) {
+ console.error('[Pedido tercero] Error:', e);
+ if (errEl) { errEl.textContent = (e && e.message) || 'No se pudo enviar el pedido. Intenta de nuevo.'; errEl.style.display = 'block'; }
+ if (btn) { btn.disabled = false; btn.textContent = ' Enviar pedido'; }
  }
  };
 

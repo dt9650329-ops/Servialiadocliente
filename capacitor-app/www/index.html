@@ -18039,6 +18039,26 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  try { document.getElementById('sb-t-telefono').value = datos.telefonoCliente || ''; } catch (e) { console.warn('No se pudo prellenar teléfono:', e); }
  try { document.getElementById('sb-t-direccion').value = datos.direccionDetalle || ''; } catch (e) { console.warn('No se pudo prellenar dirección:', e); }
  try { document.getElementById('sb-t-barrio').value = datos.barrioEntrega || ''; } catch (e) { console.warn('No se pudo prellenar barrio:', e); }
+
+ // Si el pedido viene de un link/ubicación de Google Maps (cotizarPorUbicacion),
+ // ya tenemos coordenadas exactas: la dirección queda fija en "Ubicación GPS"
+ // y no hace falta que el local busque/seleccione un barrio.
+ const tieneGps = !!(datos.gpsEntrega && datos.gpsEntrega.lat && datos.gpsEntrega.lng);
+ window._sbTercero.gpsEntrega = tieneGps ? datos.gpsEntrega : null;
+ if (tieneGps) {
+ try {
+ const dirEl = document.getElementById('sb-t-direccion');
+ if (dirEl) { dirEl.value = 'Ubicación GPS'; dirEl.readOnly = true; dirEl.style.opacity = '0.7'; }
+ const barrioEl = document.getElementById('sb-t-barrio');
+ if (barrioEl) {
+ barrioEl.value = 'Ubicación GPS confirmada';
+ barrioEl.readOnly = true;
+ barrioEl.style.opacity = '0.7';
+ barrioEl.removeAttribute('oninput');
+ barrioEl.removeAttribute('onfocus');
+ }
+ } catch (e) { console.warn('No se pudo fijar la ubicación GPS en el formulario:', e); }
+ }
  };
 
  window.sbFiltrarBarrioTercero = function () {
@@ -18090,8 +18110,10 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const direccionDetalle = (document.getElementById('sb-t-direccion').value || '').trim();
  const barrioEntrega = (document.getElementById('sb-t-barrio').value || '').trim();
  const minutosPreparacion = window._sbTercero ? window._sbTercero.minutos : null;
+ const gpsEntrega = window._sbTercero ? window._sbTercero.gpsEntrega : null;
+ const tieneGps = !!(gpsEntrega && gpsEntrega.lat && gpsEntrega.lng);
 
- if (!nombreCliente || !telefonoCliente || !direccionDetalle || !barrioEntrega) {
+ if (!nombreCliente || !telefonoCliente || !direccionDetalle || (!barrioEntrega && !tieneGps)) {
  if (errEl) { errEl.textContent = 'Completa nombre, teléfono, dirección y barrio.'; errEl.style.display = 'block'; }
  return;
  }
@@ -18106,7 +18128,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  try {
  if (!window.confirmarPedidoTerceroCallable) throw new Error('No se pudo conectar con el servidor.');
  const res = await window.confirmarPedidoTerceroCallable({
- nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion,
+ nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega,
  });
  const card = document.getElementById('sb-tercero-card');
  if (card) card.remove();

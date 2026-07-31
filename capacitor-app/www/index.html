@@ -5709,6 +5709,40 @@ const TONOS_NOTIFICACION = [
  // Mantener compatibilidad por si algo llama habilitarChat
  function habilitarChat() {}
 
+ // FIX PRECIO GPS: tabla de tarifas por km, compartida por calcularPrecioDomi() y calcularDistanciaGPS()
+ // Antes cada una tenía su propia fórmula y por eso el precio no coincidía entre las dos.
+ window._precioSegunKmArmenia = function(km) {
+ if (km <= 1.0) return 4000;
+ if (km <= 3.1) return 5000;
+ if (km <= 5.9) return 6000;
+ if (km <= 7.5) return 7000;
+ if (km <= 9.0) return 8000;
+ if (km <= 10.5) return 9000;
+ // Más allá de Armenia: $10.000 base + $1.000 por cada km adicional
+ return Math.round(10000 + (km - 10.5) * 1000);
+ };
+
+ // FIX PRECIO GPS: distancia real por carretera (OSRM) entre dos coordenadas, con fallback a línea recta (Haversine)
+ window._distanciaRealEntrePuntos = async function(coordsA, coordsB) {
+ if (!coordsA || !coordsB) return null;
+ try {
+ const osrmUrl = `https://router.project-osrm.org/route/v1/driving/`
+ + `${coordsA.lng},${coordsA.lat};${coordsB.lng},${coordsB.lat}`
+ + `?overview=false`;
+ const resp = await fetch(osrmUrl);
+ const data = await resp.json();
+ if (data.routes && data.routes[0]) return data.routes[0].distance / 1000;
+ } catch(e) {
+ console.warn('[PRECIO GPS] OSRM no disponible, usando Haversine:', e);
+ }
+ const R = 6371;
+ const dLat = (coordsB.lat - coordsA.lat) * Math.PI / 180;
+ const dLng = (coordsB.lng - coordsA.lng) * Math.PI / 180;
+ const a = Math.sin(dLat/2)**2 + Math.cos(coordsA.lat * Math.PI/180)
+ * Math.cos(coordsB.lat * Math.PI/180) * Math.sin(dLng/2)**2;
+ return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+ };
+
  // Calcular precio según zonas seleccionadas
  window.calcularPrecioDomi = async function() {
  const zonaRecogida = document.getElementById('domi-zona-recogida').value;
@@ -5824,15 +5858,7 @@ const TONOS_NOTIFICACION = [
  || (horaMin >= 1200 && horaMin < 1320);
  const esDiaBomba = (hoy === 2) && enFranjaBomba && (window._clienteDiaBombaActivo === true);
 
- function _precioSegunKm(km) {
- if (km <= 1.0) return 4000;
- if (km <= 3.1) return 5000;
- if (km <= 5.9) return 6000;
- if (km <= 7.5) return 7000;
- if (km <= 9.0) return 8000;
- if (km <= 10.5) return 9000;
- return 10000;
- }
+ const _precioSegunKm = window._precioSegunKmArmenia;
 
  const brRec = (document.getElementById('domi-barrio-recogida')?.value || '').trim();
  const brEnt = (document.getElementById('domi-barrio-entrega')?.value || '').trim();
@@ -5945,33 +5971,34 @@ const TONOS_NOTIFICACION = [
  }
 
  navigator.geolocation.getCurrentPosition(
- function(position) {
+ async function(position) {
  const lat = position.coords.latitude;
  const lng = position.coords.longitude;
-
- // Centro de Armenia, Quindío, Colombia
- const ARMENIA_LAT = 4.5339;
- const ARMENIA_LNG = -75.6811;
-
- // Fórmula Haversine para calcular distancia en km
- function haversine(lat1, lon1, lat2, lon2) {
- const R = 6371;
- const dLat = (lat2 - lat1) * Math.PI / 180;
- const dLon = (lon2 - lon1) * Math.PI / 180;
- const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
- Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
- Math.sin(dLon/2)*Math.sin(dLon/2);
- const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
- return R * c;
- }
-
- const distanciaKm = haversine(ARMENIA_LAT, ARMENIA_LNG, lat, lng);
- const distanciaRedondeada = Math.round(distanciaKm * 10) / 10;
-
- // Tarifa: $10.000 base + $1.000 por km (mínimo $10.000)
- const precioGPS = Math.max(10000, Math.round(10000 + (distanciaKm * 1000)));
  const coordsText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
  const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+
+ // FIX PRECIO GPS: antes esto medía la distancia desde un punto fijo del
+ // centro de Armenia hasta el pin marcado — sin importar dónde estuviera
+ // el otro extremo del domicilio (recogida o entrega). Por eso el precio
+ // no coincidía con la ruta real. Ahora, si ya se marcó el otro punto,
+ // se calcula la distancia real ENTRE recogida y entrega.
+ const otroTipo = tipo === 'destino' ? 'recogida' : 'destino';
+ const otroCoords = tipo === 'destino' ? window._gpsCoordsRecogida : window._gpsCoordsDestino;
+
+ if (resultDiv) resultDiv.innerHTML = ' Calculando distancia y precio...';
+
+ let distanciaKm, esEstimadoParcial = false;
+ if (otroCoords) {
+ distanciaKm = await window._distanciaRealEntrePuntos({ lat, lng }, otroCoords);
+ } else {
+ // Todavía no se conoce el otro punto: estimado provisional desde el
+ // centro de Armenia. Se recalcula automáticamente al agregar el otro punto.
+ esEstimadoParcial = true;
+ distanciaKm = await window._distanciaRealEntrePuntos({ lat, lng }, { lat: 4.5339, lng: -75.6811 });
+ }
+ distanciaKm = distanciaKm || 0;
+ const distanciaRedondeada = Math.round(distanciaKm * 10) / 10;
+ const precioGPS = window._precioSegunKmArmenia(distanciaKm);
 
  // Llenar el campo de dirección con las coordenadas GPS
  if (tipo === 'destino') {
@@ -5983,6 +6010,8 @@ const TONOS_NOTIFICACION = [
  window._gpsPrecioDestino = precioGPS;
  window._gpsDistanciaDestino = distanciaRedondeada;
  window._gpsCoordsDestino = { lat, lng };
+ // Si ya teníamos el punto de recogida, ambos comparten el mismo precio de ruta
+ if (otroCoords) window._gpsPrecioRecogida = precioGPS;
 
  // Ocultar selector de municipio (no es necesario si se usó GPS)
  const munDestinoWrap = document.getElementById('municipio-destino-wrap');
@@ -6001,7 +6030,9 @@ const TONOS_NOTIFICACION = [
  if (precioBox && precioValor && precioRazon) {
  precioBox.style.display = 'block';
  precioValor.textContent = `$${precioGPS.toLocaleString('es-CO')}`;
- precioRazon.textContent = ` GPS: ${distanciaRedondeada} km desde Armenia · $10.000 base + $1.000/km`;
+ precioRazon.textContent = esEstimadoParcial
+ ? ` GPS: ${distanciaRedondeada} km (estimado provisional, se ajusta al agregar el punto de recogida)`
+ : ` GPS: ${distanciaRedondeada} km entre recogida y entrega`;
  }
  } else {
  const dirInput = document.getElementById('domi-dir-recogida');
@@ -6011,6 +6042,8 @@ const TONOS_NOTIFICACION = [
  window._gpsPrecioRecogida = precioGPS;
  window._gpsDistanciaRecogida = distanciaRedondeada;
  window._gpsCoordsRecogida = { lat, lng };
+ // Si ya teníamos el punto de entrega, ambos comparten el mismo precio de ruta
+ if (otroCoords) window._gpsPrecioDestino = precioGPS;
 
  // Ocultar selector de municipio (no es necesario si se usó GPS)
  const munRecogidaWrap = document.getElementById('municipio-recogida-wrap');
@@ -6027,9 +6060,9 @@ const TONOS_NOTIFICACION = [
  resultDiv.style.display = 'block';
  resultDiv.innerHTML = `
  <strong>Ubicación detectada</strong><br>
- Distancia desde Armenia: <strong>${distanciaRedondeada} km</strong><br>
- Precio estimado del servicio: <strong>$${precioGPS.toLocaleString('es-CO')}</strong><br>
- <span style="font-size:11px; color:#aaa;">($10.000 mínimo + $1.000/km)</span><br>
+ Distancia${esEstimadoParcial ? ' desde Armenia (provisional)' : ' entre recogida y entrega'}: <strong>${distanciaRedondeada} km</strong><br>
+ Precio ${esEstimadoParcial ? 'provisional' : 'del servicio'}: <strong>$${precioGPS.toLocaleString('es-CO')}</strong><br>
+ ${esEstimadoParcial ? `<span style="font-size:11px; color:#aaa;">Se ajustará cuando agregues el punto de ${otroTipo}</span><br>` : ''}
  <a href="${mapsUrl}" target="_blank" style="color:#4A9EFF; font-size:11px;"> Ver en Google Maps</a>
  `;
  }

@@ -17198,15 +17198,27 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  aiHistory.push({ role: 'assistant', content: respuesta });
  updateBotMessage(typingId, respuesta);
- if (window._sbAccionPendiente === 'mostrarSelectorBarrios' && window._sbDatosAgendaPendiente) {
-   mostrarTarjetaAgendaChat(window._sbDatosAgendaPendiente);
-   window._sbAccionPendiente = null;
- } else if (window._sbAccionPendiente === 'mostrarUbicacionPedido' && window._sbDatosUbicacionPendiente) {
-   mostrarTarjetaUbicacionPedido(window._sbDatosUbicacionPendiente);
-   window._sbAccionPendiente = null;
- } else if (window._sbAccionPendiente === 'mostrarFormularioTercero' && window._sbDatosTerceroPendiente) {
-   mostrarTarjetaTerceroChat(window._sbDatosTerceroPendiente);
-   window._sbAccionPendiente = null;
+ try {
+   if (window._sbAccionPendiente === 'mostrarSelectorBarrios' && window._sbDatosAgendaPendiente) {
+     mostrarTarjetaAgendaChat(window._sbDatosAgendaPendiente);
+     window._sbAccionPendiente = null;
+   } else if (window._sbAccionPendiente === 'mostrarUbicacionPedido' && window._sbDatosUbicacionPendiente) {
+     mostrarTarjetaUbicacionPedido(window._sbDatosUbicacionPendiente);
+     window._sbAccionPendiente = null;
+   } else if (window._sbAccionPendiente === 'mostrarFormularioTercero' && window._sbDatosTerceroPendiente) {
+     mostrarTarjetaTerceroChat(window._sbDatosTerceroPendiente);
+     window._sbAccionPendiente = null;
+   }
+ } catch (eRenderTarjeta) {
+   console.error('[ServiBot] Error mostrando tarjeta:', eRenderTarjeta);
+   const contErr = document.getElementById('servibot-tab-messages') || document.getElementById('ai-messages');
+   if (contErr) {
+     const divErr = document.createElement('div');
+     divErr.className = 'ai-msg bot';
+     divErr.style.cssText = 'color:#ef4444; font-size:12px; padding:8px;';
+     divErr.textContent = '⚠️ No pude mostrar el formulario (' + (eRenderTarjeta && eRenderTarjeta.message || 'error desconocido') + '). Intenta escribir los datos de nuevo o avísale a soporte.';
+     contErr.appendChild(divErr);
+   }
  }
  aiWorking = false;
  }, 600);
@@ -17662,15 +17674,27 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const container = document.getElementById('servibot-tab-messages');
  if (container) container.scrollTop = container.scrollHeight;
  }
- if (window._sbAccionPendiente === 'mostrarSelectorBarrios' && window._sbDatosAgendaPendiente) {
-   mostrarTarjetaAgendaChat(window._sbDatosAgendaPendiente);
-   window._sbAccionPendiente = null;
- } else if (window._sbAccionPendiente === 'mostrarUbicacionPedido' && window._sbDatosUbicacionPendiente) {
-   mostrarTarjetaUbicacionPedido(window._sbDatosUbicacionPendiente);
-   window._sbAccionPendiente = null;
- } else if (window._sbAccionPendiente === 'mostrarFormularioTercero' && window._sbDatosTerceroPendiente) {
-   mostrarTarjetaTerceroChat(window._sbDatosTerceroPendiente);
-   window._sbAccionPendiente = null;
+ try {
+   if (window._sbAccionPendiente === 'mostrarSelectorBarrios' && window._sbDatosAgendaPendiente) {
+     mostrarTarjetaAgendaChat(window._sbDatosAgendaPendiente);
+     window._sbAccionPendiente = null;
+   } else if (window._sbAccionPendiente === 'mostrarUbicacionPedido' && window._sbDatosUbicacionPendiente) {
+     mostrarTarjetaUbicacionPedido(window._sbDatosUbicacionPendiente);
+     window._sbAccionPendiente = null;
+   } else if (window._sbAccionPendiente === 'mostrarFormularioTercero' && window._sbDatosTerceroPendiente) {
+     mostrarTarjetaTerceroChat(window._sbDatosTerceroPendiente);
+     window._sbAccionPendiente = null;
+   }
+ } catch (eRenderTarjeta) {
+   console.error('[ServiBot] Error mostrando tarjeta:', eRenderTarjeta);
+   const contErr = document.getElementById('servibot-tab-messages') || document.getElementById('ai-messages');
+   if (contErr) {
+     const divErr = document.createElement('div');
+     divErr.className = 'ai-msg bot';
+     divErr.style.cssText = 'color:#ef4444; font-size:12px; padding:8px;';
+     divErr.textContent = '⚠️ No pude mostrar el formulario (' + (eRenderTarjeta && eRenderTarjeta.message || 'error desconocido') + '). Intenta escribir los datos de nuevo o avísale a soporte.';
+     contErr.appendChild(divErr);
+   }
  }
  aiWorking = false;
  }, 600);

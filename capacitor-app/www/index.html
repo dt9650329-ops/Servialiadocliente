@@ -18039,7 +18039,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const existente = document.getElementById('sb-tercero-card');
  if (existente) existente.remove();
 
- window._sbTercero = { minutos: null };
+ window._sbTercero = { minutos: null, origenRecogida: 'local' };
 
  const nuevoTxt = datos.esContactoNuevo ? ' (cliente nuevo — se guardará en tu libreta)' : '';
  const minutosBtns = [['Ya está', 0], ['5', 5], ['10', 10], ['15', 15], ['20', 20], ['25', 25], ['30', 30]]
@@ -18051,8 +18051,11 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  div.id = 'sb-tercero-card';
  div.className = 'ai-msg bot';
  div.style.cssText = 'max-width:100%; padding:12px; background:var(--color-surface2,#161b22); border:1px solid var(--color-border2,#30363d); border-radius:10px;';
- div.innerHTML =
- '<div style="font-weight:bold; color:var(--color-primary,#F59E0B); margin-bottom:10px;"> Pedido para tu cliente' + nuevoTxt + '</div>' +
+  '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;">¿Dónde recoges este pedido?</div>' +
+ '<div style="display:flex; gap:8px; margin-bottom:12px;">' +
+ '<button type="button" id="sb-t-btn-local" onclick="sbSetOrigenRecogidaTercero(\'local\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid var(--color-primary,#F59E0B); background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:12px; cursor:pointer;"> Recoger en el local</button>' +
+ '<button type="button" id="sb-t-btn-otro" onclick="sbSetOrigenRecogidaTercero(\'otro_lugar\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:bold; font-size:12px; cursor:pointer;"> Estoy en otro lugar</button>' +
+ '</div>' +
  '<input type="text" id="sb-t-nombre" placeholder="Nombre" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
  '<input type="tel" id="sb-t-telefono" placeholder="Teléfono" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
  '<input type="text" id="sb-t-direccion" placeholder="Dirección (manzana/casa, con o sin barrio)" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
@@ -18134,6 +18137,16 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  });
  };
 
+ window.sbSetOrigenRecogidaTercero = function (origen) {
+ if (!window._sbTercero) window._sbTercero = {};
+ window._sbTercero.origenRecogida = origen;
+ const btnLocal = document.getElementById('sb-t-btn-local');
+ const btnOtro = document.getElementById('sb-t-btn-otro');
+ const esLocal = origen === 'local';
+ if (btnLocal) { btnLocal.style.background = esLocal ? 'var(--color-primary,#F59E0B)' : 'transparent'; btnLocal.style.color = esLocal ? '#000' : '#9ca3af'; btnLocal.style.borderColor = esLocal ? 'var(--color-primary,#F59E0B)' : '#374151'; }
+ if (btnOtro) { btnOtro.style.background = esLocal ? 'transparent' : 'var(--color-primary,#F59E0B)'; btnOtro.style.color = esLocal ? '#9ca3af' : '#000'; btnOtro.style.borderColor = esLocal ? '#374151' : 'var(--color-primary,#F59E0B)'; }
+ };
+
  window.sbConfirmarPedidoTercero = async function () {
  const errEl = document.getElementById('sb-t-error');
  if (errEl) errEl.style.display = 'none';
@@ -18160,8 +18173,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  try {
  if (!window.confirmarPedidoTerceroCallable) throw new Error('No se pudo conectar con el servidor.');
+ const origenRecogida = (window._sbTercero && window._sbTercero.origenRecogida) || 'local';
  const res = await window.confirmarPedidoTerceroCallable({
- nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega,
+ nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega, origenRecogida,
  });
  const card = document.getElementById('sb-tercero-card');
  if (card) card.remove();

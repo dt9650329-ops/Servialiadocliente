@@ -17212,6 +17212,30 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  }, 600);
  };
 
+ // RECIBIR TEXTO COMPARTIDO DESDE OTRA APP (WhatsApp → botón "Compartir")
+ // Llamado desde MainActivity.java (Android nativo) cuando el cliente
+ // comparte un mensaje reenviado o una ubicación hacia la app. Abre el
+ // chat de ServiBot si está cerrado y lo manda como si el cliente lo
+ // hubiera escrito, para que la IA detecte el pedido/ubicación normal.
+ window.recibirTextoCompartido = function (texto) {
+ if (!texto || !texto.trim()) return;
+ try {
+ if (!aiOpen) { toggleAIChat(); }
+ const intentarEnviar = function (intentos) {
+ const input = document.getElementById('ai-chat-input');
+ if (!input) {
+ if (intentos > 0) setTimeout(function () { intentarEnviar(intentos - 1); }, 300);
+ return;
+ }
+ input.value = texto.trim();
+ sendAIMessage();
+ };
+ setTimeout(function () { intentarEnviar(10); }, aiOpen ? 100 : 400);
+ } catch (e) {
+ console.warn('No se pudo procesar el texto compartido desde WhatsApp:', e);
+ }
+ };
+
  // GUARDAR SUGERENCIA EN FIREBASE 
  async function guardarSugerenciaIA(resumen) {
  try {

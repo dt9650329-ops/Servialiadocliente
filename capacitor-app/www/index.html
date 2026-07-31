@@ -17220,6 +17220,27 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  window.recibirTextoCompartido = function (texto) {
  if (!texto || !texto.trim()) return;
  try {
+ // Si el cliente ya está DENTRO del tab de ServiBot (página completa),
+ // manda el texto ahí mismo en vez de abrir el widget flotante encima
+ // — evita que aparezcan dos asistentes distintos a la vez.
+ const tabServibot = document.getElementById('content-servibot');
+ const tabServibotActivo = tabServibot && tabServibot.classList.contains('active-content');
+
+ if (tabServibotActivo) {
+ const intentarEnviarTab = function (intentos) {
+ const input = document.getElementById('servibot-tab-input');
+ if (!input) {
+ if (intentos > 0) setTimeout(function () { intentarEnviarTab(intentos - 1); }, 300);
+ return;
+ }
+ input.value = texto.trim();
+ sendAIMessageTab();
+ };
+ setTimeout(function () { intentarEnviarTab(10); }, 300);
+ return;
+ }
+
+ // Si no, usa el widget flotante (comportamiento anterior)
  if (!aiOpen) { toggleAIChat(); }
  const intentarEnviar = function (intentos) {
  const input = document.getElementById('ai-chat-input');
@@ -19244,7 +19265,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
      const tipoLabel = alerta.tipo || 'SOS';
      const repNombre = alerta.repartidorNombre || 'Tu repartidor';
      _sosMarkerCliente.bindPopup(
-       `<div style="font-size:13px;font-weight:700;color:#EF4444;">🆘 ${tipoLabel}</div>
+       `<div style="font-size:13px;font-weight:700;color:#EF4444;">?? ${tipoLabel}</div>
         <div style="font-size:12px;margin-top:4px;">${repNombre} reportó una emergencia</div>
         ${alerta.mapsUrl ? `<div style="margin-top:6px;"><a href="${alerta.mapsUrl}" target="_blank" style="color:#2196F3;font-size:12px;">📍 Ver en Google Maps</a></div>` : ''}`
      ).openPopup();

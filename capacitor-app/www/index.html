@@ -3157,7 +3157,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.0.4</small>
+ <small>Versión 1.0.5</small>
  </div>
  </div>
  </div>
@@ -17220,13 +17220,16 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  window.recibirTextoCompartido = function (texto) {
  if (!texto || !texto.trim()) return;
  try {
- // Si el cliente ya está DENTRO del tab de ServiBot (página completa),
- // manda el texto ahí mismo en vez de abrir el widget flotante encima
- // — evita que aparezcan dos asistentes distintos a la vez.
- const tabServibot = document.getElementById('content-servibot');
- const tabServibotActivo = tabServibot && tabServibot.classList.contains('active-content');
+ // Siempre usar el ÚNICO ServiBot (el tab de página completa), sin
+ // importar en qué pantalla esté el cliente (Ajustes, Perfil, etc.) —
+ // así nunca aparece un segundo asistente flotante encima.
+ if (window.menuAbierto && typeof toggleMenu === 'function') {
+ toggleMenu();
+ }
+ if (typeof changeTab === 'function') {
+ changeTab('servibot');
+ }
 
- if (tabServibotActivo) {
  const intentarEnviarTab = function (intentos) {
  const input = document.getElementById('servibot-tab-input');
  if (!input) {
@@ -17236,22 +17239,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  input.value = texto.trim();
  sendAIMessageTab();
  };
- setTimeout(function () { intentarEnviarTab(10); }, 300);
- return;
- }
-
- // Si no, usa el widget flotante (comportamiento anterior)
- if (!aiOpen) { toggleAIChat(); }
- const intentarEnviar = function (intentos) {
- const input = document.getElementById('ai-chat-input');
- if (!input) {
- if (intentos > 0) setTimeout(function () { intentarEnviar(intentos - 1); }, 300);
- return;
- }
- input.value = texto.trim();
- sendAIMessage();
- };
- setTimeout(function () { intentarEnviar(10); }, aiOpen ? 100 : 400);
+ setTimeout(function () { intentarEnviarTab(10); }, 400);
  } catch (e) {
  console.warn('No se pudo procesar el texto compartido desde WhatsApp:', e);
  }

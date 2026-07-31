@@ -16287,7 +16287,140 @@ window.cancelarAudioP2P = function(pedidoId) {
  </div>
 </div>
 
+<!-- MODAL MAPEADOR DE UBICACIÓN PARA PEDIDO DE TERCERO (chat ServiBot) -->
+<div id="modal-mapeador-pedido-tercero" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(6,11,23,0.97); flex-direction:column; align-items:stretch;">
+ <div style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:#111827; border-bottom:1px solid #1f2937; flex-shrink:0;">
+ <button onclick="cerrarMapeadorPedidoTercero()" style="background:#1f2937; border:1px solid #374151; color:#9ca3af; width:36px; height:36px; border-radius:8px; font-size:18px; cursor:pointer; flex-shrink:0;">‹</button>
+ <div style="flex:1; min-width:0;">
+ <div style="color:#F59E0B; font-weight:800; font-size:15px;"> Marcar ubicación de entrega</div>
+ <div style="color:#6b7280; font-size:12px; margin-top:2px;">Busca el lugar o toca el mapa para fijar el punto exacto</div>
+ </div>
+ </div>
+ <div style="padding:12px 16px; background:#111827; border-bottom:1px solid #1f2937; flex-shrink:0;">
+ <div style="display:flex; gap:8px; margin-bottom:8px;">
+ <input type="text" id="mapeador-pedido-tercero-buscar" placeholder="Ej: Km 3 vía Armenia - La Tebaida, Finca El Remanso"
+ style="flex:1; padding:10px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:14px;"
+ onkeydown="if(event.key==='Enter') buscarEnMapeadorPedidoTercero()"/>
+ <button onclick="buscarEnMapeadorPedidoTercero()" style="padding:10px 14px; border-radius:8px; background:#F59E0B; color:#000; font-weight:bold; border:none; cursor:pointer; white-space:nowrap;"> Buscar</button>
+ </div>
+ <input type="text" id="mapeador-pedido-tercero-nombre" placeholder="Nombre del punto (Ej: Finca La Esperanza, portería)"
+ style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:13px; box-sizing:border-box;">
+ <div id="mapeador-pedido-tercero-resultados" style="margin-top:6px;"></div>
+ </div>
+ <div id="mapa-mapeador-pedido-tercero" style="flex:1; min-height:0;"></div>
+ <div id="mapeador-pedido-tercero-coords-info" style="padding:8px 16px; background:#111827; border-top:1px solid #1f2937; font-size:12px; color:#6b7280; text-align:center; flex-shrink:0;">
+ Toca el mapa para fijar la ubicación exacta
+ </div>
+ <div style="padding:12px 16px; background:#111827; border-top:1px solid #1f2937; flex-shrink:0;">
+ <button id="btn-confirmar-mapeador-pedido-tercero" onclick="confirmarUbicacionPedidoTercero()"
+ disabled
+ style="width:100%; padding:14px; border-radius:12px; background:#374151; color:#6b7280; font-weight:800; font-size:15px; border:none; cursor:not-allowed; transition:all 0.3s;">
+ Guardar ubicación
+ </button>
+ </div>
+</div>
 
+<script>
+// MAPEADOR DE UBICACIÓN PARA PEDIDO DE TERCERO (chat ServiBot)
+// Guarda el punto directo en window._sbTercero.gpsEntrega — NO envía ningún
+// mensaje al chat, así el local queda libre de escribir instrucciones extra
+// (ej. "recoger allá y traer acá a Armenia") en el cuadro de texto normal.
+(function(){
+ let _mapPedidoT = null;
+ let _pinPedidoT = null;
+ let _coordsTempPedidoT = null;
+
+ window.abrirMapeadorPedidoTercero = function() {
+ _coordsTempPedidoT = (window._sbTercero && window._sbTercero.gpsEntrega) || null;
+ const nombreCliente = (document.getElementById('sb-t-nombre') || {}).value || '';
+ document.getElementById('mapeador-pedido-tercero-buscar').value = '';
+ document.getElementById('mapeador-pedido-tercero-nombre').value = nombreCliente ? ('Entrega ' + nombreCliente) : '';
+ document.getElementById('mapeador-pedido-tercero-resultados').innerHTML = '';
+ document.getElementById('modal-mapeador-pedido-tercero').style.display = 'flex';
+
+ setTimeout(() => {
+ if (!_mapPedidoT) {
+ _mapPedidoT = L.map('mapa-mapeador-pedido-tercero').setView([4.5339, -75.6811], 14);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+ attribution: '© OpenStreetMap', maxZoom: 19
+ }).addTo(_mapPedidoT);
+ _mapPedidoT.on('click', function(e) { fijarPinPedidoT(e.latlng.lat, e.latlng.lng); });
+ } else {
+ _mapPedidoT.invalidateSize();
+ }
+ if (_coordsTempPedidoT) {
+ fijarPinPedidoT(_coordsTempPedidoT.lat, _coordsTempPedidoT.lng, true);
+ _mapPedidoT.setView([_coordsTempPedidoT.lat, _coordsTempPedidoT.lng], 17);
+ }
+ }, 150);
+ };
+
+ function fijarPinPedidoT(lat, lng) {
+ lat = parseFloat(lat.toFixed(6));
+ lng = parseFloat(lng.toFixed(6));
+ _coordsTempPedidoT = { lat, lng };
+
+ if (_pinPedidoT) _mapPedidoT.removeLayer(_pinPedidoT);
+ _pinPedidoT = L.marker([lat, lng], {
+ icon: L.divIcon({ html: '<div style="font-size:28px;line-height:1;"></div>', className:'', iconAnchor:[14,28] })
+ }).addTo(_mapPedidoT);
+
+ document.getElementById('mapeador-pedido-tercero-coords-info').textContent = ' ' + lat + ', ' + lng + ' — toca "Guardar ubicación" para fijar este punto';
+
+ const btn = document.getElementById('btn-confirmar-mapeador-pedido-tercero');
+ btn.disabled = false;
+ btn.style.background = 'linear-gradient(135deg,#F59E0B,#E08B00)';
+ btn.style.color = '#000';
+ btn.style.cursor = 'pointer';
+ }
+
+ window.cerrarMapeadorPedidoTercero = function() {
+ document.getElementById('modal-mapeador-pedido-tercero').style.display = 'none';
+ };
+
+ window.buscarEnMapeadorPedidoTercero = async function() {
+ const q = document.getElementById('mapeador-pedido-tercero-buscar').value.trim();
+ if (!q) return;
+ const resDiv = document.getElementById('mapeador-pedido-tercero-resultados');
+ resDiv.innerHTML = '<span style="color:#6b7280;font-size:12px;"> Buscando...</span>';
+ try {
+ const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q + ' Quindio Colombia') + '&limit=5&countrycodes=co';
+ const resp = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+ const data = await resp.json();
+ resDiv.innerHTML = '';
+ if (!data.length) {
+ resDiv.innerHTML = '<span style="color:#e74c3c;font-size:12px;">Sin resultados. Intenta con otra dirección o toca el mapa directamente.</span>';
+ return;
+ }
+ data.forEach(item => {
+ const d = document.createElement('div');
+ d.style.cssText = 'padding:8px 10px; margin-bottom:4px; background:#1f2937; border-radius:7px; cursor:pointer; font-size:12px; color:#d1d5db; border:1px solid #374151;';
+ d.textContent = ' ' + item.display_name;
+ d.onclick = () => {
+ const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+ _mapPedidoT.setView([lat, lng], 17);
+ fijarPinPedidoT(lat, lng);
+ resDiv.innerHTML = '';
+ };
+ resDiv.appendChild(d);
+ });
+ } catch(e) {
+ resDiv.innerHTML = '<span style="color:#e74c3c;font-size:12px;">Error al buscar. Verifica tu conexión.</span>';
+ }
+ };
+
+ window.confirmarUbicacionPedidoTercero = function() {
+ if (!_coordsTempPedidoT) return;
+ sbAplicarGpsATarjetaTercero(_coordsTempPedidoT);
+ cerrarMapeadorPedidoTercero();
+ // Deja el cuadro de texto normal del chat listo para que el local escriba
+ // instrucciones (ej. "recoger allá y traer acá a Armenia") — sin mandar
+ // ningún mensaje automático.
+ const chatInput = document.getElementById('servibot-tab-input');
+ if (chatInput) chatInput.focus();
+ };
+})();
+</script>
 
 <!-- ============================================================
      SECCIÓN 13 · MODAL SUGERIR NUEVO LUGAR
@@ -17188,6 +17321,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // Simular pequeño delay para que se sienta natural
  const typingId = addBotMessage(' Escribiendo...', true);
  setTimeout(async function () {
+ try {
  const respuesta = await obtenerRespuestaAsync(text);
 
  // Detectar si el usuario tiene queja/sugerencia y guardarla en Firebase
@@ -17220,7 +17354,12 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
      contErr.appendChild(divErr);
    }
  }
- aiWorking = false;
+ } catch (eFatal) {
+   console.error('[ServiBot] Error fatal en sendAIMessage:', eFatal);
+   updateBotMessage(typingId, '⚠️ Se me cruzaron los cables un momento (' + (eFatal && eFatal.message || 'error desconocido') + '). Intenta de nuevo o escribe tus datos otra vez.');
+ } finally {
+   aiWorking = false;
+ }
  }, 600);
  };
 
@@ -17660,6 +17799,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (typingDiv) typingDiv.classList.add('typing');
 
  setTimeout(async function() {
+ try {
  const respuesta = await obtenerRespuestaAsync(text);
 
  const msgLower = text.toLowerCase();
@@ -17696,7 +17836,18 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
      contErr.appendChild(divErr);
    }
  }
- aiWorking = false;
+ } catch (eFatal) {
+   // FIX: si algo truena en obtenerRespuestaAsync (Gemini caído, timeout,
+   // etc.) esto evita que la burbuja quede pegada en "Escribiendo..." para
+   // siempre. Se muestra el error y se libera el chat para seguir usándolo.
+   console.error('[ServiBot] Error fatal en sendAIMessageTab:', eFatal);
+   if (typingDiv) {
+     typingDiv.classList.remove('typing');
+     typingDiv.innerHTML = '⚠️ Se me cruzaron los cables un momento (' + (eFatal && eFatal.message || 'error desconocido') + '). Intenta de nuevo o escribe tus datos otra vez.';
+   }
+ } finally {
+   aiWorking = false;
+ }
  }, 600);
  };
 
@@ -18075,6 +18226,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  div.id = 'sb-tercero-card';
  div.className = 'ai-msg bot';
  div.style.cssText = 'max-width:100%; padding:12px; background:var(--color-surface2,#161b22); border:1px solid var(--color-border2,#30363d); border-radius:10px;';
+ div.innerHTML =
   '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;">¿Dónde recoges este pedido?</div>' +
  '<div style="display:flex; gap:8px; margin-bottom:12px;">' +
  '<button type="button" id="sb-t-btn-local" onclick="sbSetOrigenRecogidaTercero(\'local\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid var(--color-primary,#F59E0B); background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:12px; cursor:pointer;"> Recoger en el local</button>' +
@@ -18083,10 +18235,11 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  '<input type="text" id="sb-t-nombre" placeholder="Nombre" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
  '<input type="tel" id="sb-t-telefono" placeholder="Teléfono" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
  '<input type="text" id="sb-t-direccion" placeholder="Dirección (manzana/casa, con o sin barrio)" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
- '<div style="position:relative; margin-bottom:10px;">' +
+ '<div style="position:relative; margin-bottom:8px;">' +
  '<input type="text" id="sb-t-barrio" placeholder="Barrio (escribe y selecciona de la lista)" autocomplete="off" oninput="sbFiltrarBarrioTercero()" onfocus="sbFiltrarBarrioTercero()" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; box-sizing:border-box;">' +
  '<div class="barrio-dropdown" id="sb-t-dropdown"></div>' +
  '</div>' +
+ '<button type="button" id="sb-t-btn-mapa" onclick="abrirMapeadorPedidoTercero()" style="width:100%; margin-bottom:10px; padding:9px 12px; border-radius:8px; border:1px dashed #F59E0B; background:rgba(245,158,11,0.08); color:#F59E0B; font-size:12px; font-weight:bold; cursor:pointer; text-align:left;"> ¿No tienes la dirección? Selecciona la ubicación en el mapa</button>' +
  '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;">¿En cuánto está listo el pedido?</div>' +
  '<div id="sb-t-minutos" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">' + minutosBtns + '</div>' +
  '<div id="sb-t-error" style="display:none; color:#ef4444; font-size:12px; margin-bottom:8px;"></div>' +
@@ -18105,7 +18258,15 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // y no hace falta que el local busque/seleccione un barrio.
  const tieneGps = !!(datos.gpsEntrega && datos.gpsEntrega.lat && datos.gpsEntrega.lng);
  window._sbTercero.gpsEntrega = tieneGps ? datos.gpsEntrega : null;
- if (tieneGps) {
+ if (tieneGps) sbAplicarGpsATarjetaTercero(datos.gpsEntrega);
+ };
+
+ // Bloquea dirección/barrio como "Ubicación GPS" cuando ya hay coordenadas
+ // exactas (vengan de un link resuelto o de la selección manual en el mapa),
+ // y esconde el botón de mapa porque ya no hace falta.
+ window.sbAplicarGpsATarjetaTercero = function (gps) {
+ if (!window._sbTercero) window._sbTercero = {};
+ window._sbTercero.gpsEntrega = gps;
  try {
  const dirEl = document.getElementById('sb-t-direccion');
  if (dirEl) { dirEl.value = 'Ubicación GPS'; dirEl.readOnly = true; dirEl.style.opacity = '0.7'; }
@@ -18117,8 +18278,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  barrioEl.removeAttribute('oninput');
  barrioEl.removeAttribute('onfocus');
  }
+ const btnMapa = document.getElementById('sb-t-btn-mapa');
+ if (btnMapa) btnMapa.style.display = 'none';
  } catch (e) { console.warn('No se pudo fijar la ubicación GPS en el formulario:', e); }
- }
  };
 
  window.sbFiltrarBarrioTercero = function () {

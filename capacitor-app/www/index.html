@@ -16325,8 +16325,8 @@ window.cancelarAudioP2P = function(pedidoId) {
  <div style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:#111827; border-bottom:1px solid #1f2937; flex-shrink:0;">
  <button onclick="cerrarMapeadorPedidoTercero()" style="background:#1f2937; border:1px solid #374151; color:#9ca3af; width:36px; height:36px; border-radius:8px; font-size:18px; cursor:pointer; flex-shrink:0;">‹</button>
  <div style="flex:1; min-width:0;">
- <div style="color:#F59E0B; font-weight:800; font-size:15px;"> Marcar ubicación de entrega</div>
- <div style="color:#6b7280; font-size:12px; margin-top:2px;">Busca el lugar o toca el mapa para fijar el punto exacto</div>
+ <div id="mapeador-pedido-tercero-titulo" style="color:#F59E0B; font-weight:800; font-size:15px;"> Marcar ubicación de entrega</div>
+ <div id="mapeador-pedido-tercero-subtitulo" style="color:#6b7280; font-size:12px; margin-top:2px;">Busca el lugar o toca el mapa para fijar el punto exacto</div>
  </div>
  </div>
  <div style="padding:12px 16px; background:#111827; border-bottom:1px solid #1f2937; flex-shrink:0;">
@@ -16363,11 +16363,26 @@ window.cancelarAudioP2P = function(pedidoId) {
  let _pinPedidoT = null;
  let _coordsTempPedidoT = null;
 
- window.abrirMapeadorPedidoTercero = function() {
- _coordsTempPedidoT = (window._sbTercero && window._sbTercero.gpsEntrega) || null;
+ window.abrirMapeadorPedidoTercero = function(modo) {
+ // FIX "ESTOY EN OTRO LUGAR": el mismo mapeador ahora sirve tanto para
+ // marcar la ENTREGA (comportamiento original) como la RECOGIDA, cuando el
+ // local no está en su dirección registrada. El modo decide a qué campo
+ // del pedido se aplica el punto al guardar.
+ window._modoMapeadorTercero = (modo === 'recogida') ? 'recogida' : 'entrega';
+ const esRecogida = window._modoMapeadorTercero === 'recogida';
+ const tituloEl = document.getElementById('mapeador-pedido-tercero-titulo');
+ const subtituloEl = document.getElementById('mapeador-pedido-tercero-subtitulo');
+ if (tituloEl) tituloEl.textContent = esRecogida ? ' Marcar dónde recoges el pedido' : ' Marcar ubicación de entrega';
+ if (subtituloEl) subtituloEl.textContent = esRecogida ? 'Busca el lugar o toca el mapa para fijar dónde estás ahora' : 'Busca el lugar o toca el mapa para fijar el punto exacto';
+
+ _coordsTempPedidoT = esRecogida
+ ? ((window._sbTercero && window._sbTercero.gpsRecogida) || null)
+ : ((window._sbTercero && window._sbTercero.gpsEntrega) || null);
  const nombreCliente = (document.getElementById('sb-t-nombre') || {}).value || '';
  document.getElementById('mapeador-pedido-tercero-buscar').value = '';
- document.getElementById('mapeador-pedido-tercero-nombre').value = nombreCliente ? ('Entrega ' + nombreCliente) : '';
+ document.getElementById('mapeador-pedido-tercero-nombre').value = esRecogida
+ ? 'Punto de recogida'
+ : (nombreCliente ? ('Entrega ' + nombreCliente) : '');
  document.getElementById('mapeador-pedido-tercero-resultados').innerHTML = '';
  document.getElementById('modal-mapeador-pedido-tercero').style.display = 'flex';
 
@@ -16395,7 +16410,7 @@ window.cancelarAudioP2P = function(pedidoId) {
 
  if (_pinPedidoT) _mapPedidoT.removeLayer(_pinPedidoT);
  _pinPedidoT = L.marker([lat, lng], {
- icon: L.divIcon({ html: '<div style="font-size:28px;line-height:1;"></div>', className:'', iconAnchor:[14,28] })
+ icon: L.divIcon({ html: '<div style="font-size:28px;line-height:1;">📍</div>', className:'', iconAnchor:[14,28] })
  }).addTo(_mapPedidoT);
 
  document.getElementById('mapeador-pedido-tercero-coords-info').textContent = ' ' + lat + ', ' + lng + ' — toca "Guardar ubicación" para fijar este punto';
@@ -16444,6 +16459,11 @@ window.cancelarAudioP2P = function(pedidoId) {
 
  window.confirmarUbicacionPedidoTercero = function() {
  if (!_coordsTempPedidoT) return;
+ if (window._modoMapeadorTercero === 'recogida') {
+ sbAplicarGpsRecogidaATarjetaTercero(_coordsTempPedidoT);
+ cerrarMapeadorPedidoTercero();
+ return;
+ }
  sbAplicarGpsATarjetaTercero(_coordsTempPedidoT);
  cerrarMapeadorPedidoTercero();
  // Deja el cuadro de texto normal del chat listo para que el local escriba
@@ -16593,7 +16613,7 @@ document.getElementById('modal-sugerir-barrio')?.addEventListener('click', e => 
 
  if (_pinSugerencia) _mapSugerencia.removeLayer(_pinSugerencia);
  _pinSugerencia = L.marker([lat, lng], {
- icon: L.divIcon({ html: '<div style="font-size:28px;line-height:1;"></div>', className:'', iconAnchor:[14,28] })
+ icon: L.divIcon({ html: '<div style="font-size:28px;line-height:1;">📍</div>', className:'', iconAnchor:[14,28] })
  }).addTo(_mapSugerencia);
 
  const nom = document.getElementById('sugerir-nombre').value.trim() || '(sin nombre)';
@@ -18261,9 +18281,17 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  div.style.cssText = 'max-width:100%; padding:12px; background:var(--color-surface2,#161b22); border:1px solid var(--color-border2,#30363d); border-radius:10px;';
  div.innerHTML =
   '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;">¿Dónde recoges este pedido?</div>' +
- '<div style="display:flex; gap:8px; margin-bottom:12px;">' +
+ '<div style="display:flex; gap:8px; margin-bottom:8px;">' +
  '<button type="button" id="sb-t-btn-local" onclick="sbSetOrigenRecogidaTercero(\'local\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid var(--color-primary,#F59E0B); background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:12px; cursor:pointer;"> Recoger en el local</button>' +
  '<button type="button" id="sb-t-btn-otro" onclick="sbSetOrigenRecogidaTercero(\'otro_lugar\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:bold; font-size:12px; cursor:pointer;"> Estoy en otro lugar</button>' +
+ '</div>' +
+ // FIX "ESTOY EN OTRO LUGAR": antes, al elegir esta opción, no pasaba nada
+ // más — no había forma de decir dónde recoger. Ahora se muestra este aviso
+ // + botón para marcar el punto en el mapa (respaldo si el GPS en vivo del
+ // celular no está disponible o desactualizado).
+ '<div id="sb-t-recogida-otro-wrap" style="display:none; margin-bottom:10px;">' +
+ '<div id="sb-t-recogida-otro-status" style="font-size:11px; color:#9ca3af; margin-bottom:6px;"> Se usará tu ubicación GPS actual. Si no se puede tomar, márcala en el mapa:</div>' +
+ '<button type="button" id="sb-t-btn-mapa-recogida" onclick="abrirMapeadorPedidoTercero(\'recogida\')" style="width:100%; padding:9px 12px; border-radius:8px; border:1px dashed #F59E0B; background:rgba(245,158,11,0.08); color:#F59E0B; font-size:12px; font-weight:bold; cursor:pointer; text-align:left;"> Marcar dónde recoges en el mapa</button>' +
  '</div>' +
  '<input type="text" id="sb-t-nombre" placeholder="Nombre" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
  '<input type="tel" id="sb-t-telefono" placeholder="Teléfono" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
@@ -18364,6 +18392,26 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const esLocal = origen === 'local';
  if (btnLocal) { btnLocal.style.background = esLocal ? 'var(--color-primary,#F59E0B)' : 'transparent'; btnLocal.style.color = esLocal ? '#000' : '#9ca3af'; btnLocal.style.borderColor = esLocal ? 'var(--color-primary,#F59E0B)' : '#374151'; }
  if (btnOtro) { btnOtro.style.background = esLocal ? 'transparent' : 'var(--color-primary,#F59E0B)'; btnOtro.style.color = esLocal ? '#9ca3af' : '#000'; btnOtro.style.borderColor = esLocal ? '#374151' : 'var(--color-primary,#F59E0B)'; }
+
+ // FIX "ESTOY EN OTRO LUGAR": mostrar el aviso + botón de mapa solo cuando
+ // aplica, y si vuelve a "Recoger en el local" limpiar cualquier punto que
+ // se hubiera marcado a mano (para no dejar datos viejos colgando).
+ const wrap = document.getElementById('sb-t-recogida-otro-wrap');
+ if (wrap) wrap.style.display = esLocal ? 'none' : 'block';
+ if (esLocal) {
+ window._sbTercero.gpsRecogida = null;
+ const status = document.getElementById('sb-t-recogida-otro-status');
+ if (status) status.innerHTML = ' Se usará tu ubicación GPS actual. Si no se puede tomar, márcala en el mapa:';
+ }
+ };
+
+ // Guarda el punto marcado a mano para la RECOGIDA (respaldo si el GPS en
+ // vivo del celular no está disponible o desactualizado al confirmar).
+ window.sbAplicarGpsRecogidaATarjetaTercero = function (gps) {
+ if (!window._sbTercero) window._sbTercero = {};
+ window._sbTercero.gpsRecogida = gps;
+ const status = document.getElementById('sb-t-recogida-otro-status');
+ if (status) status.innerHTML = ' Ubicación de recogida marcada en el mapa.';
  };
 
  window.sbConfirmarPedidoTercero = async function () {
@@ -18393,8 +18441,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  try {
  if (!window.confirmarPedidoTerceroCallable) throw new Error('No se pudo conectar con el servidor.');
  const origenRecogida = (window._sbTercero && window._sbTercero.origenRecogida) || 'local';
+ const gpsRecogidaManual = (origenRecogida === 'otro_lugar' && window._sbTercero) ? (window._sbTercero.gpsRecogida || null) : null;
  const res = await window.confirmarPedidoTerceroCallable({
- nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega, origenRecogida,
+ nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega, origenRecogida, gpsRecogidaManual,
  });
  const card = document.getElementById('sb-tercero-card');
  if (card) card.remove();
@@ -18954,7 +19003,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  if (_pinFavor) _mapFavor.removeLayer(_pinFavor);
  _pinFavor = L.marker([lat, lng], {
- icon: L.divIcon({ html: '<div style="font-size:28px;line-height:1;"></div>', className:'', iconAnchor:[14,28] })
+ icon: L.divIcon({ html: '<div style="font-size:28px;line-height:1;">📍</div>', className:'', iconAnchor:[14,28] })
  }).addTo(_mapFavor);
 
  const nom = document.getElementById('mapeador-favor-nombre').value.trim() || '(sin nombre)';
@@ -19007,7 +19056,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  if (_pinFavor) _mapFavor.removeLayer(_pinFavor);
  _pinFavor = L.marker([lat, lng], {
- icon: L.divIcon({ html: '<div style="font-size:28px;line-height:1;"></div>', className:'', iconAnchor:[14,28] })
+ icon: L.divIcon({ html: '<div style="font-size:28px;line-height:1;">📍</div>', className:'', iconAnchor:[14,28] })
  }).addTo(_mapFavor);
 
  // Actualizar nombre con el resultado

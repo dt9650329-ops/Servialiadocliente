@@ -16396,9 +16396,27 @@ window.cancelarAudioP2P = function(pedidoId) {
  } else {
  _mapPedidoT.invalidateSize();
  }
+
+ // FIX PUNTO COMPARTIDO RECOGIDA/ENTREGA: el mapa y el pin son un solo
+ // objeto reutilizado entre los dos modos. Antes, si el nuevo modo todavía
+ // no tenía un punto propio, se dejaba dibujado el pin del modo anterior
+ // (parecía que recogida y entrega compartían la misma ubicación). Ahora
+ // siempre se limpia el pin viejo primero, y solo se vuelve a dibujar si
+ // el modo que se está abriendo ya tiene su propio punto guardado.
+ if (_pinPedidoT) { _mapPedidoT.removeLayer(_pinPedidoT); _pinPedidoT = null; }
+ const btnConfirmar = document.getElementById('btn-confirmar-mapeador-pedido-tercero');
+ const coordsInfo = document.getElementById('mapeador-pedido-tercero-coords-info');
  if (_coordsTempPedidoT) {
  fijarPinPedidoT(_coordsTempPedidoT.lat, _coordsTempPedidoT.lng, true);
  _mapPedidoT.setView([_coordsTempPedidoT.lat, _coordsTempPedidoT.lng], 17);
+ } else {
+ if (coordsInfo) coordsInfo.textContent = 'Toca el mapa para fijar la ubicación exacta';
+ if (btnConfirmar) {
+ btnConfirmar.disabled = true;
+ btnConfirmar.style.background = '#374151';
+ btnConfirmar.style.color = '#6b7280';
+ btnConfirmar.style.cursor = 'not-allowed';
+ }
  }
  }, 150);
  };

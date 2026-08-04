@@ -5723,6 +5723,11 @@ const TONOS_NOTIFICACION = [
  };
 
  // FIX PRECIO GPS: distancia real por carretera (OSRM) entre dos coordenadas, con fallback a línea recta (Haversine)
+ // FIX ESTIMADO SIN OSRM: la línea recta siempre da MENOS que la ruta real
+ // (calles, curvas, ríos, lomas). Cuando OSRM no responde, se corrige la
+ // línea recta con este factor para que el estimado se acerque más a lo
+ // que en verdad recorre el repartidor, en vez de quedarse corto.
+ window._FACTOR_CORRECCION_RUTA = 1.25; // +25% sobre la línea recta
  window._distanciaRealEntrePuntos = async function(coordsA, coordsB) {
  if (!coordsA || !coordsB) return null;
  try {
@@ -5740,7 +5745,8 @@ const TONOS_NOTIFICACION = [
  const dLng = (coordsB.lng - coordsA.lng) * Math.PI / 180;
  const a = Math.sin(dLat/2)**2 + Math.cos(coordsA.lat * Math.PI/180)
  * Math.cos(coordsB.lat * Math.PI/180) * Math.sin(dLng/2)**2;
- return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+ const kmLineaRecta = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+ return kmLineaRecta * window._FACTOR_CORRECCION_RUTA;
  };
 
  // Calcular precio según zonas seleccionadas
@@ -5896,15 +5902,17 @@ const TONOS_NOTIFICACION = [
  console.warn('[PRECIO] OSRM no disponible, usando Haversine:', e);
  }
 
- // Fallback: línea recta (Haversine) si OSRM falla
+ // Fallback: línea recta (Haversine) si OSRM falla — corregida con el
+ // mismo factor de _FACTOR_CORRECCION_RUTA para no quedarse corta.
  if (!kmRuta) {
  const R = 6371;
  const dLat = (coordsEnt.lat - coordsRec.lat) * Math.PI / 180;
  const dLng = (coordsEnt.lng - coordsRec.lng) * Math.PI / 180;
  const a = Math.sin(dLat/2)**2 + Math.cos(coordsRec.lat * Math.PI/180)
  * Math.cos(coordsEnt.lat * Math.PI/180) * Math.sin(dLng/2)**2;
- kmRuta = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
- console.warn('[PRECIO] Usando Haversine:', kmRuta.toFixed(2), 'km');
+ const kmLineaRecta = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+ kmRuta = kmLineaRecta * (window._FACTOR_CORRECCION_RUTA || 1.25);
+ console.warn('[PRECIO] Usando Haversine corregido:', kmRuta.toFixed(2), 'km');
  }
 
  const kmDisplay = Math.round(kmRuta * 10) / 10;
@@ -9578,7 +9586,20 @@ if (dentroDeHorario) {
  if (snapshot.exists()) {
  const pedidoActualizado = snapshot.val();
  const nuevoEstado = pedidoActualizado.estado || pedidoActualizado.estadoHistorial || 'Desconocido';
- 
+
+ // AVISO "REPARTIDOR CERCA": además del push (que llega aunque tengas la
+ // app cerrada), si el cliente ya tiene esta pantalla abierta se le
+ // muestra un aviso al instante, sin esperar la notificación del sistema.
+ if (pedidoActualizado.repartidorCerca) {
+ if (!window._avisosCercaMostrados) window._avisosCercaMostrados = new Set();
+ if (!window._avisosCercaMostrados.has(pedido.id)) {
+ window._avisosCercaMostrados.add(pedido.id);
+ if (typeof window.mostrarAvisoRepartidorCerca === 'function') {
+ window.mostrarAvisoRepartidorCerca(pedidoActualizado.repartidorNombre || pedido.repartidorNombre || 'Tu repartidor');
+ }
+ }
+ }
+
  console.log(` Estado del pedido ${pidKey} actualizado: ${nuevoEstado}`);
  // Mostrar chat P2P cuando el repartidor acepta
  const estadosConChatP2P = ['aceptado','esperando','esperando pedido','en camino'];
@@ -10301,6 +10322,27 @@ if (dentroDeHorario) {
      </div>`;
    document.body.appendChild(overlay);
  }
+
+ // FIX "REPARTIDOR CERCA": banner rápido que aparece encima de todo cuando
+ // el repartidor está a pocos minutos de llegar (el listener de seguimiento
+ // ya lo llama solo una vez por pedido). Se quita solo a los 8s o al tocarlo.
+ window.mostrarAvisoRepartidorCerca = function(nombreRepartidor) {
+   const existente = document.getElementById('avisoRepartidorCercaBanner');
+   if (existente) existente.remove();
+   const banner = document.createElement('div');
+   banner.id = 'avisoRepartidorCercaBanner';
+   banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999998;background:linear-gradient(135deg,#F59E0B,#E08B00);color:#0D1526;padding:14px 18px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 15px rgba(0,0,0,0.3);cursor:pointer;';
+   banner.innerHTML = `
+     <div style="font-size:26px;">🛵</div>
+     <div style="flex:1;">
+       <div style="font-weight:800;font-size:14px;">¡${sanitizarHTML ? sanitizarHTML(nombreRepartidor) : nombreRepartidor} está cerca!</div>
+       <div style="font-size:12px;opacity:0.85;">Prepárate para recibir tu pedido</div>
+     </div>
+     <div style="font-size:18px;">✕</div>`;
+   banner.onclick = () => banner.remove();
+   document.body.appendChild(banner);
+   setTimeout(() => { if (document.getElementById('avisoRepartidorCercaBanner')) banner.remove(); }, 8000);
+ };
 
  async function verificarVersionObligatoria() {
    try {

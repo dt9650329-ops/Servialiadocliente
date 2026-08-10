@@ -3281,19 +3281,28 @@
  <input type="text" id="nombreUsuario" required> 
  <label>Correo Electrónico:</label>
  <input type="email" id="correoUsuario" required readonly> 
+
+ <label>Tipo de cuenta: <span style="color:var(--color-primary);">*</span></label>
+ <input type="hidden" id="tipoClienteUsuario" value="">
+ <div style="display:flex; gap:10px; margin-bottom:14px;">
+ <button type="button" id="btnTipoNatural" onclick="seleccionarTipoCliente('natural')" style="
+ flex:1; padding:14px 8px; border-radius:10px; cursor:pointer; font-size:13px; font-weight:600;
+ background:#ffffff; color:var(--color-text-dark); border:1.5px solid #ccc; text-align:center;">
+ 🙋 Persona Natural<br><span style="font-weight:400; font-size:11px;">Pido para uso propio</span>
+ </button>
+ <button type="button" id="btnTipoLocal" onclick="seleccionarTipoCliente('local')" style="
+ flex:1; padding:14px 8px; border-radius:10px; cursor:pointer; font-size:13px; font-weight:600;
+ background:#ffffff; color:var(--color-text-dark); border:1.5px solid #ccc; text-align:center;">
+ 🏪 Tengo un Local<br><span style="font-weight:400; font-size:11px;">Negocio / restaurante</span>
+ </button>
+ </div>
+
  <label>Teléfono principal: <span style="color:var(--color-primary);">*</span></label>
  <input type="tel" id="telefono1Usuario" required>
  <label>Teléfono secundario (opcional):</label>
  <input type="tel" id="telefono2Usuario">
  <label>Dirección de residencia: <span style="color:var(--color-primary);">*</span></label>
  <input type="text" id="direccionUsuario" required placeholder="Ej: Cra 15 #20-10, Barrio El Centro">
-
- <label>Tipo de cuenta: <span style="color:var(--color-primary);">*</span></label>
- <div style="display:flex; gap:8px; margin-bottom:6px;">
- <button type="button" id="btnTipoClienteNatural" onclick="seleccionarTipoCliente('natural')" style="flex:1; padding:11px 6px; border-radius:8px; border:1px solid var(--color-primary); background:var(--color-primary); color:#000; font-weight:600; font-size:13px; cursor:pointer;">🧑 Persona Natural</button>
- <button type="button" id="btnTipoClienteLocal" onclick="seleccionarTipoCliente('local')" style="flex:1; padding:11px 6px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:600; font-size:13px; cursor:pointer;">🏬 Tengo un Local</button>
- </div>
- <div style="font-size:12px; color:var(--color-text-dark); margin-bottom:6px;">Esto define la tarifa de domicilios que aplica a tu cuenta. Un administrador puede cambiarlo después si te registraste mal.</div>
 
  <!-- Botón para detectar dirección por GPS -->
  <button type="button" onclick="usarUbicacionEnRegistro()" style="
@@ -4875,8 +4884,9 @@ const TONOS_NOTIFICACION = [
  const btn = document.getElementById('tono-btn-' + id);
  if (btn) btn.classList.add('activo');
  reproducirTonoNotif();
- if (window.currentUserID) {
- firebase.database().ref('usuarios/' + window.currentUserID + '/tonoNotificacion').set(id);
+ if (window.currentUserID && window.db && window.ref && window.set) {
+ window.set(window.ref(window.db, 'usuarios/' + window.currentUserID + '/tonoNotificacion'), id)
+ .catch(e => console.warn('No se pudo guardar el tono en Firebase:', e.message));
  }
  };
 
@@ -5716,57 +5726,78 @@ const TONOS_NOTIFICACION = [
  // Mantener compatibilidad por si algo llama habilitarChat
  function habilitarChat() {}
 
- // FIX PRECIO GPS: tabla de tarifas por km, compartida por calcularPrecioDomi() y calcularDistanciaGPS()
- // Antes cada una tenía su propia fórmula y por eso el precio no coincidía entre las dos.
- // AHORA: la tabla la maneja el admin desde Firebase (config_tarifas/armenia), separada por
- // tipo de cliente (local/natural). Si Firebase no responde a tiempo, se usa este valor de
- // respaldo idéntico al que había antes, para que la app nunca se quede sin poder cotizar.
- window._TARIFAS_ARMENIA_DEFAULT = {
+ // 💰 TARIFAS POR DISTANCIA — editables desde el Admin
+ // Firebase: config_tarifas/armenia/{local|natural} — el MISMO nodo que edita
+ // el admin y que lee la Cloud Function/ServiBot para cotizar y cobrar.
+ // FIX 2026-08-10: antes este archivo escuchaba "tarifasDistancia", un nodo
+ // huérfano que nadie escribía, así que el precio en pantalla NUNCA reflejaba
+ // los cambios del admin y siempre caía al default hardcodeado de abajo.
+ // Ese default solo se usa como respaldo mientras carga o si Firebase falla.
+ window._TARIFAS_DEFAULT = {
  local: {
  tramos: [
- { hastaKm: 1.0, precio: 4000 }, { hastaKm: 3.1, precio: 5000 },
- { hastaKm: 5.9, precio: 6000 }, { hastaKm: 7.5, precio: 7000 },
- { hastaKm: 9.0, precio: 8000 }, { hastaKm: 10.5, precio: 9000 },
+ { hastaKm: 1.0, precio: 4000 },
+ { hastaKm: 3.1, precio: 5000 },
+ { hastaKm: 5.9, precio: 6000 },
+ { hastaKm: 7.5, precio: 7000 },
+ { hastaKm: 9.0, precio: 8000 },
+ { hastaKm: 10.5, precio: 9000 }
  ],
- masAllaBase: 10000, masAllaPorKm: 1000,
+ extraBase: 10000,
+ extraPorKm: 1000
  },
  natural: {
  tramos: [
- { hastaKm: 1.0, precio: 4000 }, { hastaKm: 3.1, precio: 5000 },
- { hastaKm: 5.9, precio: 6000 }, { hastaKm: 7.5, precio: 7000 },
- { hastaKm: 9.0, precio: 8000 }, { hastaKm: 10.5, precio: 9000 },
+ { hastaKm: 1.0, precio: 4000 },
+ { hastaKm: 3.1, precio: 5000 },
+ { hastaKm: 5.9, precio: 6000 },
+ { hastaKm: 7.5, precio: 7000 },
+ { hastaKm: 9.0, precio: 8000 },
+ { hastaKm: 10.5, precio: 9000 }
  ],
- masAllaBase: 10000, masAllaPorKm: 1000,
- },
- };
-
- // Caché en vivo de config_tarifas/armenia (se actualiza sola cuando el admin guarda cambios)
- window._tarifasArmeniaCache = null;
- window._escucharTarifasArmeniaEnVivo = function() {
- if (window._tarifasArmeniaListenerActivo) return;
- if (!window.db || !window.ref || !window.onValue) { setTimeout(window._escucharTarifasArmeniaEnVivo, 500); return; }
- window._tarifasArmeniaListenerActivo = true;
- window.onValue(window.ref(window.db, 'config_tarifas/armenia'), (snap) => {
- window._tarifasArmeniaCache = snap.exists() ? snap.val() : null;
- });
- };
- window._escucharTarifasArmeniaEnVivo();
-
- function _calcularPrecioPorTramosCliente(km, cfg) {
- const base = (cfg && cfg.tramos && cfg.tramos.length) ? cfg : window._TARIFAS_ARMENIA_DEFAULT.natural;
- const tramos = [...base.tramos].sort((a, b) => a.hastaKm - b.hastaKm);
- for (const t of tramos) { if (km <= t.hastaKm) return t.precio; }
- const ultimo = tramos[tramos.length - 1];
- const masAllaBase = base.masAllaBase != null ? base.masAllaBase : window._TARIFAS_ARMENIA_DEFAULT.natural.masAllaBase;
- const masAllaPorKm = base.masAllaPorKm != null ? base.masAllaPorKm : window._TARIFAS_ARMENIA_DEFAULT.natural.masAllaPorKm;
- return Math.round(masAllaBase + (km - ultimo.hastaKm) * masAllaPorKm);
+ extraBase: 10000,
+ extraPorKm: 1000
  }
+ };
 
+ window._tarifasDistanciaCache = null; // se llena en vivo desde Firebase al iniciar sesión
+
+ // Escucha en tiempo real la tabla de tarifas en Firebase para que los cambios
+ // del admin se reflejen sin que el cliente tenga que cerrar y abrir la app.
+ window._cargarTarifasDistancia = function() {
+ if (!window.db || !window.ref || !window.onValue) return;
+ window.onValue(window.ref(window.db, 'config_tarifas/armenia'), (snap) => {
+ window._tarifasDistanciaCache = snap.exists() ? snap.val() : null;
+ }, (err) => console.warn('⚠️ No se pudo cargar config_tarifas/armenia:', err.message));
+ };
+
+ // FIX PRECIO GPS: tabla de tarifas por km, compartida por calcularPrecioDomi() y calcularDistanciaGPS()
+ // Antes cada una tenía su propia fórmula y por eso el precio no coincidía entre las dos.
  window._precioSegunKmArmenia = function(km) {
- const tipo = window._tipoClienteActual === 'local' ? 'local' : 'natural';
- const tarifas = window._tarifasArmeniaCache || window._TARIFAS_ARMENIA_DEFAULT;
- const cfg = tarifas[tipo] || tarifas.natural || window._TARIFAS_ARMENIA_DEFAULT.natural;
- return _calcularPrecioPorTramosCliente(km, cfg);
+ const tipo = (window.currentTipoCliente === 'local') ? 'local' : 'natural';
+ const cacheTipo = window._tarifasDistanciaCache && window._tarifasDistanciaCache[tipo];
+ const tabla = (cacheTipo && cacheTipo.tramos) ? cacheTipo : window._TARIFAS_DEFAULT[tipo];
+
+ // tramos puede venir como objeto {id:{hastaKm,precio}} (Firebase) o array — normalizamos a array ordenado
+ let tramos = Array.isArray(tabla.tramos) ? tabla.tramos : Object.values(tabla.tramos || {});
+ tramos = tramos.filter(t => t && typeof t.hastaKm === 'number' && typeof t.precio === 'number')
+ .sort((a, b) => a.hastaKm - b.hastaKm);
+
+ if (tramos.length === 0) tramos = window._TARIFAS_DEFAULT[tipo].tramos;
+
+ for (const t of tramos) {
+ if (km <= t.hastaKm) return t.precio;
+ }
+ // Más allá del último tramo: base + $/km adicional
+ // NOTA: el admin guarda estos campos como "masAllaBase"/"masAllaPorKm"
+ // (config_tarifas/armenia); "extraBase"/"extraPorKm" es el nombre legado
+ // que usa el _TARIFAS_DEFAULT de este archivo. Se soportan ambos.
+ const ultimoKm = tramos[tramos.length - 1].hastaKm;
+ const extraBase = (typeof tabla.masAllaBase === 'number') ? tabla.masAllaBase
+ : (typeof tabla.extraBase === 'number') ? tabla.extraBase : window._TARIFAS_DEFAULT[tipo].extraBase;
+ const extraPorKm = (typeof tabla.masAllaPorKm === 'number') ? tabla.masAllaPorKm
+ : (typeof tabla.extraPorKm === 'number') ? tabla.extraPorKm : window._TARIFAS_DEFAULT[tipo].extraPorKm;
+ return Math.round(extraBase + (km - ultimoKm) * extraPorKm);
  };
 
  // FIX PRECIO GPS: distancia real por carretera (OSRM) entre dos coordenadas, con fallback a línea recta (Haversine)
@@ -7902,20 +7933,20 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  document.getElementById('audio-recording-status').style.display = 'none';
  }
  }
- // Tipo de cuenta seleccionado en el registro: 'natural' (por defecto) o 'local'
- window._tipoClienteSeleccionado = window._tipoClienteSeleccionado || 'natural';
+ // 🏪 Toggle visual del tipo de cuenta (Persona Natural / Local) en el registro
  window.seleccionarTipoCliente = function(tipo) {
- window._tipoClienteSeleccionado = tipo;
- const btnN = document.getElementById('btnTipoClienteNatural');
- const btnL = document.getElementById('btnTipoClienteLocal');
- if (!btnN || !btnL) return;
- const esNatural = tipo === 'natural';
- btnN.style.background = esNatural ? 'var(--color-primary)' : 'transparent';
- btnN.style.color = esNatural ? '#000' : '#9ca3af';
- btnN.style.borderColor = esNatural ? 'var(--color-primary)' : '#374151';
- btnL.style.background = esNatural ? 'transparent' : 'var(--color-primary)';
- btnL.style.color = esNatural ? '#9ca3af' : '#000';
- btnL.style.borderColor = esNatural ? '#374151' : 'var(--color-primary)';
+ document.getElementById("tipoClienteUsuario").value = tipo;
+ const btnNat = document.getElementById("btnTipoNatural");
+ const btnLoc = document.getElementById("btnTipoLocal");
+ const activo = "background:var(--color-primary); color:#fff; border:1.5px solid var(--color-primary);";
+ const inactivo = "background:#ffffff; color:var(--color-text-dark); border:1.5px solid #ccc;";
+ btnNat.style.cssText = btnNat.style.cssText.split(';').filter(s=>!/^(flex|padding|border-radius|cursor|font-size|font-weight|text-align)/.test(s.trim())).join(';') + ';' + (tipo==='natural'?activo:inactivo);
+ btnLoc.style.cssText = btnLoc.style.cssText.split(';').filter(s=>!/^(flex|padding|border-radius|cursor|font-size|font-weight|text-align)/.test(s.trim())).join(';') + ';' + (tipo==='local'?activo:inactivo);
+ // Reaplicar layout base porque el split anterior también lo quita
+ btnNat.style.flex = '1'; btnNat.style.padding = '14px 8px'; btnNat.style.borderRadius = '10px';
+ btnNat.style.cursor = 'pointer'; btnNat.style.fontSize = '13px'; btnNat.style.fontWeight = '600'; btnNat.style.textAlign = 'center';
+ btnLoc.style.flex = '1'; btnLoc.style.padding = '14px 8px'; btnLoc.style.borderRadius = '10px';
+ btnLoc.style.cursor = 'pointer'; btnLoc.style.fontSize = '13px'; btnLoc.style.fontWeight = '600'; btnLoc.style.textAlign = 'center';
  };
 
  function registrarUsuarioComplemento() {
@@ -7923,10 +7954,15 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  const nombre = document.getElementById("nombreUsuario").value.trim();
  const tel1 = document.getElementById("telefono1Usuario").value.trim();
  const direccion = document.getElementById("direccionUsuario").value.trim();
+ const tipoCliente = document.getElementById("tipoClienteUsuario").value;
 
  // CORREGIDO: Verificar si están VACÍOS (con !)
  if (!tel1 || !direccion || !nombre) {
  alert("Por favor completa los campos obligatorios (Nombre, Teléfono principal y Dirección).");
+ return;
+ }
+ if (!tipoCliente) {
+ alert("Por favor selecciona el tipo de cuenta: Persona Natural o Tengo un Local.");
  return;
  }
  guardarUsuarioEnFirebase(); 
@@ -7949,7 +7985,13 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  currentUserID = getClientID(usuario.uid);
  window.currentUserID = currentUserID; // FIX: sincronizar variable global para XP/ruleta
  window.currentUserEmail = usuario.correo || ''; // FIX: sincronizar correo global
- window._tipoClienteActual = usuario.tipoCliente === 'local' ? 'local' : 'natural'; // define tabla de tarifas a usar
+ window.currentTipoCliente = usuario.tipoCliente || 'natural'; // 💰 define la tabla de precios por distancia
+ if (typeof window._cargarTarifasDistancia === 'function') window._cargarTarifasDistancia();
+ // 🆕 v1.0.8: cuentas viejas que no tienen tipoCliente todavía → se les
+ // pregunta una sola vez, de forma obligatoria, al entrar con la nueva versión.
+ if (!usuario.tipoCliente && typeof window.mostrarModalTipoClienteObligatorio === 'function') {
+ window.mostrarModalTipoClienteObligatorio(usuario.uid ? window.getClientID(usuario.uid) : window.currentUserID);
+ }
  verificarAprobacion(); 
  
  console.log(' Iniciando GPS del cliente automáticamente...');
@@ -10387,6 +10429,55 @@ if (dentroDeHorario) {
    document.body.appendChild(overlay);
  }
 
+ // 🆕 v1.0.8: Modal obligatorio para cuentas viejas sin tipoCliente definido.
+ // No se puede cerrar sin elegir — se queda encima de todo hasta que el
+ // cliente selecciona y confirma. Escribe usuarios/{uid}/tipoCliente y
+ // actualiza window.currentTipoCliente + recarga tarifas al instante.
+ window.mostrarModalTipoClienteObligatorio = function(usuarioID) {
+ if (document.getElementById('modalTipoClienteOverlay')) return;
+ const overlay = document.createElement('div');
+ overlay.id = 'modalTipoClienteOverlay';
+ overlay.style.cssText = 'position:fixed;inset:0;z-index:999997;background:rgba(5,8,15,0.96);display:flex;align-items:center;justify-content:center;padding:24px;';
+ overlay.innerHTML = `
+ <div style="background:var(--color-surface2,#131F36);border:1px solid var(--color-surface3,#1A2845);border-radius:16px;padding:26px 22px;max-width:360px;width:100%;text-align:center;">
+ <div style="font-size:38px;margin-bottom:10px;">🏷️</div>
+ <h2 style="color:var(--color-text-light,#E2E8F0);font-size:19px;margin:0 0 8px;">Un dato rápido</h2>
+ <p style="color:var(--color-text-dark,#94A3B8);font-size:13.5px;line-height:1.5;margin:0 0 18px;">
+ Para calcularte el precio correcto de tus domicilios, dinos qué tipo de cuenta tienes:
+ </p>
+ <div style="display:flex;flex-direction:column;gap:10px;">
+ <button id="modalTipoBtnNatural" onclick="window._elegirTipoClienteObligatorio('${usuarioID}','natural')" style="
+ padding:16px 10px; border-radius:10px; cursor:pointer; font-size:14px; font-weight:700;
+ background:#ffffff; color:#222; border:1.5px solid #ccc; text-align:left;">
+ 🙋 Persona Natural<br><span style="font-weight:400; font-size:12px;">Pido para uso propio (compras, favores, mandados)</span>
+ </button>
+ <button id="modalTipoBtnLocal" onclick="window._elegirTipoClienteObligatorio('${usuarioID}','local')" style="
+ padding:16px 10px; border-radius:10px; cursor:pointer; font-size:14px; font-weight:700;
+ background:#ffffff; color:#222; border:1.5px solid #ccc; text-align:left;">
+ 🏪 Tengo un Local<br><span style="font-weight:400; font-size:12px;">Negocio, tienda o restaurante que vende</span>
+ </button>
+ </div>
+ <div id="modalTipoClienteStatus" style="margin-top:12px;font-size:12px;color:#F59E0B;"></div>
+ </div>`;
+ document.body.appendChild(overlay);
+ };
+
+ window._elegirTipoClienteObligatorio = async function(usuarioID, tipo) {
+ const statusEl = document.getElementById('modalTipoClienteStatus');
+ if (statusEl) statusEl.textContent = 'Guardando...';
+ try {
+ await update(ref(db, `usuarios/${usuarioID}`), { tipoCliente: tipo });
+ // También sincronizar en users/ si existe (algunos flujos leen de ahí)
+ update(ref(db, `users/${usuarioID}`), { tipoCliente: tipo }).catch(() => {});
+ window.currentTipoCliente = tipo;
+ const overlay = document.getElementById('modalTipoClienteOverlay');
+ if (overlay) overlay.remove();
+ } catch (e) {
+ if (statusEl) { statusEl.style.color = '#EF4444'; statusEl.textContent = 'Error al guardar, intenta de nuevo.'; }
+ console.error('Error guardando tipoCliente:', e);
+ }
+ };
+
  // FIX "REPARTIDOR CERCA": banner rápido que aparece encima de todo cuando
  // el repartidor está a pocos minutos de llegar (el listener de seguimiento
  // ya lo llama solo una vez por pedido). Se quita solo a los 8s o al tocarlo.
@@ -11031,8 +11122,9 @@ if (dentroDeHorario) {
  const tel1 = document.getElementById("telefono1Usuario").value.trim(); 
  const tel2 = document.getElementById("telefono2Usuario").value.trim();
  const direccion = document.getElementById("direccionUsuario").value.trim();
+ const tipoCliente = document.getElementById("tipoClienteUsuario").value || 'natural';
  
- console.log(' Guardando usuario:', { nombre, tel1, direccion });
+ console.log(' Guardando usuario:', { nombre, tel1, direccion, tipoCliente });
  
  if (!tel1 || !direccion) {
  alert("El teléfono principal y la dirección son obligatorios para completar el registro.");
@@ -11079,8 +11171,8 @@ if (dentroDeHorario) {
  fechaRegistroLegible: fechaLegible,
  ubicacionRegistro: ubicacionRegistro,
  gpsActivo: false,
- tipoCliente: window._tipoClienteSeleccionado === 'local' ? 'local' : 'natural', // define qué tabla de tarifas aplica
- activado: false // 🔒 Nace bloqueado: el admin debe activarlo para habilitar Servicios
+ activado: false, // 🔒 Nace bloqueado: el admin debe activarlo para habilitar Servicios
+ tipoCliente: tipoCliente // 'natural' o 'local' — define la tabla de precios por distancia que se le aplica
  };
  
  console.log(' Datos a guardar:', infoFijaUsuario);
@@ -12586,7 +12678,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.0.8  -  (Sin verificación admin)');
+ console.log(' VERSIÓN: 1.0.8  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -17172,16 +17264,7 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  {
  id: 'precios',
  patron: /precio|tarifario|tarifa|cuesta|cuestan|cobran|valor del domicilio|costo|vale|sale en|cuanto (es|cuesta|vale|sale|cobran)/,
- respuesta: () => {
- const tipo = window._tipoClienteActual === 'local' ? 'local' : 'natural';
- const tarifas = window._tarifasArmeniaCache || window._TARIFAS_ARMENIA_DEFAULT;
- const cfg = tarifas[tipo] || tarifas.natural || window._TARIFAS_ARMENIA_DEFAULT.natural;
- const tramos = [...cfg.tramos].sort((a, b) => a.hastaKm - b.hastaKm);
- const lineasTramos = tramos.map(t => `• Hasta ${t.hastaKm} km: **$${t.precio.toLocaleString('es-CO')}**`).join('\n');
- const ultimo = tramos[tramos.length - 1];
- const lineaMasAlla = ultimo ? `• Más de ${ultimo.hastaKm} km: **$${cfg.masAllaBase.toLocaleString('es-CO')}** + $${cfg.masAllaPorKm.toLocaleString('es-CO')} por km adicional` : '';
- return `${elegir(['Claro, te cuento:', 'Con gusto, mira:', 'Dale, aquí está:'])}\n\n**Tarifas dentro de Armenia** (por distancia de ruta):\n\n${lineasTramos}\n${lineaMasAlla}\n\nExtras por tamaño del paquete:\n• Grande (caja/bolsa voluminosa): **+$1.000**\n• Muy grande (mueble, electrodoméstico): **+$2.000**\n\nFuera de Armenia (Calarcá, Circasia, Montenegro, etc.) la tarifa depende del municipio; un administrador te confirma el valor exacto.\n\nEl precio se calcula automáticamente según la distancia real entre los dos puntos.`;
- }
+ respuesta: () => `${elegir(['Claro, te cuento:', 'Con gusto, mira:', 'Dale, aquí está:'])}\n\n**Tarifas dentro de Armenia** (por distancia de ruta):\n\n• Hasta 1 km: **$4.000**\n• Hasta 3.1 km: **$5.000**\n• Hasta 5.9 km: **$6.000**\n• Hasta 7.5 km: **$7.000**\n• Hasta 9 km: **$8.000**\n• Hasta 10.5 km: **$9.000**\n• Más de 10.5 km: **$10.000**\n\nExtras por tamaño del paquete:\n• Grande (caja/bolsa voluminosa): **+$1.000**\n• Muy grande (mueble, electrodoméstico): **+$2.000**\n\nFuera de Armenia (Calarcá, Circasia, Montenegro, etc.) la tarifa depende del municipio; un administrador te confirma el valor exacto.\n\nEl precio se calcula automáticamente según la distancia real entre los dos puntos.`
  },
  {
  id: 'zonas',

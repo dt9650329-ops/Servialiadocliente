@@ -3288,6 +3288,13 @@
  <label>Dirección de residencia: <span style="color:var(--color-primary);">*</span></label>
  <input type="text" id="direccionUsuario" required placeholder="Ej: Cra 15 #20-10, Barrio El Centro">
 
+ <label>Tipo de cuenta: <span style="color:var(--color-primary);">*</span></label>
+ <div style="display:flex; gap:8px; margin-bottom:6px;">
+ <button type="button" id="btnTipoClienteNatural" onclick="seleccionarTipoCliente('natural')" style="flex:1; padding:11px 6px; border-radius:8px; border:1px solid var(--color-primary); background:var(--color-primary); color:#000; font-weight:600; font-size:13px; cursor:pointer;">🧑 Persona Natural</button>
+ <button type="button" id="btnTipoClienteLocal" onclick="seleccionarTipoCliente('local')" style="flex:1; padding:11px 6px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:600; font-size:13px; cursor:pointer;">🏬 Tengo un Local</button>
+ </div>
+ <div style="font-size:12px; color:var(--color-text-dark); margin-bottom:6px;">Esto define la tarifa de domicilios que aplica a tu cuenta. Un administrador puede cambiarlo después si te registraste mal.</div>
+
  <!-- Botón para detectar dirección por GPS -->
  <button type="button" onclick="usarUbicacionEnRegistro()" style="
  background:linear-gradient(135deg,#1565C0,#1976D2); color:#fff;
@@ -5711,15 +5718,55 @@ const TONOS_NOTIFICACION = [
 
  // FIX PRECIO GPS: tabla de tarifas por km, compartida por calcularPrecioDomi() y calcularDistanciaGPS()
  // Antes cada una tenía su propia fórmula y por eso el precio no coincidía entre las dos.
+ // AHORA: la tabla la maneja el admin desde Firebase (config_tarifas/armenia), separada por
+ // tipo de cliente (local/natural). Si Firebase no responde a tiempo, se usa este valor de
+ // respaldo idéntico al que había antes, para que la app nunca se quede sin poder cotizar.
+ window._TARIFAS_ARMENIA_DEFAULT = {
+ local: {
+ tramos: [
+ { hastaKm: 1.0, precio: 4000 }, { hastaKm: 3.1, precio: 5000 },
+ { hastaKm: 5.9, precio: 6000 }, { hastaKm: 7.5, precio: 7000 },
+ { hastaKm: 9.0, precio: 8000 }, { hastaKm: 10.5, precio: 9000 },
+ ],
+ masAllaBase: 10000, masAllaPorKm: 1000,
+ },
+ natural: {
+ tramos: [
+ { hastaKm: 1.0, precio: 4000 }, { hastaKm: 3.1, precio: 5000 },
+ { hastaKm: 5.9, precio: 6000 }, { hastaKm: 7.5, precio: 7000 },
+ { hastaKm: 9.0, precio: 8000 }, { hastaKm: 10.5, precio: 9000 },
+ ],
+ masAllaBase: 10000, masAllaPorKm: 1000,
+ },
+ };
+
+ // Caché en vivo de config_tarifas/armenia (se actualiza sola cuando el admin guarda cambios)
+ window._tarifasArmeniaCache = null;
+ window._escucharTarifasArmeniaEnVivo = function() {
+ if (window._tarifasArmeniaListenerActivo) return;
+ if (!window.db || !window.ref || !window.onValue) { setTimeout(window._escucharTarifasArmeniaEnVivo, 500); return; }
+ window._tarifasArmeniaListenerActivo = true;
+ window.onValue(window.ref(window.db, 'config_tarifas/armenia'), (snap) => {
+ window._tarifasArmeniaCache = snap.exists() ? snap.val() : null;
+ });
+ };
+ window._escucharTarifasArmeniaEnVivo();
+
+ function _calcularPrecioPorTramosCliente(km, cfg) {
+ const base = (cfg && cfg.tramos && cfg.tramos.length) ? cfg : window._TARIFAS_ARMENIA_DEFAULT.natural;
+ const tramos = [...base.tramos].sort((a, b) => a.hastaKm - b.hastaKm);
+ for (const t of tramos) { if (km <= t.hastaKm) return t.precio; }
+ const ultimo = tramos[tramos.length - 1];
+ const masAllaBase = base.masAllaBase != null ? base.masAllaBase : window._TARIFAS_ARMENIA_DEFAULT.natural.masAllaBase;
+ const masAllaPorKm = base.masAllaPorKm != null ? base.masAllaPorKm : window._TARIFAS_ARMENIA_DEFAULT.natural.masAllaPorKm;
+ return Math.round(masAllaBase + (km - ultimo.hastaKm) * masAllaPorKm);
+ }
+
  window._precioSegunKmArmenia = function(km) {
- if (km <= 1.0) return 4000;
- if (km <= 3.1) return 5000;
- if (km <= 5.9) return 6000;
- if (km <= 7.5) return 7000;
- if (km <= 9.0) return 8000;
- if (km <= 10.5) return 9000;
- // Más allá de Armenia: $10.000 base + $1.000 por cada km adicional
- return Math.round(10000 + (km - 10.5) * 1000);
+ const tipo = window._tipoClienteActual === 'local' ? 'local' : 'natural';
+ const tarifas = window._tarifasArmeniaCache || window._TARIFAS_ARMENIA_DEFAULT;
+ const cfg = tarifas[tipo] || tarifas.natural || window._TARIFAS_ARMENIA_DEFAULT.natural;
+ return _calcularPrecioPorTramosCliente(km, cfg);
  };
 
  // FIX PRECIO GPS: distancia real por carretera (OSRM) entre dos coordenadas, con fallback a línea recta (Haversine)
@@ -7855,6 +7902,22 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  document.getElementById('audio-recording-status').style.display = 'none';
  }
  }
+ // Tipo de cuenta seleccionado en el registro: 'natural' (por defecto) o 'local'
+ window._tipoClienteSeleccionado = window._tipoClienteSeleccionado || 'natural';
+ window.seleccionarTipoCliente = function(tipo) {
+ window._tipoClienteSeleccionado = tipo;
+ const btnN = document.getElementById('btnTipoClienteNatural');
+ const btnL = document.getElementById('btnTipoClienteLocal');
+ if (!btnN || !btnL) return;
+ const esNatural = tipo === 'natural';
+ btnN.style.background = esNatural ? 'var(--color-primary)' : 'transparent';
+ btnN.style.color = esNatural ? '#000' : '#9ca3af';
+ btnN.style.borderColor = esNatural ? 'var(--color-primary)' : '#374151';
+ btnL.style.background = esNatural ? 'transparent' : 'var(--color-primary)';
+ btnL.style.color = esNatural ? '#9ca3af' : '#000';
+ btnL.style.borderColor = esNatural ? '#374151' : 'var(--color-primary)';
+ };
+
  function registrarUsuarioComplemento() {
 
  const nombre = document.getElementById("nombreUsuario").value.trim();
@@ -7886,6 +7949,7 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  currentUserID = getClientID(usuario.uid);
  window.currentUserID = currentUserID; // FIX: sincronizar variable global para XP/ruleta
  window.currentUserEmail = usuario.correo || ''; // FIX: sincronizar correo global
+ window._tipoClienteActual = usuario.tipoCliente === 'local' ? 'local' : 'natural'; // define tabla de tarifas a usar
  verificarAprobacion(); 
  
  console.log(' Iniciando GPS del cliente automáticamente...');
@@ -11015,6 +11079,7 @@ if (dentroDeHorario) {
  fechaRegistroLegible: fechaLegible,
  ubicacionRegistro: ubicacionRegistro,
  gpsActivo: false,
+ tipoCliente: window._tipoClienteSeleccionado === 'local' ? 'local' : 'natural', // define qué tabla de tarifas aplica
  activado: false // 🔒 Nace bloqueado: el admin debe activarlo para habilitar Servicios
  };
  
@@ -17107,7 +17172,16 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  {
  id: 'precios',
  patron: /precio|tarifario|tarifa|cuesta|cuestan|cobran|valor del domicilio|costo|vale|sale en|cuanto (es|cuesta|vale|sale|cobran)/,
- respuesta: () => `${elegir(['Claro, te cuento:', 'Con gusto, mira:', 'Dale, aquí está:'])}\n\n**Tarifas dentro de Armenia** (por distancia de ruta):\n\n• Hasta 1 km: **$4.000**\n• Hasta 3.1 km: **$5.000**\n• Hasta 5.9 km: **$6.000**\n• Hasta 7.5 km: **$7.000**\n• Hasta 9 km: **$8.000**\n• Hasta 10.5 km: **$9.000**\n• Más de 10.5 km: **$10.000**\n\nExtras por tamaño del paquete:\n• Grande (caja/bolsa voluminosa): **+$1.000**\n• Muy grande (mueble, electrodoméstico): **+$2.000**\n\nFuera de Armenia (Calarcá, Circasia, Montenegro, etc.) la tarifa depende del municipio; un administrador te confirma el valor exacto.\n\nEl precio se calcula automáticamente según la distancia real entre los dos puntos.`
+ respuesta: () => {
+ const tipo = window._tipoClienteActual === 'local' ? 'local' : 'natural';
+ const tarifas = window._tarifasArmeniaCache || window._TARIFAS_ARMENIA_DEFAULT;
+ const cfg = tarifas[tipo] || tarifas.natural || window._TARIFAS_ARMENIA_DEFAULT.natural;
+ const tramos = [...cfg.tramos].sort((a, b) => a.hastaKm - b.hastaKm);
+ const lineasTramos = tramos.map(t => `• Hasta ${t.hastaKm} km: **$${t.precio.toLocaleString('es-CO')}**`).join('\n');
+ const ultimo = tramos[tramos.length - 1];
+ const lineaMasAlla = ultimo ? `• Más de ${ultimo.hastaKm} km: **$${cfg.masAllaBase.toLocaleString('es-CO')}** + $${cfg.masAllaPorKm.toLocaleString('es-CO')} por km adicional` : '';
+ return `${elegir(['Claro, te cuento:', 'Con gusto, mira:', 'Dale, aquí está:'])}\n\n**Tarifas dentro de Armenia** (por distancia de ruta):\n\n${lineasTramos}\n${lineaMasAlla}\n\nExtras por tamaño del paquete:\n• Grande (caja/bolsa voluminosa): **+$1.000**\n• Muy grande (mueble, electrodoméstico): **+$2.000**\n\nFuera de Armenia (Calarcá, Circasia, Montenegro, etc.) la tarifa depende del municipio; un administrador te confirma el valor exacto.\n\nEl precio se calcula automáticamente según la distancia real entre los dos puntos.`;
+ }
  },
  {
  id: 'zonas',

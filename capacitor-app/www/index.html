@@ -11054,7 +11054,12 @@ if (dentroDeHorario) {
  if (!window.getClientID) window.getClientID = (uid) => `cliente_auth_${uid}`;
  window.currentUserID = window.getClientID(user.uid);
  cargarURLsTonos();
- if (window._inicializarPushFCM) window._inicializarPushFCM();
+ // 🔧 FIX: el push FCM ya NO se inicializa aquí. Antes corría apenas había
+ // sesión (incluso con el registro sin completar) y como _guardarTokenFCM
+ // usa update() sobre usuarios/{id}, creaba un nodo "a medias" (solo con
+ // fcmToken) ANTES de que el cliente llenara nombre/tel1/dirección.
+ // Ahora solo se llama cuando el perfil ya existe y está completo (ver más
+ // abajo) o justo después de que guardarUsuarioEnFirebase() termine con éxito.
  
  console.log(' Usuario autenticado:', user.uid);
  
@@ -11082,6 +11087,9 @@ if (dentroDeHorario) {
  if (typeof window._escucharActivacionCuenta === 'function') window._escucharActivacionCuenta();
  if (window.cargarDireccionesGuardadas) window.cargarDireccionesGuardadas();
  if (window._verificarUbicacionVsGuardada) window._verificarUbicacionVsGuardada();
+ // 🔧 FIX: acá sí es seguro guardar el token push, porque el nodo usuarios/{id}
+ // ya existe completo (tiene nombre) — update() ya no puede crear un registro vacío.
+ if (window._inicializarPushFCM) window._inicializarPushFCM();
  } else {
  console.log(' Usuario sin datos completos - Mostrando registro');
  const existingData = snap.exists() ? snap.val() : {};
@@ -11188,6 +11196,9 @@ if (dentroDeHorario) {
  localStorage.setItem("usuarioDomicilios", JSON.stringify({...infoFijaUsuario, uid: authUser.uid})); 
  
  window.mostrarPerfil(infoFijaUsuario);
+ // 🔧 FIX: el nodo usuarios/{id} ya quedó completo (set() con todos los campos),
+ // ahora sí es seguro guardar el token push sin riesgo de crear un registro vacío.
+ if (window._inicializarPushFCM) window._inicializarPushFCM();
  // Mostrar tutorial de bienvenida al usuario nuevo
  setTimeout(function() {
  if (typeof window.mostrarTutorialNuevoUsuario === 'function') window.mostrarTutorialNuevoUsuario();

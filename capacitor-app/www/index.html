@@ -3157,7 +3157,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.1.0</small>
+ <small>Versión 1.1.1</small>
  </div>
  </div>
  </div>
@@ -4674,14 +4674,10 @@
   <div style="width:38px;...
  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
  </div>
- <div style="text-align:left; flex:1; min-width:0;">
+ <div style="text-align:left;">
  <strong style="color:var(--color-primary); font-size:17px; display:block; line-height:1.2;">ServiBot</strong>
  <small id="servibot-tab-status" style="color:#aaa; font-size:12px;"> En línea</small>
  </div>
- <button onclick="abrirPanelContactosLocal()" title="Mis contactos" style="background:#1A2845; border:1px solid #1F3055; color:var(--color-primary); border-radius:10px; padding:0 12px; height:36px; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0; display:flex; align-items:center; gap:6px;">
- <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
- Contactos
- </button>
  </div>
 
  <!-- Área de mensajes (compartida con el panel flotante) -->
@@ -4691,6 +4687,7 @@
 
  <!-- Botones rápidos -->
  <div id="servibot-tab-quick-btns" style="display:flex; flex-wrap:wrap; gap:8px; padding:10px 14px 6px; background:var(--color-surface); flex-shrink:0;">
+ <button class="ai-quick-btn" onclick="abrirPanelContactosLocal()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Contactos</button>
  <button class="ai-quick-btn" onclick="document.getElementById('servibot-tab-input').value='¿Cuánto cuesta un domicilio?'; sendAIMessageTab()"> Precios</button>
  <button class="ai-quick-btn" onclick="document.getElementById('servibot-tab-input').value='¿Cuáles son las zonas de entrega?'; sendAIMessageTab()"> Zonas</button>
  <button class="ai-quick-btn" onclick="document.getElementById('servibot-tab-input').value='¿Cuánto se demora el repartidor?'; sendAIMessageTab()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9.5 3.5h5"/><path d="M12 3.5v2"/><path d="M16.5 4.5l1-1"/></svg>Tiempos</button>
@@ -10305,7 +10302,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.1.0');
+ console.log(' Sistema del cliente inicializado v1.1.1');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10401,7 +10398,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.1.0";
+ const APP_VERSION = "1.1.1";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -12654,7 +12651,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.1.0');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.1.1');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -12699,7 +12696,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.1.0  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.1.1  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -16607,12 +16604,13 @@ window.cancelarAudioP2P = function(pedidoId) {
       <label style="color:#9ca3af; font-size:12px; display:block; margin-bottom:4px;">Teléfono</label>
       <input type="tel" id="contacto-detalle-telefono" style="width:100%; padding:11px 14px; margin-bottom:14px; border-radius:10px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:14px; box-sizing:border-box;">
 
-      <label style="color:#9ca3af; font-size:12px; display:block; margin-bottom:4px;">Barrio</label>
-      <input type="text" id="contacto-detalle-barrio" placeholder="Ej: Bosques de Pinares" style="width:100%; padding:11px 14px; margin-bottom:14px; border-radius:10px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:14px; box-sizing:border-box;">
+      <label id="contacto-detalle-barrio-label" style="color:#9ca3af; font-size:12px; display:block; margin-bottom:4px;">Barrio</label>
+      <input type="text" id="contacto-detalle-barrio" placeholder="Ej: Bosques de Pinares" style="width:100%; padding:11px 14px; margin-bottom:4px; border-radius:10px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:14px; box-sizing:border-box;">
+      <div id="contacto-detalle-barrio-nota" style="color:#6b7280; font-size:11px; margin-bottom:14px;"></div>
 
       <label style="color:#9ca3af; font-size:12px; display:block; margin-bottom:4px;">Dirección (manzana/casa/referencia, sin el barrio)</label>
       <input type="text" id="contacto-detalle-direccion" style="width:100%; padding:11px 14px; margin-bottom:6px; border-radius:10px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:14px; box-sizing:border-box;">
-      <div style="color:#6b7280; font-size:11px; margin-bottom:18px;">Si cambias el barrio o la dirección, se vuelve a validar y ubicar automáticamente.</div>
+      <div style="color:#6b7280; font-size:11px; margin-bottom:18px;">Puedes editar nombre, teléfono y dirección cuando quieras.</div>
 
       <div id="contacto-detalle-msg" style="font-size:13px; margin-bottom:10px;"></div>
     </div>
@@ -16705,8 +16703,25 @@ window._abrirDetalleContactoLocal = function(id) {
   document.getElementById('contacto-detalle-nombre').value = c.nombre || '';
   document.getElementById('contacto-detalle-telefono').value = c.telefono || '';
   const dir = (c.direcciones && c.direcciones[0]) || null;
-  document.getElementById('contacto-detalle-barrio').value = dir ? (dir.barrio || '') : '';
+  const inputBarrio = document.getElementById('contacto-detalle-barrio');
+  const notaBarrio = document.getElementById('contacto-detalle-barrio-nota');
+  inputBarrio.value = dir ? (dir.barrio || '') : '';
   document.getElementById('contacto-detalle-direccion').value = dir ? (dir.detalle || '') : '';
+
+  if (dir && dir.barrio) {
+    // Ya tiene barrio fijado: se bloquea para no perder la ubicación
+    // ya validada por un typo o variante al escribirlo a mano.
+    inputBarrio.disabled = true;
+    inputBarrio.style.opacity = '0.6';
+    inputBarrio.style.cursor = 'not-allowed';
+    notaBarrio.textContent = ' El barrio ya quedó fijado con su ubicación y no se puede editar. Si necesitas cambiarlo, elimina el contacto y créalo de nuevo.';
+  } else {
+    inputBarrio.disabled = false;
+    inputBarrio.style.opacity = '1';
+    inputBarrio.style.cursor = 'text';
+    notaBarrio.textContent = 'Este contacto no tiene barrio guardado todavía — puedes agregarlo junto con la dirección.';
+  }
+
   document.getElementById('contacto-detalle-msg').textContent = '';
   document.getElementById('contactos-vista-lista').style.display = 'none';
   document.getElementById('contactos-vista-detalle').style.display = 'flex';

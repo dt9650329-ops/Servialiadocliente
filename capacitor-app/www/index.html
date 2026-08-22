@@ -4815,32 +4815,48 @@ const TONOS_NOTIFICACION = [
  { id: 3, path: 'Tonos/universfield-new-notification-036-485897.mp3', src: null },
  { id: 4, path: 'Tonos/universfield-new-notification-066-494545.mp3', src: null },
  ];
- // Carga las URLs autenticadas de los tonos desde Firebase Storage
- async function cargarURLsTonos() {
+ // Carga las URLs autenticadas de los tonos desde Firebase Storage.
+ // ANTES: un solo try/catch envolvía el for-loop completo, así que si UN
+ // tono fallaba (ruta mal escrita, regla de Storage, red), el loop se
+ // cortaba ahí mismo y ningún tono siguiente llegaba a cargar src — por
+ // eso podían fallar los 4 aunque solo uno tuviera el problema real.
+ // AHORA: cada tono se carga por separado y en paralelo, así uno malo no
+ // afecta a los demás, y queda loggeado exactamente cuál falló y por qué.
+ async function _cargarUnTono(tono) {
  try {
- for (const tono of TONOS_NOTIFICACION) {
  const ref = storageRef(storage, tono.path);
  tono.src = await getDownloadURL(ref);
+ console.log(`✅ Tono ${tono.id} cargado (${tono.path})`);
+ } catch (e) {
+ console.warn(`❌ Tono ${tono.id} NO cargó — ruta: "${tono.path}" — código: ${e && e.code} — mensaje: ${e && e.message}`);
  }
- console.log(' Tonos cargados desde Storage');
- } catch(e) {
- console.log(' Error cargando tonos:', e);
  }
+ async function cargarURLsTonos() {
+ await Promise.allSettled(TONOS_NOTIFICACION.map(_cargarUnTono));
  }
  let _tonoSeleccionado = parseInt(localStorage.getItem('servi_tono_notif') || '1');
- function _getNotifSound() {
+ // Async: si el tono elegido todavía no tiene src (cargarURLsTonos no había
+ // terminado, o falló la primera vez), intenta cargarlo aquí mismo antes de
+ // rendirse — así una carga lenta o un fallo transitorio de red no deja el
+ // botón mudo para siempre.
+ async function _getNotifSound() {
  const tono = TONOS_NOTIFICACION.find(t => t.id === _tonoSeleccionado) || TONOS_NOTIFICACION[0];
- if (!tono.src) return null;
+ if (!tono.src) await _cargarUnTono(tono);
+ if (!tono.src) {
+ console.warn(`⚠️ No se pudo reproducir el tono ${tono.id}: no cargó su URL desde Storage (ver el error arriba).`);
+ return null;
+ }
  const a = new Audio(tono.src);
  a.volume = 0.8;
  return a;
  }
- window.reproducirTonoNotif = function() {
+ window.reproducirTonoNotif = async function() {
  try {
- const snd = _getNotifSound();
- if (snd) snd.play().catch(e => console.log('Error tono:', e));
- } catch(e) {}
+ const snd = await _getNotifSound();
+ if (snd) snd.play().catch(e => console.warn('❌ Error reproduciendo el tono (play()):', e));
+ } catch(e) { console.warn('❌ Error en reproducirTonoNotif:', e); }
  };
+
 
  // ✅ Canales nativos de Android para que el push FUERA de la app (barra de
  // notificaciones del sistema) suene igual al tono elegido DENTRO de la app.
@@ -10372,7 +10388,7 @@ if (dentroDeHorario) {
  appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
  };
 
- let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable;
+ let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable, guardarContactoLocalConMapaCallable;
  try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
@@ -10390,6 +10406,7 @@ if (dentroDeHorario) {
  misContactosLocalCallable = httpsCallable(functions, 'misContactosLocal');
  editarContactoLocalCallable = httpsCallable(functions, 'editarContactoLocal');
  borrarContactoLocalUnoCallable = httpsCallable(functions, 'borrarContactoLocalUno');
+ guardarContactoLocalConMapaCallable = httpsCallable(functions, 'guardarContactoLocalConMapa');
  console.log(' Firebase inicializado correctamente');
  } catch(e) {
  console.error(' Firebase no pudo iniciar:', e.message);
@@ -10530,12 +10547,14 @@ if (dentroDeHorario) {
  window.misContactosLocalCallable = misContactosLocalCallable;
  window.editarContactoLocalCallable = editarContactoLocalCallable;
  window.borrarContactoLocalUnoCallable = borrarContactoLocalUnoCallable;
+ window.guardarContactoLocalConMapaCallable = guardarContactoLocalConMapaCallable;
  window.consultarServibot = async function(mensaje, historial) {
    const res = await servibotChatCallable({ mensaje, historial });
    window._sbAccionPendiente = res.data.accion || null;
    window._sbDatosAgendaPendiente = res.data.datosAgenda || null;
    window._sbDatosUbicacionPendiente = res.data.datosUbicacion || null;
    window._sbDatosTerceroPendiente = res.data.datosTercero || null;
+   window._sbDatosMapaContactoPendiente = res.data.datosMapaContacto || null;
    return res.data.respuesta;
  };
  window.push = push;
@@ -16538,6 +16557,40 @@ window.cancelarAudioP2P = function(pedidoId) {
 </div>
 
 <!-- MODAL MAPEADOR DE UBICACIÓN PARA PEDIDO DE TERCERO (chat ServiBot) -->
+<!-- MAPEADOR GENÉRICO REUTILIZABLE — "Marca tu ubicación en el mapa" cuando
+     un barrio no está registrado (chat ServiBot y panel Editar contacto).
+     Independiente del mapeador de pedido-tercero de arriba, para no tocar
+     esa lógica ya probada. -->
+<div id="modal-mapeador-ubicacion-pendiente" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(6,11,23,0.97); flex-direction:column; align-items:stretch;">
+ <div style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:#111827; border-bottom:1px solid #1f2937; flex-shrink:0;">
+ <button onclick="cerrarMapeadorUbicacionPendiente()" style="background:#1f2937; border:1px solid #374151; color:#9ca3af; width:36px; height:36px; border-radius:8px; font-size:18px; cursor:pointer; flex-shrink:0;">‹</button>
+ <div style="flex:1; min-width:0;">
+ <div id="mapeador-ubicacion-pendiente-titulo" style="color:#F59E0B; font-weight:800; font-size:15px;"> Marcar ubicación</div>
+ <div id="mapeador-ubicacion-pendiente-subtitulo" style="color:#6b7280; font-size:12px; margin-top:2px;">Busca el lugar o toca el mapa para fijar el punto exacto</div>
+ </div>
+ </div>
+ <div style="padding:12px 16px; background:#111827; border-bottom:1px solid #1f2937; flex-shrink:0;">
+ <div style="display:flex; gap:8px; margin-bottom:8px;">
+ <input type="text" id="mapeador-ubicacion-pendiente-buscar" placeholder="Busca el barrio, conjunto o dirección"
+ style="flex:1; padding:10px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:14px;"
+ onkeydown="if(event.key==='Enter') buscarEnMapeadorUbicacionPendiente()"/>
+ <button onclick="buscarEnMapeadorUbicacionPendiente()" style="padding:10px 14px; border-radius:8px; background:#F59E0B; color:#000; font-weight:bold; border:none; cursor:pointer; white-space:nowrap;"> Buscar</button>
+ </div>
+ <div id="mapeador-ubicacion-pendiente-resultados" style="margin-top:6px;"></div>
+ </div>
+ <div id="mapa-mapeador-ubicacion-pendiente" style="flex:1; min-height:0;"></div>
+ <div id="mapeador-ubicacion-pendiente-coords-info" style="padding:8px 16px; background:#111827; border-top:1px solid #1f2937; font-size:12px; color:#6b7280; text-align:center; flex-shrink:0;">
+ Toca el mapa para fijar la ubicación exacta
+ </div>
+ <div style="padding:12px 16px; background:#111827; border-top:1px solid #1f2937; flex-shrink:0;">
+ <button id="btn-confirmar-mapeador-ubicacion-pendiente" onclick="confirmarMapeadorUbicacionPendiente()"
+ disabled
+ style="width:100%; padding:14px; border-radius:12px; background:#374151; color:#6b7280; font-weight:800; font-size:15px; border:none; cursor:not-allowed; transition:all 0.3s;">
+ Guardar ubicación
+ </button>
+ </div>
+</div>
+
 <div id="modal-mapeador-pedido-tercero" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(6,11,23,0.97); flex-direction:column; align-items:stretch;">
  <div style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:#111827; border-bottom:1px solid #1f2937; flex-shrink:0;">
  <button onclick="cerrarMapeadorPedidoTercero()" style="background:#1f2937; border:1px solid #374151; color:#9ca3af; width:36px; height:36px; border-radius:8px; font-size:18px; cursor:pointer; flex-shrink:0;">‹</button>
@@ -16613,6 +16666,7 @@ window.cancelarAudioP2P = function(pedidoId) {
       <div style="color:#6b7280; font-size:11px; margin-bottom:18px;">Puedes editar nombre, teléfono y dirección cuando quieras.</div>
 
       <div id="contacto-detalle-msg" style="font-size:13px; margin-bottom:10px;"></div>
+      <button type="button" id="btn-marcar-mapa-contacto-detalle" onclick="_abrirMapaParaContactoDetalle()" style="display:none; width:100%; margin-bottom:10px; padding:10px 12px; border-radius:8px; border:1px dashed #F59E0B; background:rgba(245,158,11,0.08); color:#F59E0B; font-size:12px; font-weight:bold; cursor:pointer;"> Selecciona la ubicación en el mapa</button>
     </div>
     <div style="display:flex; gap:10px; padding:12px 16px 20px; background:#111827; border-top:1px solid #1f2937; flex-shrink:0;">
       <button onclick="_borrarContactoLocalDesdeDetalle()" style="flex:1; padding:13px; border-radius:12px; background:#3f1d1d; color:#f87171; font-weight:700; font-size:14px; border:1px solid #7f1d1d; cursor:pointer;"> Eliminar</button>
@@ -16723,6 +16777,9 @@ window._abrirDetalleContactoLocal = function(id) {
   }
 
   document.getElementById('contacto-detalle-msg').textContent = '';
+  const btnMapaReset = document.getElementById('btn-marcar-mapa-contacto-detalle');
+  if (btnMapaReset) btnMapaReset.style.display = 'none';
+  window._contactoDetallePendienteMapa = null;
   document.getElementById('contactos-vista-lista').style.display = 'none';
   document.getElementById('contactos-vista-detalle').style.display = 'flex';
 };
@@ -16741,6 +16798,7 @@ window._guardarContactoLocalDesdeDetalle = async function() {
   const direccionDetalle = document.getElementById('contacto-detalle-direccion').value.trim();
   const msg = document.getElementById('contacto-detalle-msg');
   const btn = document.getElementById('btn-guardar-contacto-detalle');
+  const btnMapa = document.getElementById('btn-marcar-mapa-contacto-detalle');
 
   if (!nombre || !telefono) {
     msg.style.color = '#f87171';
@@ -16748,6 +16806,7 @@ window._guardarContactoLocalDesdeDetalle = async function() {
     return;
   }
 
+  if (btnMapa) btnMapa.style.display = 'none';
   btn.disabled = true;
   btn.textContent = 'Guardando...';
   msg.textContent = '';
@@ -16766,9 +16825,58 @@ window._guardarContactoLocalDesdeDetalle = async function() {
     console.error(' Error editando contacto:', e);
     msg.style.color = '#f87171';
     msg.textContent = (e && e.message) ? e.message : 'No se pudo guardar. Intenta de nuevo.';
+    // FIX: si el motivo fue que el barrio no está registrado, ofrecer
+    // marcarlo en el mapa en vez de dejar al local sin salida.
+    const esBarrioNoRegistrado = /no está en nuestros registros/i.test(msg.textContent);
+    if (esBarrioNoRegistrado && btnMapa && nombre && telefono && direccionDetalle) {
+      btnMapa.style.display = 'block';
+      window._contactoDetallePendienteMapa = { nombre, telefono, direccionDetalle, barrioEntrega };
+    }
   } finally {
     btn.disabled = false;
     btn.textContent = 'Guardar cambios';
+  }
+};
+
+window._abrirMapaParaContactoDetalle = function() {
+  const datos = window._contactoDetallePendienteMapa;
+  if (!datos || typeof window.abrirMapeadorUbicacionPendiente !== 'function') return;
+  window.abrirMapeadorUbicacionPendiente({
+    titulo: ' Marcar ubicación de ' + (datos.nombre || 'contacto'),
+    subtitulo: 'Busca el lugar o toca el mapa para fijar dónde queda',
+    nombreBusqueda: datos.barrioEntrega || '',
+    onConfirmar: function(lat, lng) { window._confirmarMapaContactoDetalle(lat, lng); },
+  });
+};
+
+window._confirmarMapaContactoDetalle = async function(lat, lng) {
+  const datos = window._contactoDetallePendienteMapa;
+  if (!datos || !_contactoSeleccionadoId) return;
+  const msg = document.getElementById('contacto-detalle-msg');
+  const btn = document.getElementById('btn-guardar-contacto-detalle');
+  const btnMapa = document.getElementById('btn-marcar-mapa-contacto-detalle');
+
+  if (btnMapa) btnMapa.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  if (msg) { msg.style.color = '#9ca3af'; msg.textContent = ' Guardando ubicación...'; }
+
+  try {
+    await window.editarContactoLocalCallable({
+      id: _contactoSeleccionadoId,
+      nombre: datos.nombre, telefono: datos.telefono,
+      direccionDetalle: datos.direccionDetalle,
+      barrioEntrega: datos.barrioEntrega || null,
+      lat, lng,
+    });
+    if (msg) { msg.style.color = '#4ade80'; msg.textContent = ' Guardado con la ubicación marcada. El admin confirmará el barrio más adelante.'; }
+    await _cargarContactosLocal();
+    setTimeout(() => { window._volverAListaContactos(); }, 1200);
+  } catch (e) {
+    console.error(' Error guardando contacto con mapa:', e);
+    if (msg) { msg.style.color = '#f87171'; msg.textContent = (e && e.message) ? e.message : 'No se pudo guardar. Intenta de nuevo.'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar cambios'; }
+    window._contactoDetallePendienteMapa = null;
   }
 };
 
@@ -16927,6 +17035,129 @@ window._borrarContactoLocalDesdeDetalle = async function() {
  // ningún mensaje automático.
  const chatInput = document.getElementById('servibot-tab-input');
  if (chatInput) chatInput.focus();
+ };
+})();
+</script>
+
+<script>
+// ======================================================================
+// MAPEADOR GENÉRICO DE UBICACIÓN PENDIENTE — reutilizable desde el chat de
+// ServiBot (botón "Selecciona la ubicación en el mapa" cuando el barrio no
+// está registrado) y desde el panel "Editar contacto". No modifica ni
+// depende del mapeador de pedido-tercero de arriba: es un bloque aislado
+// con su propia instancia de mapa/pin, así no hay riesgo de romper ese
+// flujo ya probado.
+// ======================================================================
+(function(){
+ let _mapUbicPend = null;
+ let _pinUbicPend = null;
+ let _coordsTempUbicPend = null;
+ let _onConfirmarUbicPend = null; // function(lat, lng) que se llama al confirmar
+
+ // opciones = { titulo, subtitulo, nombreBusqueda, coordsIniciales, onConfirmar(lat,lng) }
+ window.abrirMapeadorUbicacionPendiente = function(opciones) {
+ opciones = opciones || {};
+ _onConfirmarUbicPend = typeof opciones.onConfirmar === 'function' ? opciones.onConfirmar : null;
+ _coordsTempUbicPend = opciones.coordsIniciales || null;
+
+ const tituloEl = document.getElementById('mapeador-ubicacion-pendiente-titulo');
+ const subtituloEl = document.getElementById('mapeador-ubicacion-pendiente-subtitulo');
+ if (tituloEl) tituloEl.textContent = opciones.titulo || ' Marcar ubicación';
+ if (subtituloEl) subtituloEl.textContent = opciones.subtitulo || 'Busca el lugar o toca el mapa para fijar el punto exacto';
+
+ document.getElementById('mapeador-ubicacion-pendiente-buscar').value = opciones.nombreBusqueda || '';
+ document.getElementById('mapeador-ubicacion-pendiente-resultados').innerHTML = '';
+ document.getElementById('modal-mapeador-ubicacion-pendiente').style.display = 'flex';
+
+ setTimeout(() => {
+ if (!_mapUbicPend) {
+ _mapUbicPend = L.map('mapa-mapeador-ubicacion-pendiente').setView([4.5339, -75.6811], 14);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+ attribution: '© OpenStreetMap', maxZoom: 19
+ }).addTo(_mapUbicPend);
+ _mapUbicPend.on('click', function(e) { fijarPinUbicPend(e.latlng.lat, e.latlng.lng); });
+ } else {
+ _mapUbicPend.invalidateSize();
+ }
+
+ if (_pinUbicPend) { _mapUbicPend.removeLayer(_pinUbicPend); _pinUbicPend = null; }
+ const btnConfirmar = document.getElementById('btn-confirmar-mapeador-ubicacion-pendiente');
+ const coordsInfo = document.getElementById('mapeador-ubicacion-pendiente-coords-info');
+ if (_coordsTempUbicPend) {
+ fijarPinUbicPend(_coordsTempUbicPend.lat, _coordsTempUbicPend.lng);
+ _mapUbicPend.setView([_coordsTempUbicPend.lat, _coordsTempUbicPend.lng], 17);
+ } else {
+ if (coordsInfo) coordsInfo.textContent = 'Toca el mapa para fijar la ubicación exacta';
+ if (btnConfirmar) {
+ btnConfirmar.disabled = true;
+ btnConfirmar.style.background = '#374151';
+ btnConfirmar.style.color = '#6b7280';
+ btnConfirmar.style.cursor = 'not-allowed';
+ }
+ }
+ }, 150);
+ };
+
+ function fijarPinUbicPend(lat, lng) {
+ lat = parseFloat(lat.toFixed(6));
+ lng = parseFloat(lng.toFixed(6));
+ _coordsTempUbicPend = { lat, lng };
+
+ if (_pinUbicPend) _mapUbicPend.removeLayer(_pinUbicPend);
+ _pinUbicPend = L.marker([lat, lng], {
+ icon: L.divIcon({ html: '<div style="font-size:28px;line-height:1;">📍</div>', className:'', iconAnchor:[14,28] })
+ }).addTo(_mapUbicPend);
+
+ document.getElementById('mapeador-ubicacion-pendiente-coords-info').textContent = ' ' + lat + ', ' + lng + ' — toca "Guardar ubicación" para fijar este punto';
+
+ const btn = document.getElementById('btn-confirmar-mapeador-ubicacion-pendiente');
+ btn.disabled = false;
+ btn.style.background = 'linear-gradient(135deg,#F59E0B,#E08B00)';
+ btn.style.color = '#000';
+ btn.style.cursor = 'pointer';
+ }
+
+ window.cerrarMapeadorUbicacionPendiente = function() {
+ document.getElementById('modal-mapeador-ubicacion-pendiente').style.display = 'none';
+ };
+
+ window.buscarEnMapeadorUbicacionPendiente = async function() {
+ const q = document.getElementById('mapeador-ubicacion-pendiente-buscar').value.trim();
+ if (!q) return;
+ const resDiv = document.getElementById('mapeador-ubicacion-pendiente-resultados');
+ resDiv.innerHTML = '<span style="color:#6b7280;font-size:12px;"> Buscando...</span>';
+ try {
+ const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q + ' Quindio Colombia') + '&limit=5&countrycodes=co';
+ const resp = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+ const data = await resp.json();
+ resDiv.innerHTML = '';
+ if (!data.length) {
+ resDiv.innerHTML = '<span style="color:#e74c3c;font-size:12px;">Sin resultados. Intenta con otra dirección o toca el mapa directamente.</span>';
+ return;
+ }
+ data.forEach(item => {
+ const d = document.createElement('div');
+ d.style.cssText = 'padding:8px 10px; margin-bottom:4px; background:#1f2937; border-radius:7px; cursor:pointer; font-size:12px; color:#d1d5db; border:1px solid #374151;';
+ d.textContent = ' ' + item.display_name;
+ d.onclick = () => {
+ const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+ _mapUbicPend.setView([lat, lng], 17);
+ fijarPinUbicPend(lat, lng);
+ resDiv.innerHTML = '';
+ };
+ resDiv.appendChild(d);
+ });
+ } catch(e) {
+ resDiv.innerHTML = '<span style="color:#e74c3c;font-size:12px;">Error al buscar. Verifica tu conexión.</span>';
+ }
+ };
+
+ window.confirmarMapeadorUbicacionPendiente = function() {
+ if (!_coordsTempUbicPend) return;
+ const cb = _onConfirmarUbicPend;
+ const coords = _coordsTempUbicPend;
+ cerrarMapeadorUbicacionPendiente();
+ if (cb) cb(coords.lat, coords.lng);
  };
 })();
 </script>
@@ -17851,6 +18082,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
    } else if (window._sbAccionPendiente === 'mostrarFormularioTercero' && window._sbDatosTerceroPendiente) {
      mostrarTarjetaTerceroChat(window._sbDatosTerceroPendiente);
      window._sbAccionPendiente = null;
+   } else if (window._sbAccionPendiente === 'mostrarBotonMapaContacto' && window._sbDatosMapaContactoPendiente) {
+     mostrarTarjetaBotonMapaContacto(window._sbDatosMapaContactoPendiente);
+     window._sbAccionPendiente = null;
    }
  } catch (eRenderTarjeta) {
    console.error('[ServiBot] Error mostrando tarjeta:', eRenderTarjeta);
@@ -18333,6 +18567,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
    } else if (window._sbAccionPendiente === 'mostrarFormularioTercero' && window._sbDatosTerceroPendiente) {
      mostrarTarjetaTerceroChat(window._sbDatosTerceroPendiente);
      window._sbAccionPendiente = null;
+   } else if (window._sbAccionPendiente === 'mostrarBotonMapaContacto' && window._sbDatosMapaContactoPendiente) {
+     mostrarTarjetaBotonMapaContacto(window._sbDatosMapaContactoPendiente);
+     window._sbAccionPendiente = null;
    }
  } catch (eRenderTarjeta) {
    console.error('[ServiBot] Error mostrando tarjeta:', eRenderTarjeta);
@@ -18601,6 +18838,83 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (typeof window.buscarPedidoPorCorreo === 'function') window.buscarPedidoPorCorreo();
  }, 200);
  };
+
+ // ======================================================================
+ // TARJETA "SELECCIONA LA UBICACIÓN EN EL MAPA" — aparece en el chat de
+ // ServiBot cuando el barrio/conjunto que dio el local no está registrado.
+ // En vez de bloquear el guardado del contacto, deja marcar el punto exacto
+ // en el mapa: el contacto se guarda de inmediato con esa ubicación (el
+ // repartidor la recibe tal cual) y queda pendiente de que el admin
+ // confirme el barrio oficialmente más adelante.
+ // ======================================================================
+ window.mostrarTarjetaBotonMapaContacto = function(datos) {
+ const tabMsgs = document.getElementById('servibot-tab-messages');
+ const container = (tabMsgs && tabMsgs.offsetParent !== null) ? tabMsgs : document.getElementById('ai-messages');
+ if (!container || !datos) return;
+
+ const existente = document.getElementById('sb-mapa-contacto-card');
+ if (existente) existente.remove();
+
+ window._sbDatosMapaContactoActual = datos;
+
+ const div = document.createElement('div');
+ div.id = 'sb-mapa-contacto-card';
+ div.className = 'ai-msg bot';
+ div.style.cssText = 'max-width:100%; padding:12px; background:var(--color-surface2,#161b22); border:1px solid var(--color-border2,#30363d); border-radius:10px;';
+ div.innerHTML =
+ '<div style="font-size:13px; color:#d1d5db; margin-bottom:10px;"> Marca el punto exacto y guardo el contacto de una vez, sin perder el domicilio.</div>' +
+ '<button type="button" onclick="sbAbrirMapaParaContactoPendiente()" style="width:100%; padding:10px; border-radius:8px; border:1px dashed #F59E0B; background:rgba(245,158,11,0.08); color:#F59E0B; font-weight:bold; font-size:13px; cursor:pointer;"> Selecciona la ubicación en el mapa</button>';
+
+ container.appendChild(div);
+ container.scrollTop = container.scrollHeight;
+ };
+
+ window.sbAbrirMapaParaContactoPendiente = function() {
+ const datos = window._sbDatosMapaContactoActual;
+ if (!datos || typeof window.abrirMapeadorUbicacionPendiente !== 'function') return;
+ window.abrirMapeadorUbicacionPendiente({
+ titulo: ' Marcar ubicación de ' + (datos.nombre || 'contacto'),
+ subtitulo: 'Busca el lugar o toca el mapa para fijar dónde queda',
+ nombreBusqueda: datos.barrioEntrega || '',
+ onConfirmar: function(lat, lng) { sbGuardarContactoConMapaConfirmado(datos, lat, lng); },
+ });
+ };
+
+ async function sbGuardarContactoConMapaConfirmado(datos, lat, lng) {
+ const cardExistente = document.getElementById('sb-mapa-contacto-card');
+ if (cardExistente) cardExistente.remove();
+
+ const tabMsgs = document.getElementById('servibot-tab-messages');
+ const usaTab = !!(tabMsgs && tabMsgs.offsetParent !== null);
+
+ const pendId = usaTab ? null : addBotMessage(' Guardando ubicación...', true);
+ const pendDivTab = usaTab ? renderMsgEnTab('bot', ' Guardando ubicación...') : null;
+
+ let mensajeFinal;
+ try {
+ const resp = await window.guardarContactoLocalConMapaCallable({
+ nombre: datos.nombre,
+ telefono: datos.telefono,
+ direccionDetalle: datos.direccionDetalle,
+ barrioEntrega: datos.barrioEntrega,
+ lat, lng,
+ });
+ mensajeFinal = (resp.data && resp.data.mensaje) || 'Listo, guardé la ubicación.';
+ } catch (e) {
+ console.error(' Error guardando contacto con mapa:', e);
+ mensajeFinal = ' No se pudo guardar la ubicación (' + ((e && e.message) || 'error desconocido') + '). Intenta de nuevo.';
+ }
+
+ if (usaTab && pendDivTab) {
+ pendDivTab.innerHTML = mensajeFinal.replace(/\n/g, '<br>');
+ const contTab = document.getElementById('servibot-tab-messages');
+ if (contTab) contTab.scrollTop = contTab.scrollHeight;
+ } else if (pendId) {
+ updateBotMessage(pendId, mensajeFinal);
+ }
+ aiHistory.push({ role: 'assistant', content: mensajeFinal });
+ window._sbDatosMapaContactoActual = null;
+ }
 
  window.sbSetRecogidaEnCasa = function(val) {
  if (!window._sbAgenda) return;
@@ -19687,7 +20001,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const n = { id: Date.now() + Math.random(), title, body, type: type||'pedido', action: action||null, ts: Date.now(), read: false, ...extra };
  _notifs.push(n);
  _save();
- try { _getNotifSound().play().catch(e => console.log('Error tono:', e)); } catch(e) {}
+ try { window.reproducirTonoNotif(); } catch (e) { console.warn('Error tono:', e); }
  _updateBadge();
  if (_panelOpen) _renderPanel();
 

@@ -2,6 +2,7 @@ package com.servialiados.cliente;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -25,6 +26,25 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
+
+        // FIX CACHÉ: el WebView de Capacitor cachea agresivamente el
+        // index.html/JS/CSS igual que un navegador. Cuando instalamos una
+        // actualización ENCIMA de la app vieja (sin desinstalar), Android
+        // conserva los datos de la app -- incluido ese caché -- y el
+        // WebView sigue sirviendo archivos viejos aunque el APK ya tenga
+        // los nuevos. Por eso a veces un botón/cambio de frontend "no
+        // aparece" hasta que el usuario desinstala y reinstala manualmente.
+        // Solución: comparamos el versionCode guardado contra el actual
+        // (BuildConfig.VERSION_CODE, que sube en cada build). Si cambió,
+        // limpiamos el caché del WebView UNA sola vez -- el usuario no
+        // nota nada, solo carga la versión correcta del sitio.
+        SharedPreferences prefsVersion = getSharedPreferences("app_version_check", MODE_PRIVATE);
+        int currentVersionCode = BuildConfig.VERSION_CODE;
+        int savedVersionCode = prefsVersion.getInt("last_version_code", -1);
+        if (savedVersionCode != currentVersionCode) {
+            bridge.getWebView().clearCache(true);
+            prefsVersion.edit().putInt("last_version_code", currentVersionCode).apply();
+        }
 
         // Asegura que el WebView tenga habilitada la geolocalización
         bridge.getWebView().getSettings().setGeolocationEnabled(true);
@@ -152,4 +172,3 @@ public class MainActivity extends BridgeActivity {
         }
     }
 }
-

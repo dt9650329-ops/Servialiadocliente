@@ -3157,7 +3157,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.0.9</small>
+ <small>Versión 1.1.0</small>
  </div>
  </div>
  </div>
@@ -4674,10 +4674,14 @@
   <div style="width:38px;...
  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
  </div>
- <div style="text-align:left;">
+ <div style="text-align:left; flex:1; min-width:0;">
  <strong style="color:var(--color-primary); font-size:17px; display:block; line-height:1.2;">ServiBot</strong>
  <small id="servibot-tab-status" style="color:#aaa; font-size:12px;"> En línea</small>
  </div>
+ <button onclick="abrirPanelContactosLocal()" title="Mis contactos" style="background:#1A2845; border:1px solid #1F3055; color:var(--color-primary); border-radius:10px; padding:0 12px; height:36px; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0; display:flex; align-items:center; gap:6px;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+ Contactos
+ </button>
  </div>
 
  <!-- Área de mensajes (compartida con el panel flotante) -->
@@ -10301,7 +10305,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.0.9');
+ console.log(' Sistema del cliente inicializado v1.1.0');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10371,7 +10375,7 @@ if (dentroDeHorario) {
  appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
  };
 
- let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable;
+ let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable;
  try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
@@ -10386,6 +10390,9 @@ if (dentroDeHorario) {
  editarAgendaProgramadaCallable = httpsCallable(functions, 'editarAgendaProgramada');
  redimirCuponCallable = httpsCallable(functions, 'redimirCupon');
  confirmarPedidoTerceroCallable = httpsCallable(functions, 'confirmarPedidoTerceroDirecto');
+ misContactosLocalCallable = httpsCallable(functions, 'misContactosLocal');
+ editarContactoLocalCallable = httpsCallable(functions, 'editarContactoLocal');
+ borrarContactoLocalUnoCallable = httpsCallable(functions, 'borrarContactoLocalUno');
  console.log(' Firebase inicializado correctamente');
  } catch(e) {
  console.error(' Firebase no pudo iniciar:', e.message);
@@ -10394,7 +10401,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.0.9";
+ const APP_VERSION = "1.1.0";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -10523,6 +10530,9 @@ if (dentroDeHorario) {
  window.editarAgendaProgramadaCallable = editarAgendaProgramadaCallable;
  window.redimirCuponCallable = redimirCuponCallable;
  window.confirmarPedidoTerceroCallable = confirmarPedidoTerceroCallable;
+ window.misContactosLocalCallable = misContactosLocalCallable;
+ window.editarContactoLocalCallable = editarContactoLocalCallable;
+ window.borrarContactoLocalUnoCallable = borrarContactoLocalUnoCallable;
  window.consultarServibot = async function(mensaje, historial) {
    const res = await servibotChatCallable({ mensaje, historial });
    window._sbAccionPendiente = res.data.accion || null;
@@ -12644,7 +12654,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.0.9');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.1.0');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -12689,7 +12699,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.0.9  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.1.0  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -16562,6 +16572,209 @@ window.cancelarAudioP2P = function(pedidoId) {
  </button>
  </div>
 </div>
+
+<!-- MODAL LIBRETA DE CONTACTOS DEL LOCAL (chat ServiBot) -->
+<div id="modal-contactos-local" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(6,11,23,0.97); flex-direction:column; align-items:stretch;">
+
+  <!-- VISTA LISTA -->
+  <div id="contactos-vista-lista" style="display:flex; flex-direction:column; height:100%;">
+    <div style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:#111827; border-bottom:1px solid #1f2937; flex-shrink:0;">
+      <button onclick="cerrarPanelContactosLocal()" style="background:#1f2937; border:1px solid #374151; color:#9ca3af; width:36px; height:36px; border-radius:8px; font-size:18px; cursor:pointer; flex-shrink:0;">‹</button>
+      <div style="flex:1; min-width:0;">
+        <div style="color:#F59E0B; font-weight:800; font-size:15px;"> Mis Contactos</div>
+        <div id="contactos-lista-subtitulo" style="color:#6b7280; font-size:12px; margin-top:2px;">Cargando...</div>
+      </div>
+    </div>
+    <div style="padding:12px 16px; background:#111827; border-bottom:1px solid #1f2937; flex-shrink:0;">
+      <input type="text" id="contactos-search-input" placeholder=" Buscar por nombre o teléfono..." oninput="_filtrarContactosLocal()"
+        style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:14px; box-sizing:border-box;">
+    </div>
+    <div id="contactos-lista-container" style="flex:1; overflow-y:auto; padding:10px 16px 24px;">
+      <!-- Filas de contactos renderizadas por JS -->
+    </div>
+  </div>
+
+  <!-- VISTA DETALLE / EDICIÓN -->
+  <div id="contactos-vista-detalle" style="display:none; flex-direction:column; height:100%;">
+    <div style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:#111827; border-bottom:1px solid #1f2937; flex-shrink:0;">
+      <button onclick="_volverAListaContactos()" style="background:#1f2937; border:1px solid #374151; color:#9ca3af; width:36px; height:36px; border-radius:8px; font-size:18px; cursor:pointer; flex-shrink:0;">‹</button>
+      <div style="color:#F59E0B; font-weight:800; font-size:15px; flex:1;">Editar contacto</div>
+    </div>
+    <div style="flex:1; overflow-y:auto; padding:16px;">
+      <label style="color:#9ca3af; font-size:12px; display:block; margin-bottom:4px;">Nombre</label>
+      <input type="text" id="contacto-detalle-nombre" style="width:100%; padding:11px 14px; margin-bottom:14px; border-radius:10px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:14px; box-sizing:border-box;">
+
+      <label style="color:#9ca3af; font-size:12px; display:block; margin-bottom:4px;">Teléfono</label>
+      <input type="tel" id="contacto-detalle-telefono" style="width:100%; padding:11px 14px; margin-bottom:14px; border-radius:10px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:14px; box-sizing:border-box;">
+
+      <label style="color:#9ca3af; font-size:12px; display:block; margin-bottom:4px;">Barrio</label>
+      <input type="text" id="contacto-detalle-barrio" placeholder="Ej: Bosques de Pinares" style="width:100%; padding:11px 14px; margin-bottom:14px; border-radius:10px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:14px; box-sizing:border-box;">
+
+      <label style="color:#9ca3af; font-size:12px; display:block; margin-bottom:4px;">Dirección (manzana/casa/referencia, sin el barrio)</label>
+      <input type="text" id="contacto-detalle-direccion" style="width:100%; padding:11px 14px; margin-bottom:6px; border-radius:10px; border:1px solid #374151; background:#1f2937; color:#f9fafb; font-size:14px; box-sizing:border-box;">
+      <div style="color:#6b7280; font-size:11px; margin-bottom:18px;">Si cambias el barrio o la dirección, se vuelve a validar y ubicar automáticamente.</div>
+
+      <div id="contacto-detalle-msg" style="font-size:13px; margin-bottom:10px;"></div>
+    </div>
+    <div style="display:flex; gap:10px; padding:12px 16px 20px; background:#111827; border-top:1px solid #1f2937; flex-shrink:0;">
+      <button onclick="_borrarContactoLocalDesdeDetalle()" style="flex:1; padding:13px; border-radius:12px; background:#3f1d1d; color:#f87171; font-weight:700; font-size:14px; border:1px solid #7f1d1d; cursor:pointer;"> Eliminar</button>
+      <button id="btn-guardar-contacto-detalle" onclick="_guardarContactoLocalDesdeDetalle()" style="flex:2; padding:13px; border-radius:12px; background:#F59E0B; color:#000; font-weight:800; font-size:14px; border:none; cursor:pointer;">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ======================================================================
+// PANEL "MIS CONTACTOS" — libreta de clientes del LOCAL, con búsqueda,
+// edición y borrado individual. Lee/escribe el MISMO nodo que usa
+// ServiBot (clientesGuardadosLocal), a través de las Cloud Functions
+// misContactosLocal / editarContactoLocal / borrarContactoLocalUno.
+// ======================================================================
+let _contactosLocalCache = [];
+let _contactoSeleccionadoId = null;
+
+window.abrirPanelContactosLocal = async function() {
+  const modal = document.getElementById('modal-contactos-local');
+  modal.style.display = 'flex';
+  document.getElementById('contactos-vista-lista').style.display = 'flex';
+  document.getElementById('contactos-vista-detalle').style.display = 'none';
+  document.getElementById('contactos-search-input').value = '';
+  await _cargarContactosLocal();
+};
+
+window.cerrarPanelContactosLocal = function() {
+  document.getElementById('modal-contactos-local').style.display = 'none';
+};
+
+async function _cargarContactosLocal() {
+  const subtitulo = document.getElementById('contactos-lista-subtitulo');
+  const cont = document.getElementById('contactos-lista-container');
+  subtitulo.textContent = 'Cargando...';
+  cont.innerHTML = '';
+  try {
+    const resp = await window.misContactosLocalCallable();
+    _contactosLocalCache = (resp.data && resp.data.clientes) || [];
+    subtitulo.textContent = `${_contactosLocalCache.length} contacto(s) guardado(s)`;
+    _renderListaContactosLocal(_contactosLocalCache);
+  } catch (e) {
+    console.error(' Error cargando contactos:', e);
+    subtitulo.textContent = 'No se pudo cargar tu libreta';
+    cont.innerHTML = '<div style="color:#6b7280; text-align:center; margin-top:30px; font-size:14px;">Ocurrió un error al cargar tus contactos. Intenta de nuevo.</div>';
+  }
+}
+
+function _renderListaContactosLocal(lista) {
+  const cont = document.getElementById('contactos-lista-container');
+  if (!lista.length) {
+    cont.innerHTML = '<div style="color:#6b7280; text-align:center; margin-top:30px; font-size:14px;">Todavía no tienes contactos guardados.<br>Pídele a ServiBot que guarde uno.</div>';
+    return;
+  }
+  cont.innerHTML = lista.map(c => {
+    const barrio = (c.direcciones && c.direcciones[0]) ? c.direcciones[0].barrio : null;
+    return `
+    <div onclick="_abrirDetalleContactoLocal('${c.id}')" style="display:flex; align-items:center; gap:12px; padding:13px 12px; margin-bottom:8px; background:#111827; border:1px solid #1f2937; border-radius:12px; cursor:pointer;">
+      <div style="width:42px; height:42px; border-radius:50%; background:#1A2845; display:flex; align-items:center; justify-content:center; color:#F59E0B; font-weight:800; font-size:16px; flex-shrink:0;">${(c.nombre || '?').trim().charAt(0).toUpperCase()}</div>
+      <div style="flex:1; min-width:0;">
+        <div style="color:#f9fafb; font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${_escaparHtml(c.nombre || 'Sin nombre')}</div>
+        <div style="color:#9ca3af; font-size:12.5px; margin-top:2px;">${_escaparHtml(c.telefono || '')}${barrio ? ' · ' + _escaparHtml(barrio) : ''}</div>
+      </div>
+      <div style="color:#4b5563; font-size:18px;">›</div>
+    </div>`;
+  }).join('');
+}
+
+function _escaparHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+window._filtrarContactosLocal = function() {
+  const q = (document.getElementById('contactos-search-input').value || '').toLowerCase().trim();
+  if (!q) { _renderListaContactosLocal(_contactosLocalCache); return; }
+  const filtrados = _contactosLocalCache.filter(c =>
+    (c.nombre || '').toLowerCase().includes(q) || (c.telefono || '').includes(q)
+  );
+  _renderListaContactosLocal(filtrados);
+};
+
+window._abrirDetalleContactoLocal = function(id) {
+  const c = _contactosLocalCache.find(x => x.id === id);
+  if (!c) return;
+  _contactoSeleccionadoId = id;
+  document.getElementById('contacto-detalle-nombre').value = c.nombre || '';
+  document.getElementById('contacto-detalle-telefono').value = c.telefono || '';
+  const dir = (c.direcciones && c.direcciones[0]) || null;
+  document.getElementById('contacto-detalle-barrio').value = dir ? (dir.barrio || '') : '';
+  document.getElementById('contacto-detalle-direccion').value = dir ? (dir.detalle || '') : '';
+  document.getElementById('contacto-detalle-msg').textContent = '';
+  document.getElementById('contactos-vista-lista').style.display = 'none';
+  document.getElementById('contactos-vista-detalle').style.display = 'flex';
+};
+
+window._volverAListaContactos = function() {
+  document.getElementById('contactos-vista-detalle').style.display = 'none';
+  document.getElementById('contactos-vista-lista').style.display = 'flex';
+  _contactoSeleccionadoId = null;
+};
+
+window._guardarContactoLocalDesdeDetalle = async function() {
+  if (!_contactoSeleccionadoId) return;
+  const nombre = document.getElementById('contacto-detalle-nombre').value.trim();
+  const telefono = document.getElementById('contacto-detalle-telefono').value.trim();
+  const barrioEntrega = document.getElementById('contacto-detalle-barrio').value.trim();
+  const direccionDetalle = document.getElementById('contacto-detalle-direccion').value.trim();
+  const msg = document.getElementById('contacto-detalle-msg');
+  const btn = document.getElementById('btn-guardar-contacto-detalle');
+
+  if (!nombre || !telefono) {
+    msg.style.color = '#f87171';
+    msg.textContent = 'Nombre y teléfono son obligatorios.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  msg.textContent = '';
+  try {
+    await window.editarContactoLocalCallable({
+      id: _contactoSeleccionadoId,
+      nombre, telefono,
+      direccionDetalle: direccionDetalle || null,
+      barrioEntrega: barrioEntrega || null,
+    });
+    msg.style.color = '#4ade80';
+    msg.textContent = ' Cambios guardados.';
+    await _cargarContactosLocal();
+    setTimeout(() => { window._volverAListaContactos(); }, 700);
+  } catch (e) {
+    console.error(' Error editando contacto:', e);
+    msg.style.color = '#f87171';
+    msg.textContent = (e && e.message) ? e.message : 'No se pudo guardar. Intenta de nuevo.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar cambios';
+  }
+};
+
+window._borrarContactoLocalDesdeDetalle = async function() {
+  if (!_contactoSeleccionadoId) return;
+  const c = _contactosLocalCache.find(x => x.id === _contactoSeleccionadoId);
+  const nombre = c ? c.nombre : 'este contacto';
+  if (!confirm(`¿Eliminar a ${nombre} de tu libreta? Esta acción no se puede deshacer.`)) return;
+
+  const msg = document.getElementById('contacto-detalle-msg');
+  try {
+    await window.borrarContactoLocalUnoCallable({ id: _contactoSeleccionadoId });
+    await _cargarContactosLocal();
+    window._volverAListaContactos();
+  } catch (e) {
+    console.error(' Error borrando contacto:', e);
+    msg.style.color = '#f87171';
+    msg.textContent = (e && e.message) ? e.message : 'No se pudo eliminar. Intenta de nuevo.';
+  }
+};
+</script>
 
 <script>
 // MAPEADOR DE UBICACIÓN PARA PEDIDO DE TERCERO (chat ServiBot)

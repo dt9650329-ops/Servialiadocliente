@@ -5992,6 +5992,33 @@ const TONOS_NOTIFICACION = [
 
  if (coordsRec && coordsEnt) {
  let kmRuta = null;
+ let precioBackend = null;
+ let usadoBackend = false;
+
+ // FIX 2026-08-25: el precio real ahora lo calcula el SERVIDOR (misma
+ // ruta OSRM + misma tabla de tarifas que valida el pedido justo después
+ // de crearse), así el estimado que el cliente ve aquí ya coincide con
+ // lo que realmente se termina cobrando — sin depender de si la señal
+ // del celular falla justo en este momento.
+ if (typeof window.cotizarPrecioDomicilioCallable === 'function') {
+ try {
+ const respCotiz = await window.cotizarPrecioDomicilioCallable({
+ gpsRecogida: { lat: coordsRec.lat, lng: coordsRec.lng },
+ gpsDestino: { lat: coordsEnt.lat, lng: coordsEnt.lng },
+ });
+ if (respCotiz && respCotiz.data && typeof respCotiz.data.km === 'number') {
+ kmRuta = respCotiz.data.km;
+ precioBackend = respCotiz.data.precio;
+ usadoBackend = true;
+ }
+ } catch (e) {
+ console.warn('[PRECIO] cotizarPrecioDomicilio (servidor) falló, calculando en el celular como respaldo:', e);
+ }
+ }
+
+ // Respaldo: si el servidor no respondió (función aún no desplegada, o el
+ // celular quedó totalmente sin datos), se calcula localmente como antes.
+ if (kmRuta === null) {
  // Distancia real por carretera via OSRM
  try {
  const osrmUrl = `https://router.project-osrm.org/route/v1/driving/`
@@ -6003,7 +6030,7 @@ const TONOS_NOTIFICACION = [
  kmRuta = data.routes[0].distance / 1000;
  }
  } catch(e) {
- console.warn('[PRECIO] OSRM no disponible, usando Haversine:', e);
+ console.warn('[PRECIO] OSRM local no disponible, usando Haversine:', e);
  }
 
  // Fallback: línea recta (Haversine) si OSRM falla — corregida con el
@@ -6018,9 +6045,10 @@ const TONOS_NOTIFICACION = [
  kmRuta = kmLineaRecta * (window._FACTOR_CORRECCION_RUTA || 1.25);
  console.warn('[PRECIO] Usando Haversine corregido:', kmRuta.toFixed(2), 'km');
  }
+ }
 
  const kmDisplay = Math.round(kmRuta * 10) / 10;
- precio = _precioSegunKm(kmRuta);
+ precio = (usadoBackend && precioBackend !== null && precioBackend !== undefined) ? precioBackend : _precioSegunKm(kmRuta);
  razon = ` ${kmDisplay} km · ${gpsRecogidaReal ? 'tu ubicación GPS' : (brRec || zonaRecogida)} → ${gpsDestinoReal ? 'ubicación GPS de entrega' : (brEnt || zonaEntrega)}`;
  } else {
  // Sin coordenadas: fallback conservador por zonas
@@ -10397,7 +10425,7 @@ if (dentroDeHorario) {
  appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
  };
 
- let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable, guardarContactoLocalConMapaCallable;
+ let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable, guardarContactoLocalConMapaCallable, cotizarPrecioDomicilioCallable;
  try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
@@ -10416,6 +10444,7 @@ if (dentroDeHorario) {
  editarContactoLocalCallable = httpsCallable(functions, 'editarContactoLocal');
  borrarContactoLocalUnoCallable = httpsCallable(functions, 'borrarContactoLocalUno');
  guardarContactoLocalConMapaCallable = httpsCallable(functions, 'guardarContactoLocalConMapa');
+ cotizarPrecioDomicilioCallable = httpsCallable(functions, 'cotizarPrecioDomicilio');
  console.log(' Firebase inicializado correctamente');
  } catch(e) {
  console.error(' Firebase no pudo iniciar:', e.message);
@@ -10557,6 +10586,7 @@ if (dentroDeHorario) {
  window.editarContactoLocalCallable = editarContactoLocalCallable;
  window.borrarContactoLocalUnoCallable = borrarContactoLocalUnoCallable;
  window.guardarContactoLocalConMapaCallable = guardarContactoLocalConMapaCallable;
+ window.cotizarPrecioDomicilioCallable = cotizarPrecioDomicilioCallable;
  window.consultarServibot = async function(mensaje, historial) {
    const res = await servibotChatCallable({ mensaje, historial });
    window._sbAccionPendiente = res.data.accion || null;

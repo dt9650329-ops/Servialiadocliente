@@ -44,8 +44,13 @@ jobs:
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
+      - name: Renombrar APK
+        run: |
+          cd android
+          cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/servi-aliados-cliente.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: capacitor-app/android/app/build/outputs/apk/release/app-release.apk
+          name: servi-aliados-cliente
+          path: capacitor-app/android/app/build/outputs/apk/release/servi-aliados-cliente.apk

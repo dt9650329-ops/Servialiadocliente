@@ -10601,6 +10601,7 @@ if (dentroDeHorario) {
    window._sbDatosUbicacionPendiente = res.data.datosUbicacion || null;
    window._sbDatosTerceroPendiente = res.data.datosTercero || null;
    window._sbDatosMapaContactoPendiente = res.data.datosMapaContacto || null;
+   window._sbDatosTiendaPendiente = res.data.datosTienda || null;
    return res.data.respuesta;
  };
  window.push = push;
@@ -12022,14 +12023,38 @@ ${mensajeEstado}
  }
 
  // ABRIR MODAL DE NEGOCIO (SIN VERIFICACIÓN DE ADMIN)
- window.abrirModalNegocio = function() {
- // Verificar nuevamente si ya tiene tienda
- if (clienteTieneTienda) {
- alert(' Ya tienes una tienda registrada. Solo puedes tener una tienda por cuenta.');
+ window.abrirModalNegocio = async function(datosPrefill) {
+ // Verificar en vivo cuántas tiendas tiene (el cupo se libera si el admin borra una)
+ try {
+ const negociosSnap = await get(ref(db, 'negocios'));
+ let misTiendasCount = 0;
+ if (negociosSnap.exists()) {
+ const negocios = negociosSnap.val();
+ for (let id in negocios) {
+ if (negocios[id].propietario === window.currentUserID) misTiendasCount++;
+ }
+ }
+ if (misTiendasCount >= MAX_TIENDAS_POR_CLIENTE) {
+ alert(` Ya tienes ${misTiendasCount} tiendas registradas. El máximo permitido por cuenta es ${MAX_TIENDAS_POR_CLIENTE}.`);
  return;
  }
- 
+ } catch (e) {
+ console.error('Error verificando cupo de tiendas:', e);
+ }
+
  document.getElementById('modal-negocio').style.display = 'block';
+
+ // Prellenar si vienen datos (ej. desde ServiBot)
+ if (datosPrefill) {
+ try {
+ if (datosPrefill.nombre) document.getElementById('nombre-negocio').value = datosPrefill.nombre;
+ if (datosPrefill.descripcion) document.getElementById('descripcion-negocio').value = datosPrefill.descripcion;
+ if (datosPrefill.telefono) document.getElementById('telefono-negocio').value = datosPrefill.telefono;
+ if (datosPrefill.categoria) document.getElementById('categoria-negocio').value = datosPrefill.categoria;
+ } catch (e) {
+ console.warn('No se pudo prellenar el formulario de tienda:', e);
+ }
+ }
  }
 
  window.cerrarModalNegocio = function() {
@@ -18141,6 +18166,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
    } else if (window._sbAccionPendiente === 'mostrarBotonMapaContacto' && window._sbDatosMapaContactoPendiente) {
      mostrarTarjetaBotonMapaContacto(window._sbDatosMapaContactoPendiente);
      window._sbAccionPendiente = null;
+   } else if (window._sbAccionPendiente === 'mostrarFormularioCrearTienda' && window._sbDatosTiendaPendiente) {
+     abrirModalNegocio(window._sbDatosTiendaPendiente);
+     window._sbAccionPendiente = null;
    }
  } catch (eRenderTarjeta) {
    console.error('[ServiBot] Error mostrando tarjeta:', eRenderTarjeta);
@@ -18625,6 +18653,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
      window._sbAccionPendiente = null;
    } else if (window._sbAccionPendiente === 'mostrarBotonMapaContacto' && window._sbDatosMapaContactoPendiente) {
      mostrarTarjetaBotonMapaContacto(window._sbDatosMapaContactoPendiente);
+     window._sbAccionPendiente = null;
+   } else if (window._sbAccionPendiente === 'mostrarFormularioCrearTienda' && window._sbDatosTiendaPendiente) {
+     abrirModalNegocio(window._sbDatosTiendaPendiente);
      window._sbAccionPendiente = null;
    }
  } catch (eRenderTarjeta) {

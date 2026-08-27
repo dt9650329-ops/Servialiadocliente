@@ -4590,6 +4590,10 @@
  <option value="Panadería">Panadería</option>
  <option value="Cafetería">Cafetería</option>
  <option value="Ferretería">Ferretería</option>
+ <option value="Papelería">Papelería</option>
+ <option value="+18">+18</option>
+ <option value="Juguetería">Juguetería</option>
+ <option value="Comidas rápidas">Comidas rápidas</option>
  <option value="Otro">Otro</option>
  </select>
 
@@ -4791,8 +4795,11 @@
  let menuAbierto = false;
  
  // VARIABLE PARA CONTROLAR SI EL CLIENTE YA TIENE TIENDA
+ // ✅ NUEVO: ahora un cliente puede tener hasta MAX_TIENDAS_POR_CLIENTE tiendas
+ // simultáneas (antes era 1 sola, sin liberar cupo aunque el admin la cerrara).
+ const MAX_TIENDAS_POR_CLIENTE = 4;
  let clienteTieneTienda = false;
- let miTiendaId = null;
+ let miTiendaId = null; // referencia a la primera tienda encontrada (compatibilidad)
  
  // VARIABLES PARA ENVÍO AUTOMÁTICO DE UBICACIÓN DEL CLIENTE
  let clienteLocationWatchId = null;
@@ -10453,7 +10460,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.1.2";
+ const APP_VERSION = "1.1.3";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -10594,6 +10601,7 @@ if (dentroDeHorario) {
    window._sbDatosUbicacionPendiente = res.data.datosUbicacion || null;
    window._sbDatosTerceroPendiente = res.data.datosTercero || null;
    window._sbDatosMapaContactoPendiente = res.data.datosMapaContacto || null;
+   window._sbDatosTiendaPendiente = res.data.datosTienda || null;
    return res.data.respuesta;
  };
  window.push = push;
@@ -11639,7 +11647,7 @@ if (dentroDeHorario) {
  
  // ==================== FUNCIONES DE TIENDA (SIN VERIFICACIÓN DE ADMIN) ====================
  
- // VERIFICAR SI EL CLIENTE YA TIENE UNA TIENDA
+ // VERIFICAR CUÁNTAS TIENDAS TIENE EL CLIENTE (máx. MAX_TIENDAS_POR_CLIENTE)
  window.verificarTiendaCliente = async function() {
  if (!window.currentUserID) return;
  
@@ -11647,32 +11655,34 @@ if (dentroDeHorario) {
  const negociosRef = ref(db, 'negocios');
  const snapshot = await get(negociosRef);
  
- clienteTieneTienda = false;
  miTiendaId = null;
+ let misTiendasCount = 0;
  
  if (snapshot.exists()) {
  const negocios = snapshot.val();
  for (let negocioId in negocios) {
  if (negocios[negocioId].propietario === window.currentUserID) {
- clienteTieneTienda = true;
- miTiendaId = negocioId;
- break;
+ misTiendasCount++;
+ if (!miTiendaId) miTiendaId = negocioId; // primera encontrada, por compatibilidad
  }
  }
  }
  
- // Actualizar UI según si tiene tienda o no
+ clienteTieneTienda = misTiendasCount > 0;
+ 
+ // Actualizar UI según cuántas tiendas tiene (cupo se libera si el admin borra alguna)
  const btnCrear = document.getElementById('btn-crear-mi-tienda');
  const mensajeLimite = document.getElementById('store-limit-message');
  
- if (clienteTieneTienda) {
+ if (misTiendasCount >= MAX_TIENDAS_POR_CLIENTE) {
  btnCrear.style.display = 'none';
+ mensajeLimite.textContent = `Has alcanzado el máximo de ${MAX_TIENDAS_POR_CLIENTE} tiendas por cuenta.`;
  mensajeLimite.style.display = 'block';
- console.log(' Cliente ya tiene tienda:', miTiendaId);
+ console.log(` Cliente alcanzó el límite de tiendas (${misTiendasCount}/${MAX_TIENDAS_POR_CLIENTE})`);
  } else {
  btnCrear.style.display = 'block';
  mensajeLimite.style.display = 'none';
- console.log(' Cliente puede crear tienda');
+ console.log(` Cliente puede crear tienda (${misTiendasCount}/${MAX_TIENDAS_POR_CLIENTE})`);
  }
  
  } catch (error) {
@@ -11699,31 +11709,36 @@ if (dentroDeHorario) {
  }
  
  const negocios = snapshot.val();
- let tieneTiendaPropia = false;
  
- // Primero verificar si el cliente tiene tienda propia
+ // Contar cuántas tiendas propias tiene el cliente (para el cupo de MAX_TIENDAS_POR_CLIENTE)
+ let misTiendasCount = 0;
  for (let id in negocios) {
  if (negocios[id].propietario === window.currentUserID) {
- tieneTiendaPropia = true;
- break;
+ misTiendasCount++;
  }
  }
  
- // Actualizar botón de crear tienda
+ // Actualizar botón de crear tienda según cupo disponible
  const btnCrear = document.getElementById('btn-crear-mi-tienda');
+ const mensajeLimite = document.getElementById('store-limit-message');
  
- if (tieneTiendaPropia) {
+ if (misTiendasCount >= MAX_TIENDAS_POR_CLIENTE) {
  btnCrear.style.display = 'none';
+ if (mensajeLimite) {
+ mensajeLimite.textContent = `Has alcanzado el máximo de ${MAX_TIENDAS_POR_CLIENTE} tiendas por cuenta.`;
+ mensajeLimite.style.display = 'block';
+ }
  } else {
  btnCrear.style.display = 'block';
+ if (mensajeLimite) mensajeLimite.style.display = 'none';
  }
  
- // Mostrar TODAS las tiendas (aprobadas + la propia del cliente)
+ // Mostrar TODAS las tiendas (aprobadas + TODAS las propias del cliente, sin importar cuántas)
  for (let negocioId in negocios) {
  const negocio = negocios[negocioId];
  const esMiTienda = negocio.propietario === window.currentUserID;
  
- // Mostrar si es aprobada (campo texto O booleano) O es la tienda propia del cliente
+ // Mostrar si es aprobada (campo texto O booleano) O es una tienda propia del cliente
  if (negocio.estado === 'aprobado' || negocio.estado === 'aprobada' || negocio.aprobado === true || esMiTienda) {
  const card = crearTarjetaNegocio(negocioId, negocio, esMiTienda);
  storeGrid.appendChild(card);
@@ -12008,14 +12023,38 @@ ${mensajeEstado}
  }
 
  // ABRIR MODAL DE NEGOCIO (SIN VERIFICACIÓN DE ADMIN)
- window.abrirModalNegocio = function() {
- // Verificar nuevamente si ya tiene tienda
- if (clienteTieneTienda) {
- alert(' Ya tienes una tienda registrada. Solo puedes tener una tienda por cuenta.');
+ window.abrirModalNegocio = async function(datosPrefill) {
+ // Verificar en vivo cuántas tiendas tiene (el cupo se libera si el admin borra una)
+ try {
+ const negociosSnap = await get(ref(db, 'negocios'));
+ let misTiendasCount = 0;
+ if (negociosSnap.exists()) {
+ const negocios = negociosSnap.val();
+ for (let id in negocios) {
+ if (negocios[id].propietario === window.currentUserID) misTiendasCount++;
+ }
+ }
+ if (misTiendasCount >= MAX_TIENDAS_POR_CLIENTE) {
+ alert(` Ya tienes ${misTiendasCount} tiendas registradas. El máximo permitido por cuenta es ${MAX_TIENDAS_POR_CLIENTE}.`);
  return;
  }
- 
+ } catch (e) {
+ console.error('Error verificando cupo de tiendas:', e);
+ }
+
  document.getElementById('modal-negocio').style.display = 'block';
+
+ // Prellenar si vienen datos (ej. desde ServiBot)
+ if (datosPrefill) {
+ try {
+ if (datosPrefill.nombre) document.getElementById('nombre-negocio').value = datosPrefill.nombre;
+ if (datosPrefill.descripcion) document.getElementById('descripcion-negocio').value = datosPrefill.descripcion;
+ if (datosPrefill.telefono) document.getElementById('telefono-negocio').value = datosPrefill.telefono;
+ if (datosPrefill.categoria) document.getElementById('categoria-negocio').value = datosPrefill.categoria;
+ } catch (e) {
+ console.warn('No se pudo prellenar el formulario de tienda:', e);
+ }
+ }
  }
 
  window.cerrarModalNegocio = function() {
@@ -12626,13 +12665,15 @@ ${motivo}`;
  }
 
  try {
- // Verificar en Firebase si ya tiene tienda (doble check) 
+ // Verificar en Firebase cuántas tiendas tiene ya (doble check, cupo = MAX_TIENDAS_POR_CLIENTE)
+ // El cupo se libera automáticamente cuando el admin borra una tienda del nodo /negocios,
+ // porque este conteo siempre lee el estado actual en vivo, no una bandera guardada.
  const negociosSnap = await get(ref(db, 'negocios'));
  if (negociosSnap.exists()) {
  const negocios = negociosSnap.val();
- const yaExiste = Object.values(negocios).some(n => n.propietario === window.currentUserID);
- if (yaExiste) {
- alert(' Ya tienes una tienda registrada. Solo puedes tener una tienda por cuenta.');
+ const misTiendasCount = Object.values(negocios).filter(n => n.propietario === window.currentUserID).length;
+ if (misTiendasCount >= MAX_TIENDAS_POR_CLIENTE) {
+ alert(` Ya tienes ${misTiendasCount} tiendas registradas. El máximo permitido por cuenta es ${MAX_TIENDAS_POR_CLIENTE}.`);
  clienteTieneTienda = true;
  cerrarModalNegocio();
  return;
@@ -12680,8 +12721,9 @@ ${motivo}`;
  alert(' Tu tienda ha sido enviada para revisión.\n\n[Espera] El administrador la aprobará pronto y será visible para todos.');
  cerrarModalNegocio();
 
- document.getElementById('btn-crear-mi-tienda').style.display = 'none';
- document.getElementById('store-limit-message').style.display = 'block';
+ // Recalcular cupo real (no ocultar el botón a ciegas: puede seguir teniendo cupo si el máximo es > 1)
+ await window.verificarTiendaCliente();
+ if (typeof window.cargarNegocios === 'function') window.cargarNegocios();
 
  } catch (error) {
  console.error('Error al guardar negocio:', error);
@@ -18124,6 +18166,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
    } else if (window._sbAccionPendiente === 'mostrarBotonMapaContacto' && window._sbDatosMapaContactoPendiente) {
      mostrarTarjetaBotonMapaContacto(window._sbDatosMapaContactoPendiente);
      window._sbAccionPendiente = null;
+   } else if (window._sbAccionPendiente === 'mostrarFormularioCrearTienda' && window._sbDatosTiendaPendiente) {
+     abrirModalNegocio(window._sbDatosTiendaPendiente);
+     window._sbAccionPendiente = null;
    }
  } catch (eRenderTarjeta) {
    console.error('[ServiBot] Error mostrando tarjeta:', eRenderTarjeta);
@@ -18608,6 +18653,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
      window._sbAccionPendiente = null;
    } else if (window._sbAccionPendiente === 'mostrarBotonMapaContacto' && window._sbDatosMapaContactoPendiente) {
      mostrarTarjetaBotonMapaContacto(window._sbDatosMapaContactoPendiente);
+     window._sbAccionPendiente = null;
+   } else if (window._sbAccionPendiente === 'mostrarFormularioCrearTienda' && window._sbDatosTiendaPendiente) {
+     abrirModalNegocio(window._sbDatosTiendaPendiente);
      window._sbAccionPendiente = null;
    }
  } catch (eRenderTarjeta) {

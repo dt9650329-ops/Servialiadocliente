@@ -5073,6 +5073,19 @@ const TONOS_NOTIFICACION = [
  } catch (e) { console.warn('❌ Error en _actualizarAlarmaVentaPendiente:', e); }
  };
 
+ // Silencia la alarma de inmediato aunque la compra siga pendiente (ej. el
+ // dueño descartó el banner flotante). El pedido sigue apareciendo en el
+ // badge/menú; si entra otro cambio en las compras de esa tienda, la alarma
+ // se puede volver a activar normalmente desde _actualizarAlarmaVentaPendiente.
+ window._silenciarAlarmaVentaPendiente = function() {
+ _alarmaVentaActiva = false;
+ if (_alarmaVentaAudio) {
+ _alarmaVentaAudio.pause();
+ _alarmaVentaAudio.currentTime = 0;
+ _alarmaVentaAudio = null;
+ }
+ };
+
  // Si el navegador bloqueó el autoplay (falta interacción del usuario), reintenta
  // apenas el usuario toque la pantalla por primera vez.
  document.addEventListener('click', function _reintentarAlarmaVenta() {
@@ -14207,6 +14220,11 @@ ${motivo}`;
  // Ubicaciones específicas de esta transacción
  ubicacionRecogida: ubicacionTienda,
  ubicacionEntrega: ubicacionCliente,
+ // Mismos datos que arriba, pero con el nombre de campo que lee el mapa de
+ // seguimiento (agregarMarcadorRecogida/agregarMarcadorEntrega esperan
+ // "gpsRecogida"/"gpsDestino"); sin esto el punto de la tienda no aparecía.
+ gpsRecogida: ubicacionTienda,
+ gpsDestino: ubicacionCliente,
  distanciaKm: Math.round(distanciaKm * 10) / 10,
 
  itemsCarrito,
@@ -21335,6 +21353,74 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  };
 
  // Escuchar en vivo las compras nuevas de MI tienda (para notificar y actualizar el badge sin recargar)
+ // ==================== BANNER FLOTANTE DE VENTA NUEVA ====================
+ // Aviso visual arriba de la app (no navega solo). Se muestra 5s y luego se
+ // oculta solo (la alarma de sonido sigue viva en segundo plano hasta que se
+ // confirme el pedido). Si el dueño toca el banner, lo lleva directo al panel
+ // de "Compras por Confirmar" de esa tienda. Si lo descarta con la X, además
+ // de ocultarse silencia la alarma de una vez (window._silenciarAlarmaVentaPendiente).
+ let _bannerVentaTimeout = null;
+ window.mostrarBannerVentaFlotante = function(compra, negocioId, nombreTienda) {
+ try {
+ const existente = document.getElementById('banner-venta-flotante');
+ if (existente) existente.remove();
+ if (_bannerVentaTimeout) { clearTimeout(_bannerVentaTimeout); _bannerVentaTimeout = null; }
+
+ const itemsTexto = (compra.itemsCarrito || []).map(it => it.nombre).join(', ') || 'productos';
+ const montoTexto = '$' + (compra.montoProductos || 0).toLocaleString('es-CO');
+
+ const banner = document.createElement('div');
+ banner.id = 'banner-venta-flotante';
+ banner.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:99999; ' +
+ 'padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px 16px; ' +
+ 'background:linear-gradient(135deg,#0D1526,#060B17); border-bottom:3px solid #FFC200; ' +
+ 'box-shadow:0 4px 18px rgba(0,0,0,0.5); display:flex; align-items:center; gap:10px; ' +
+ 'transform:translateY(-100%); transition:transform 0.3s ease; cursor:pointer;';
+
+ banner.innerHTML =
+ '<div style="font-size:26px; line-height:1;">🛎️</div>' +
+ '<div style="flex:1; min-width:0;">' +
+ '<div style="color:#FFC200; font-weight:bold; font-size:14px;">¡Nueva venta en ' + (nombreTienda || 'tu tienda') + '!</div>' +
+ '<div style="color:#f0f0f0; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' +
+ (compra.clienteNombre || 'Un cliente') + ' compró: ' + itemsTexto + ' — ' + montoTexto +
+ '</div>' +
+ '</div>' +
+ '<button type="button" id="banner-venta-flotante-cerrar" aria-label="Cerrar" ' +
+ 'style="background:none; border:none; color:#aaa; font-size:20px; line-height:1; padding:4px 6px; flex-shrink:0;">✕</button>';
+
+ document.body.appendChild(banner);
+ requestAnimationFrame(() => { banner.style.transform = 'translateY(0)'; });
+
+ const ocultarBanner = () => {
+ if (!document.body.contains(banner)) return;
+ banner.style.transform = 'translateY(-100%)';
+ setTimeout(() => banner.remove(), 320);
+ };
+
+ banner.querySelector('#banner-venta-flotante-cerrar').addEventListener('click', (ev) => {
+ ev.stopPropagation();
+ if (_bannerVentaTimeout) { clearTimeout(_bannerVentaTimeout); _bannerVentaTimeout = null; }
+ if (typeof window._silenciarAlarmaVentaPendiente === 'function') window._silenciarAlarmaVentaPendiente();
+ ocultarBanner();
+ });
+
+ banner.addEventListener('click', () => {
+ if (_bannerVentaTimeout) { clearTimeout(_bannerVentaTimeout); _bannerVentaTimeout = null; }
+ ocultarBanner();
+ if (typeof window.abrirModalEditarMiTienda === 'function') {
+ Promise.resolve(window.abrirModalEditarMiTienda(negocioId)).then(() => {
+ if (typeof window.verComprasDeMiTienda === 'function') window.verComprasDeMiTienda(negocioId);
+ });
+ }
+ });
+
+ // Auto-ocultar a los 5s. Solo oculta el banner: la alarma de sonido
+ // sigue activa hasta que se confirme/rechace el pedido o se descarte
+ // manualmente con la X.
+ _bannerVentaTimeout = setTimeout(() => { _bannerVentaTimeout = null; ocultarBanner(); }, 5000);
+ } catch (e) { console.warn('❌ Error mostrando banner de venta flotante:', e); }
+ };
+
  window.escucharComprasDeMiTienda = function(negocioId, nombreTienda) {
  if (!window.db || !window.ref || !window.onValue) return;
  if (_comprasListeners[negocioId]) return;
@@ -21366,6 +21452,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  (c.clienteNombre || 'Un cliente') + ' te compró: ' + itemsTexto + ' — $' + (c.montoProductos || 0).toLocaleString('es-CO'),
  'pedido', 'ver_compras', { negocioId }
  );
+ if (typeof window.mostrarBannerVentaFlotante === 'function') {
+ window.mostrarBannerVentaFlotante(c, negocioId, nombreTienda);
+ }
  }
  });
  // Sacar de la línea base las que ya se confirmaron/rechazaron

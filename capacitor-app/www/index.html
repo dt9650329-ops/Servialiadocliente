@@ -3364,7 +3364,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.1.7</small>
+ <small>Versión 1.1.9</small>
  </div>
  </div>
  </div>
@@ -10623,7 +10623,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.1.7');
+ console.log(' Sistema del cliente inicializado v1.1.9');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10722,7 +10722,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.1.7";
+ const APP_VERSION = "1.1.9";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -12118,9 +12118,14 @@ if (dentroDeHorario) {
  
  card.className = `store-card ${estadoClase}`;
 
- // Aviso de tienda cerrada, visible para todos los clientes (no solo el dueño)
- const tiendaCerrada = negocio.tiendaAbierta === false;
- const badgeCerradaHTML = tiendaCerrada ? `<span class="store-status-badge rejected" style="position:absolute; top:8px; right:8px;">Cerrada</span>` : '';
+ // Aviso de tienda cerrada, visible para todos los clientes (no solo el dueño).
+ // Se cierra si el dueño la apagó manualmente, O si está fuera del horario
+ // de atención que configuró (antes ese horario se guardaba pero nunca se
+ // usaba para nada).
+ const cerradaManual = negocio.tiendaAbierta === false;
+ const cerradaPorHorario = !negocioEstaAbiertoAhora(negocio);
+ const tiendaCerrada = cerradaManual || cerradaPorHorario;
+ const badgeCerradaHTML = tiendaCerrada ? `<span class="store-status-badge rejected" style="position:absolute; top:8px; right:8px;">${cerradaManual ? 'Cerrada' : 'Cerrada (fuera de horario)'}</span>` : '';
  
  const imagenHTML = negocio.imagen ? 
  `<img src="${negocio.imagen}" alt="${negocio.nombre}" />` : 
@@ -13108,7 +13113,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.1.7');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.1.9');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -13153,7 +13158,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.1.7  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.1.9  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -13467,6 +13472,28 @@ ${motivo}`;
  console.error('Error al cargar el horario de la tienda:', error);
  listaProductos.innerHTML = '<p class="no-products-message">Error al cargar el horario</p>';
  }
+ }
+
+  // Revisa si una tienda está dentro de su horario de atención configurado
+ // (negocios/{id}.horarioAtencion, guardado día por día). Si nunca configuró
+ // horario, se asume abierta (no la cerramos por defecto).
+ function negocioEstaAbiertoAhora(negocio) {
+ const horario = negocio && negocio.horarioAtencion;
+ if (!horario || Object.keys(horario).length === 0) return true;
+ const DIAS_ORDEN = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+ const ahora = new Date();
+ const datosDia = horario[DIAS_ORDEN[ahora.getDay()]];
+ if (!datosDia || !datosDia.abierto) return false;
+ const [hd, md] = (datosDia.desde || '00:00').split(':').map(Number);
+ const [hh, mh] = (datosDia.hasta || '23:59').split(':').map(Number);
+ const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+ const minutosDesde = (hd || 0) * 60 + (md || 0);
+ const minutosHasta = (hh || 0) * 60 + (mh || 0);
+ if (minutosHasta > minutosDesde) {
+ return minutosAhora >= minutosDesde && minutosAhora < minutosHasta;
+ }
+ // Horario que cruza medianoche (ej. abre 18:00, cierra 02:00)
+ return minutosAhora >= minutosDesde || minutosAhora < minutosHasta;
  }
 
  window.guardarHorarioMiTienda = async function(negocioId) {
@@ -14174,6 +14201,11 @@ ${motivo}`;
  return;
  }
 
+ if (!negocioEstaAbiertoAhora(negocioData)) {
+ alert('Esta tienda está fuera de su horario de atención en este momento. Vuelve a intentarlo cuando esté abierta.');
+ return;
+ }
+
  if (!ubicacionTienda || !ubicacionTienda.lat) {
  alert('Esta tienda todavía no tiene su ubicación configurada. Mientras se configura, puedes usar "Enviar Pedido por WhatsApp".');
  return;
@@ -14261,13 +14293,21 @@ ${motivo}`;
  const uData = uSnap.val();
  clienteNombre = uData.nombre || 'Cliente';
  clienteEmail = uData.correo || '';
- // Mismos datos que el cliente diligenció al registrarse (perfil), para
- // que le lleguen completos a la tienda: teléfono principal (tel1) y la
- // dirección que escribió (normalmente incluye el barrio, ej. "Cra 15
- // #20-10, Barrio El Centro"). Si algún día falta, mejor '' que undefined:
- // undefined rompe el set() del repartidor al aceptar el pedido.
  clienteTelefono = uData.tel1 || '';
+ // La dirección del perfil (uData.direccion) muchas veces solo trae el
+ // barrio, sin manzana/casa. Preferimos la última dirección GUARDADA que
+ // el cliente usó (usuarios/{uid}/direccionesGuardadas), porque esa sí
+ // suele incluir el detalle completo (ej. "Barrio Los Álamos, mz 4 casa 12").
  clienteDireccion = uData.direccion || '';
+ try {
+ const ultimaIdSnap = await get(ref(db, `usuarios/${window.currentUserID}/ultimaDireccionUsadaId`));
+ if (ultimaIdSnap.exists()) {
+ const dirGuardadaSnap = await get(ref(db, `usuarios/${window.currentUserID}/direccionesGuardadas/${ultimaIdSnap.val()}`));
+ if (dirGuardadaSnap.exists() && dirGuardadaSnap.val().texto) {
+ clienteDireccion = dirGuardadaSnap.val().texto;
+ }
+ }
+ } catch (e) { console.warn('No se pudo leer la última dirección guardada:', e); }
  }
  } catch (e) {}
 
@@ -14284,7 +14324,7 @@ ${motivo}`;
  // Compatibles con los reportes/paneles que ya leen estos nombres de campo
  negocioId: tiendaActual.id,
  nombreEntrega: tiendaActual.nombre,
- dirRecogida: 'Ubicación GPS de la tienda (ver mapa)',
+ dirRecogida: `Tienda: ${tiendaActual.nombre} (ver ubicación exacta en el mapa)`,
  direccionCliente: clienteDireccion || 'Ubicación GPS del cliente (ver mapa)',
 
  // Ubicaciones específicas de esta transacción

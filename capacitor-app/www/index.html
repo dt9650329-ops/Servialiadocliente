@@ -166,14 +166,17 @@
  /* ------------------- ESTILOS TIENDA ESTILO RAPPI (COMPACTO ~3x más pequeño) ------------------- */
  .store-grid {
  display: grid;
- grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
- gap: 8px;
- padding: 10px 0;
+ grid-template-columns: repeat(2, 1fr);
+ gap: 10px;
+ padding: 10px 12px;
+ width: 100vw;
+ margin-left: calc(-50vw + 50%);
+ box-sizing: border-box;
  }
  
  .store-card {
  background: linear-gradient(135deg, var(--color-surface2), var(--color-surface));
- border-radius: 8px;
+ border-radius: 10px;
  overflow: hidden;
  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
  transition: transform 0.3s, box-shadow 0.3s;
@@ -181,9 +184,8 @@
  border: 1px solid var(--color-border);
  position: relative;
  display: flex;
- flex-direction: row;
+ flex-direction: column;
  align-items: stretch;
- min-height: 76px;
  }
  
  .store-card:hover {
@@ -234,9 +236,9 @@
  }
  
  .store-image {
- width: 76px;
- min-width: 76px;
- height: auto;
+ width: 100%;
+ min-width: 0;
+ height: 92px;
  object-fit: cover;
  background: linear-gradient(135deg, #444, #333);
  display: flex;
@@ -254,12 +256,12 @@
  }
  
  .store-info {
- padding: 6px 8px;
+ padding: 8px 9px;
  flex: 1;
  min-width: 0;
  display: flex;
  flex-direction: column;
- justify-content: center;
+ justify-content: flex-start;
  }
  
  .store-name {
@@ -371,6 +373,7 @@
  display: inline-flex;
  align-items: center;
  gap: 6px;
+ grid-column: 1 / -1;
  }
 
  .section-back-btn:hover {
@@ -1851,6 +1854,7 @@
  color: var(--color-text-dark);
  padding: 20px;
  font-style: italic;
+ grid-column: 1 / -1;
  }
  
  /* Modal para agregar/editar productos */
@@ -2025,16 +2029,16 @@
  .product-images-gallery {
  display: flex;
  gap: 5px;
- margin-top: 8px;
+ margin: 0 0 8px 0;
  overflow-x: auto;
- padding: 5px 0;
+ padding: 0;
  }
 
  .product-images-gallery img {
- width: 60px;
- height: 60px;
+ width: 100%;
+ height: 105px;
  object-fit: cover;
- border-radius: 6px;
+ border-radius: 8px;
  border: 1px solid #555;
  cursor: pointer;
  transition: transform 0.2s;
@@ -2095,15 +2099,17 @@
 
  .modal-ver-tienda-content {
  background-color: var(--color-card);
- margin: 5% auto;
- padding: 30px;
- border: 1px solid #555;
- border-radius: 12px;
- width: 90%;
- max-width: 600px;
+ margin: 0 auto;
+ padding: 16px 12px 30px;
+ border: none;
+ border-radius: 0;
+ width: 100%;
+ max-width: 700px;
  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
- max-height: 85vh;
+ max-height: 100vh;
+ min-height: 100vh;
  overflow-y: auto;
+ box-sizing: border-box;
  }
 
  .modal-ver-tienda-header {
@@ -2137,7 +2143,8 @@
 
  #lista-productos-ver {
  display: grid;
- gap: 15px;
+ grid-template-columns: repeat(2, 1fr);
+ gap: 10px;
  margin-top: 20px;
  }
 
@@ -2314,10 +2321,12 @@
  .menu-producto-card {
  background: #2a2a2a;
  border-radius: 10px;
- padding: 18px;
- margin-bottom: 15px;
+ padding: 10px;
+ margin-bottom: 0;
  border: 2px solid #444;
  transition: all 0.3s;
+ display: flex;
+ flex-direction: column;
  }
 
  .menu-producto-card:hover {
@@ -2327,20 +2336,21 @@
 
  .menu-producto-header {
  display: flex;
- justify-content: space-between;
- align-items: start;
- margin-bottom: 12px;
+ flex-direction: column;
+ gap: 2px;
+ margin-bottom: 8px;
  }
 
  .menu-producto-nombre {
  color: #FFD700;
- font-size: 20px;
+ font-size: 14px;
  font-weight: bold;
+ line-height: 1.3;
  }
 
  .menu-producto-precio {
  color: #28a745;
- font-size: 22px;
+ font-size: 15px;
  font-weight: bold;
  }
 
@@ -2373,16 +2383,16 @@
 
  .btn-agregar-carrito {
  width: 100%;
- padding: 14px;
+ padding: 10px;
  background: linear-gradient(135deg, #FFD700, #FFA500);
  color: #000;
  border: none;
  border-radius: 8px;
  font-weight: bold;
- font-size: 16px;
+ font-size: 13px;
  cursor: pointer;
  transition: all 0.3s;
- margin-top: 10px;
+ margin-top: auto;
  }
 
  .btn-agregar-carrito:hover {
@@ -3324,7 +3334,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.1.5</small>
+ <small>Versión 1.1.6</small>
  </div>
  </div>
  </div>
@@ -10583,7 +10593,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.1.5');
+ console.log(' Sistema del cliente inicializado v1.1.6');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10682,7 +10692,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.1.5";
+ const APP_VERSION = "1.1.6";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -13066,7 +13076,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.1.5');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.1.6');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -13111,7 +13121,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.1.5  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.1.6  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -13866,6 +13876,7 @@ ${motivo}`;
  const encabezado = document.createElement('h4');
  encabezado.style.color = 'var(--color-primary)';
  encabezado.style.marginBottom = '10px';
+ encabezado.style.gridColumn = '1 / -1';
  encabezado.textContent = titulo;
  listaProductosVer.appendChild(encabezado);
 
@@ -13883,11 +13894,11 @@ ${motivo}`;
  const precioHTML = producto.precio ? `<div class="menu-producto-precio">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
 
  productoDiv.innerHTML = `
+ ${fotoHTML}
  <div class="menu-producto-header">
  <div class="menu-producto-nombre">${producto.nombre}</div>
  ${precioHTML}
  </div>
- ${fotoHTML}
  ${producto.precio ? `<button class="btn-agregar-carrito" onclick="agregarAlCarrito('${productoId}', 'secciones/${seccionId}/productos')"> Agregar al Pedido</button>` : ''}
  `;
 

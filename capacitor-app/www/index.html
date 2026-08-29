@@ -3364,7 +3364,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.1.9</small>
+ <small>Versión 1.2.0</small>
  </div>
  </div>
  </div>
@@ -10623,7 +10623,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.1.9');
+ console.log(' Sistema del cliente inicializado v1.2.0');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10722,7 +10722,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.1.9";
+ const APP_VERSION = "1.2.0";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -11926,6 +11926,14 @@ if (dentroDeHorario) {
  if (negocios[negocioId].propietario === window.currentUserID) {
  misTiendasCount++;
  if (!miTiendaId) miTiendaId = negocioId; // primera encontrada, por compatibilidad
+ // 🔔 FIX: antes el listener de compras (y por lo tanto la alarma de
+ // sonido) solo se activaba al entrar a la tarjeta/vista de la tienda.
+ // Ahora se conecta aquí, apenas se detecta que el usuario es dueño,
+ // así el aviso suena desde CUALQUIER pantalla de la app, sin tener
+ // que entrar manualmente a la tienda primero.
+ if (typeof window.escucharComprasDeMiTienda === 'function') {
+ window.escucharComprasDeMiTienda(negocioId, negocios[negocioId].nombre);
+ }
  }
  }
  }
@@ -13113,7 +13121,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.1.9');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.2.0');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -13158,7 +13166,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.1.9  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.2.0  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -14439,11 +14447,28 @@ ${motivo}`;
  let accionesHTML = '';
  let estadoHTML = '';
  if (compra.estado === 'pendiente') {
- estadoHTML = `<div class="product-status-edit no-disponible"> Esperando tu confirmación</div>`;
+ estadoHTML = `<div class="product-status-edit no-disponible"> Esperando tu confirmación (sonando)</div>`;
+ accionesHTML = `
+ <button class="btn-toggle-disponibilidad disponible" onclick="confirmarCompraTienda('${negocioId}', '${compraId}')">Confirmar Pedido</button>
+ <button class="btn-recibido-pedido" style="background:linear-gradient(135deg,#1f6feb,#0d4f9e); color:#fff; border:none; padding:8px 14px; border-radius:6px; font-weight:600; cursor:pointer;" onclick="marcarCompraRecibida('${negocioId}', '${compraId}')">📥 Recibido</button>
+ <button class="btn-eliminar-producto" onclick="rechazarCompraTienda('${negocioId}', '${compraId}')">Rechazar</button>
+ `;
+ } else if (compra.estado === 'recibido') {
+ // 🆕 Ya se marcó "Recibido": la alarma de sonido ya se silenció (no cuenta
+ // como pendiente), y el dueño puede revisar con calma si tiene todos los
+ // productos antes de confirmar o rechazar (sin que se asigne repartidor).
+ estadoHTML = `<div class="product-status-edit no-disponible" style="color:#1f6feb;"> Recibido, revisando con el cliente...</div>`;
  accionesHTML = `
  <button class="btn-toggle-disponibilidad disponible" onclick="confirmarCompraTienda('${negocioId}', '${compraId}')">Confirmar Pedido</button>
  <button class="btn-eliminar-producto" onclick="rechazarCompraTienda('${negocioId}', '${compraId}')">Rechazar</button>
  `;
+ } else if (compra.estado === 'confirmado_esperando_asignacion') {
+ // 🆕 Confirmado, pero el repartidor todavía no se asigna: se asignará
+ // automáticamente ~12 min antes de la hora en que el dueño dijo que
+ // estaría listo el pedido.
+ const horaListo = compra.horaListoEstimada ? new Date(compra.horaListoEstimada).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '—';
+ const horaAsig = compra.horaAsignacionProgramada ? new Date(compra.horaAsignacionProgramada).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '—';
+ estadoHTML = `<div class="product-status-edit disponible"> Confirmado · listo aprox. ${horaListo} · repartidor se asigna solo ~${horaAsig}</div>`;
  } else if (compra.estado === 'confirmado') {
  estadoHTML = `<div class="product-status-edit disponible"> Confirmado, en camino un repartidor</div>`;
  } else if (compra.estado === 'rechazado') {
@@ -14470,14 +14495,24 @@ ${motivo}`;
  }
  }
 
- // El dueño confirma el pedido: recién en este momento se asigna un repartidor
- window.confirmarCompraTienda = async function(negocioId, compraId) {
+ // 🆕 El dueño marca el pedido como "Recibido": esto SOLO silencia la alarma
+ // de sonido (deja de contar como "pendiente") para que pueda revisar con
+ // calma —incluso llamando al cliente— si tiene todos los productos, SIN
+ // que todavía se le asigne repartidor. Después decide con Confirmar o Rechazar.
+ window.marcarCompraRecibida = async function(negocioId, compraId) {
  try {
- const compraSnap = await get(ref(db, `compras_tienda/${negocioId}/${compraId}`));
- if (!compraSnap.exists()) { alert('No se encontró esta compra.'); return; }
- const compra = compraSnap.val();
- const pedidoId = compra.pedidoId || compraId;
+ await update(ref(db, `compras_tienda/${negocioId}/${compraId}`), { estado: 'recibido' });
+ await window.verComprasDeMiTienda(negocioId);
+ } catch (error) {
+ console.error('Error al marcar la compra como recibida:', error);
+ alert('Error al marcar el pedido como recibido: ' + error.message);
+ }
+ }
 
+ // Ejecuta la asignación real del repartidor (lógica que antes vivía directo
+ // dentro de confirmarCompraTienda). Se reutiliza tanto cuando se asigna de
+ // inmediato como cuando ya pasó el tiempo programado de espera.
+ async function _asignarRepartidorAPedido(negocioId, compraId, pedidoId, compra, tiempoPreparacionMinutos, horaListoEstimada) {
  const repartidorAsignado = await seleccionarRepartidorMenosOcupado(compra.clienteId);
  const timestamp = Date.now();
 
@@ -14503,6 +14538,7 @@ ${motivo}`;
  }
 
  await update(ref(db, `compras_tienda/${negocioId}/${compraId}`), { estado: 'confirmado' });
+ await update(ref(db, `asignaciones_programadas/${pedidoId}`), null);
 
  // Descontar stock automáticamente por cada unidad vendida en este pedido
  // (los productos sin stock definido simplemente se ignoran dentro de descontarStockProducto)
@@ -14520,9 +14556,63 @@ ${motivo}`;
  }
  } catch (e) { console.warn('No se pudo descontar el stock automáticamente:', e); }
 
+ return repartidorAsignado;
+ }
+
+ // El dueño confirma el pedido. En vez de asignar el repartidor de inmediato,
+ // primero pregunta en cuánto tiempo estará listo: si faltan más de 12 minutos
+ // para esa hora, el repartidor se asigna automáticamente más tarde (~12 min
+ // antes de que esté listo) para que no espere tanto parado en la tienda; si
+ // ya casi está listo, se asigna de una vez.
+ window.confirmarCompraTienda = async function(negocioId, compraId) {
+ try {
+ const compraSnap = await get(ref(db, `compras_tienda/${negocioId}/${compraId}`));
+ if (!compraSnap.exists()) { alert('No se encontró esta compra.'); return; }
+ const compra = compraSnap.val();
+ const pedidoId = compra.pedidoId || compraId;
+
+ const ANTICIPACION_MIN = 12;
+ const minutosTexto = prompt('¿En cuántos minutos estará listo el pedido?\n(El repartidor se asignará automáticamente ~' + ANTICIPACION_MIN + ' minutos antes de esa hora, para que no espere parado en tu tienda)', '20');
+ if (minutosTexto === null) return; // el dueño canceló, no se confirma nada todavía
+ const tiempoPreparacionMinutos = parseInt(minutosTexto, 10);
+ if (!tiempoPreparacionMinutos || tiempoPreparacionMinutos <= 0) { alert('Ingresa un número de minutos válido.'); return; }
+
+ const timestamp = Date.now();
+ const horaListoEstimada = timestamp + tiempoPreparacionMinutos * 60000;
+ const horaAsignacionProgramada = horaListoEstimada - (ANTICIPACION_MIN * 60000);
+ const asignarDeUnaVez = horaAsignacionProgramada <= timestamp; // ya casi está listo
+
+ if (asignarDeUnaVez) {
+ const repartidorAsignado = await _asignarRepartidorAPedido(negocioId, compraId, pedidoId, compra, tiempoPreparacionMinutos, horaListoEstimada);
  alert(repartidorAsignado
- ? `Pedido confirmado. Se asignó a ${repartidorAsignado.nombre || 'un repartidor'} para que pague en tu tienda y lleve el pedido.`
+ ? `Pedido confirmado. Como ya casi está listo, se asignó de una vez a ${repartidorAsignado.nombre || 'un repartidor'}.`
  : 'Pedido confirmado. Todavía no hay repartidores en línea; se asignará apenas uno se conecte.');
+ } else {
+ await update(ref(db, `compras_tienda/${negocioId}/${compraId}`), {
+ estado: 'confirmado_esperando_asignacion',
+ tiempoPreparacionMinutos,
+ horaListoEstimada,
+ horaAsignacionProgramada
+ });
+ await update(ref(db, `pedidos_historial/${pedidoId}`), {
+ estado: 'esperando_asignacion',
+ tiempoPreparacionMinutos,
+ horaListoEstimada,
+ horaAsignacionProgramada
+ });
+ // La Cloud Function programada (revisa cada minuto) asigna el repartidor
+ // automáticamente cuando llegue horaAsignacionProgramada, sin depender
+ // de que el celular de la tienda siga abierto.
+ await update(ref(db, `asignaciones_programadas/${pedidoId}`), {
+ negocioId, compraId, pedidoId,
+ clienteId: compra.clienteId || null,
+ horaAsignacionProgramada,
+ horaListoEstimada,
+ estado: 'esperando'
+ });
+ const horaTxt = new Date(horaAsignacionProgramada).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+ alert(`Pedido confirmado. El repartidor se asignará automáticamente cerca de las ${horaTxt} (${ANTICIPACION_MIN} min antes de que esté listo).`);
+ }
 
  await window.verComprasDeMiTienda(negocioId);
 
@@ -21391,6 +21481,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const pedidoRef = window.ref(window.db, 'pedidos_historial/' + pedidoId);
  const labels = {
  'pendiente_confirmacion_tienda': ' Tu compra fue enviada a la tienda, esperando que la confirmen',
+ 'esperando_asignacion': ' ¡La tienda confirmó tu pedido! Está en preparación',
  'pendiente': '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg>Pedido pendiente',
  'aceptado': ' Tu pedido fue aceptado',
  'esperando': ' Repartidor en punto de recogida',
@@ -21421,6 +21512,14 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  ? 'Ya se asignó un repartidor' + (rep ? ' (' + rep + ')' : '') + ' para ir a recogerlo y llevártelo.'
  : 'En un momento se te asignará un repartidor para ir a recogerlo y llevártelo.';
  window.agregarNotificacion(titulo, cuerpo, 'pedido', 'tracking', { pedidoId });
+ } else if (nuevoEstado === 'esperando_asignacion') {
+ // 🆕 La tienda confirmó pero está esperando el momento programado para
+ // asignar el repartidor (~12 min antes de la hora de "listo").
+ const mins = d.tiempoPreparacionMinutos;
+ const cuerpo = mins
+ ? `La tienda dice que estará listo en unos ${mins} minutos. Te asignaremos un repartidor cerca de esa hora.`
+ : 'Tu pedido está en preparación. Te asignaremos un repartidor pronto.';
+ window.agregarNotificacion(' ¡Tu pedido fue confirmado por la tienda!', cuerpo, 'pedido', 'tracking', { pedidoId });
  } else {
  const titulo = labels[nuevoEstado] || ' Estado actualizado';
  const cuerpo = rep ? 'Tu repartidor ' + rep + ': ' + nuevoEstado : 'Estado: ' + nuevoEstado;

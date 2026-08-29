@@ -163,23 +163,29 @@
  .back-btn { background: var(--color-surface3); color: var(--color-text-light); margin-top: 20px; border: 1px solid var(--color-border2); }
  .back-btn:hover { background: var(--color-surface2); }
 
- /* ------------------- ESTILOS TIENDA ESTILO RAPPI ------------------- */
+ /* ------------------- ESTILOS TIENDA ESTILO RAPPI (COMPACTO ~3x más pequeño) ------------------- */
  .store-grid {
  display: grid;
- grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
- gap: 20px;
- padding: 20px 0;
+ grid-template-columns: repeat(2, 1fr);
+ gap: 18px;
+ padding: 10px 26px;
+ width: 100vw;
+ margin-left: calc(-50vw + 50%);
+ box-sizing: border-box;
  }
  
  .store-card {
  background: linear-gradient(135deg, var(--color-surface2), var(--color-surface));
- border-radius: 12px;
+ border-radius: 10px;
  overflow: hidden;
- box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+ box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
  transition: transform 0.3s, box-shadow 0.3s;
  cursor: pointer;
  border: 1px solid var(--color-border);
  position: relative;
+ display: flex;
+ flex-direction: column;
+ align-items: stretch;
  }
  
  .store-card:hover {
@@ -204,13 +210,14 @@
  
  .store-status-badge {
  position: absolute;
- top: 10px;
- right: 10px;
- padding: 5px 10px;
- border-radius: 15px;
- font-size: 11px;
+ top: 3px;
+ right: 3px;
+ padding: 2px 6px;
+ border-radius: 10px;
+ font-size: 8px;
  font-weight: bold;
  text-transform: uppercase;
+ z-index: 2;
  }
  
  .store-status-badge.pending {
@@ -230,14 +237,16 @@
  
  .store-image {
  width: 100%;
- height: 180px;
+ min-width: 0;
+ height: 72px;
  object-fit: cover;
  background: linear-gradient(135deg, #444, #333);
  display: flex;
  align-items: center;
  justify-content: center;
  color: var(--color-text-dark);
- font-size: 60px;
+ font-size: 20px;
+ flex-shrink: 0;
  }
  
  .store-image img {
@@ -247,46 +256,60 @@
  }
  
  .store-info {
- padding: 15px;
+ padding: 8px 9px;
+ flex: 1;
+ min-width: 0;
+ display: flex;
+ flex-direction: column;
+ justify-content: flex-start;
  }
  
  .store-name {
- font-size: 18px;
+ font-size: 13px;
  font-weight: bold;
  color: var(--color-primary);
- margin-bottom: 8px;
+ margin-bottom: 2px;
+ white-space: nowrap;
+ overflow: hidden;
+ text-overflow: ellipsis;
  }
  
  .store-description {
- font-size: 13px;
+ font-size: 10.5px;
  color: var(--color-text-dark);
- margin-bottom: 10px;
- line-height: 1.4;
- max-height: 60px;
+ margin-bottom: 3px;
+ line-height: 1.3;
+ max-height: 13px;
  overflow: hidden;
  text-overflow: ellipsis;
+ white-space: nowrap;
  }
  
  .store-meta {
  display: flex;
  justify-content: space-between;
  align-items: center;
- margin-top: 10px;
- padding-top: 10px;
+ margin-top: 3px;
+ padding-top: 3px;
  border-top: 1px solid #444;
+ gap: 6px;
  }
  
  .store-category {
- font-size: 11px;
+ font-size: 9px;
  background: var(--color-surface3);
- padding: 4px 10px;
- border-radius: 12px;
+ padding: 2px 6px;
+ border-radius: 10px;
  color: var(--color-text-light);
+ white-space: nowrap;
+ overflow: hidden;
+ text-overflow: ellipsis;
  }
  
  .store-phone {
- font-size: 12px;
+ font-size: 9.5px;
  color: var(--color-link);
+ white-space: nowrap;
  }
  
  .no-stores-message {
@@ -303,14 +326,15 @@
  /* Mensaje de tienda propia */
  .my-store-indicator {
  position: absolute;
- top: 10px;
- left: 10px;
+ top: 3px;
+ left: 3px;
  background: var(--color-primary);
  color: var(--color-secondary);
- padding: 5px 10px;
- border-radius: 15px;
- font-size: 10px;
+ padding: 2px 6px;
+ border-radius: 10px;
+ font-size: 7px;
  font-weight: bold;
+ z-index: 2;
  }
  
  /* Botón crear tienda */
@@ -327,6 +351,51 @@
  .btn-create-store:disabled {
  background: #555;
  cursor: not-allowed;
+ }
+
+ /* ------------------- SECCIONES DE TIENDA (NUEVO SISTEMA) ------------------- */
+ .section-card-count {
+ font-size: 12px;
+ color: var(--color-text-dark);
+ margin-top: 4px;
+ }
+
+ .section-back-btn {
+ background: var(--color-surface3);
+ color: var(--color-text-light);
+ border: 1px solid var(--color-border2);
+ padding: 8px 14px;
+ border-radius: 8px;
+ margin-bottom: 15px;
+ cursor: pointer;
+ font-size: 13px;
+ font-weight: 600;
+ display: inline-flex;
+ align-items: center;
+ gap: 6px;
+ grid-column: 1 / -1;
+ }
+
+ .section-back-btn:hover {
+ background: var(--color-surface2);
+ }
+
+ .secciones-negocio-form {
+ background: #2a2a2a;
+ border-radius: 8px;
+ padding: 12px;
+ margin-bottom: 15px;
+ }
+
+ .secciones-negocio-form input {
+ margin-bottom: 10px;
+ }
+
+ .section-cap-msg {
+ text-align: center;
+ color: var(--color-text-dark);
+ font-size: 13px;
+ padding: 10px;
  }
  
  /* Mensaje de límite alcanzado */
@@ -348,7 +417,16 @@
  .modal {
  display: none;
  position: fixed;
- z-index: 1000;
+ /* FIX 2026-08-27: antes era 1000 — quedaba DETRÁS de la pantalla completa
+    de ServiBot (#content-servibot, z-index 9999). Cuando ServiBot abría
+    este modal (ej. "Agregar Mi Negocio") mientras el chat seguía visible,
+    el formulario se abría igual pero quedaba tapado por el chat, y había
+    que cerrar el chat para verlo. Se sube por encima de ServiBot y del
+    panel flotante de IA (10099/10100), pero se deja por debajo de los
+    mapeadores de ubicación y el visor de imagen (99999+) que deben poder
+    abrirse ENCIMA de este modal (ej. el botón "Seleccionar ubicación en
+    el mapa" dentro de este mismo formulario). */
+ z-index: 10200;
  left: 0;
  top: 0;
  width: 100%;
@@ -384,6 +462,89 @@
  .modal h3 {
  margin-top: 0;
  margin-bottom: 20px;
+ }
+
+ /* FIX: el modal "Agregar Producto" se abre ENCIMA del Panel Administrativo
+    (que sigue abierto detras). Como ambos comparten class="modal" (mismo
+    z-index 10200), el que este despues en el DOM (Panel Administrativo)
+    ganaba el apilamiento y tapaba el formulario. Se sube este modal por
+    encima de los demas .modal para que siempre quede al frente. */
+ #modal-producto-seccion {
+ z-index: 10210;
+ }
+
+ /* ---- Menu lateral (hamburguesa) del Panel Administrativo ---- */
+ .btn-hamburguesa-panel-admin {
+ position: absolute;
+ top: 14px;
+ left: 14px;
+ background: none;
+ border: none;
+ color: var(--color-primary);
+ font-size: 24px;
+ line-height: 1;
+ cursor: pointer;
+ padding: 4px 6px;
+ z-index: 3;
+ }
+
+ .menu-lateral-overlay {
+ display: none;
+ position: fixed;
+ inset: 0;
+ background: rgba(0,0,0,0.6);
+ z-index: 10220;
+ }
+
+ .menu-lateral-panel {
+ position: fixed;
+ top: 0;
+ left: 0;
+ width: 82%;
+ max-width: 320px;
+ height: 100%;
+ background: var(--color-card);
+ border-right: 1px solid var(--color-border2);
+ box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+ transform: translateX(-100%);
+ transition: transform 0.25s ease;
+ z-index: 10221;
+ padding: 20px 16px;
+ overflow-y: auto;
+ }
+
+ .menu-lateral-overlay.abierto { display: block; }
+ .menu-lateral-overlay.abierto .menu-lateral-panel { transform: translateX(0); }
+
+ .menu-lateral-item {
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ gap: 10px;
+ width: 100%;
+ padding: 14px 12px;
+ margin-bottom: 10px;
+ background: var(--color-surface2);
+ border: 1px solid var(--color-border2);
+ border-radius: 10px;
+ color: var(--color-text-light);
+ font-size: 14px;
+ font-weight: 600;
+ cursor: pointer;
+ text-align: left;
+ }
+
+ .menu-lateral-item:hover { border-color: var(--color-primary); }
+
+ .menu-lateral-badge {
+ background: #dc3545;
+ color: #fff;
+ font-size: 12px;
+ font-weight: 800;
+ border-radius: 20px;
+ padding: 2px 9px;
+ min-width: 22px;
+ text-align: center;
  }
 
  #auth-status { 
@@ -1693,6 +1854,7 @@
  color: var(--color-text-dark);
  padding: 20px;
  font-style: italic;
+ grid-column: 1 / -1;
  }
  
  /* Modal para agregar/editar productos */
@@ -1767,17 +1929,17 @@
  
  .btn-editar-mi-tienda {
  width: 100%;
- padding: 12px;
+ padding: 5px;
  background: linear-gradient(135deg, var(--color-primary), #ffaa00);
  color: var(--color-secondary);
  border: none;
- border-radius: 8px;
+ border-radius: 6px;
  font-weight: bold;
- font-size: 16px;
+ font-size: 10.5px;
  cursor: pointer;
- margin-top: 15px;
+ margin-top: 4px;
  transition: all 0.3s;
- box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+ box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
  }
  
  .btn-editar-mi-tienda:hover {
@@ -1867,16 +2029,16 @@
  .product-images-gallery {
  display: flex;
  gap: 5px;
- margin-top: 8px;
+ margin: 0 0 8px 0;
  overflow-x: auto;
- padding: 5px 0;
+ padding: 0;
  }
 
  .product-images-gallery img {
- width: 60px;
- height: 60px;
+ width: 100%;
+ height: 105px;
  object-fit: cover;
- border-radius: 6px;
+ border-radius: 8px;
  border: 1px solid #555;
  cursor: pointer;
  transition: transform 0.2s;
@@ -1937,15 +2099,17 @@
 
  .modal-ver-tienda-content {
  background-color: var(--color-card);
- margin: 5% auto;
- padding: 30px;
- border: 1px solid #555;
- border-radius: 12px;
- width: 90%;
- max-width: 600px;
+ margin: 0 auto;
+ padding: 16px 26px 30px;
+ border: none;
+ border-radius: 0;
+ width: 100%;
+ max-width: 700px;
  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
- max-height: 85vh;
+ max-height: 100vh;
+ min-height: 100vh;
  overflow-y: auto;
+ box-sizing: border-box;
  }
 
  .modal-ver-tienda-header {
@@ -1979,7 +2143,8 @@
 
  #lista-productos-ver {
  display: grid;
- gap: 15px;
+ grid-template-columns: repeat(2, 1fr);
+ gap: 18px;
  margin-top: 20px;
  }
 
@@ -2156,10 +2321,12 @@
  .menu-producto-card {
  background: #2a2a2a;
  border-radius: 10px;
- padding: 18px;
- margin-bottom: 15px;
+ padding: 10px;
+ margin-bottom: 0;
  border: 2px solid #444;
  transition: all 0.3s;
+ display: flex;
+ flex-direction: column;
  }
 
  .menu-producto-card:hover {
@@ -2169,20 +2336,21 @@
 
  .menu-producto-header {
  display: flex;
- justify-content: space-between;
- align-items: start;
- margin-bottom: 12px;
+ flex-direction: column;
+ gap: 2px;
+ margin-bottom: 8px;
  }
 
  .menu-producto-nombre {
  color: #FFD700;
- font-size: 20px;
+ font-size: 14px;
  font-weight: bold;
+ line-height: 1.3;
  }
 
  .menu-producto-precio {
  color: #28a745;
- font-size: 22px;
+ font-size: 15px;
  font-weight: bold;
  }
 
@@ -2215,16 +2383,16 @@
 
  .btn-agregar-carrito {
  width: 100%;
- padding: 14px;
+ padding: 10px;
  background: linear-gradient(135deg, #FFD700, #FFA500);
  color: #000;
  border: none;
  border-radius: 8px;
  font-weight: bold;
- font-size: 16px;
+ font-size: 13px;
  cursor: pointer;
  transition: all 0.3s;
- margin-top: 10px;
+ margin-top: auto;
  }
 
  .btn-agregar-carrito:hover {
@@ -2244,7 +2412,7 @@
  cursor: pointer;
  font-weight: bold;
  font-size: 16px;
- z-index: 1000;
+ z-index: 2050;
  display: flex;
  align-items: center;
  gap: 10px;
@@ -2268,10 +2436,40 @@
  font-weight: bold;
  }
 
+ /* Mensaje flotante "Agregado al carrito" que aparece y se desvanece solo,
+ para que quede claro que el toque sí funcionó y el cliente no siga
+ tocando el botón repetidamente pensando que no hizo nada. */
+ #toast-carrito {
+ position: fixed;
+ bottom: 90px;
+ left: 50%;
+ transform: translateX(-50%) translateY(15px);
+ background: rgba(40,167,69,0.97);
+ color: #fff;
+ padding: 12px 22px;
+ border-radius: 30px;
+ font-weight: bold;
+ font-size: 14px;
+ z-index: 2200;
+ opacity: 0;
+ pointer-events: none;
+ transition: opacity 0.25s ease, transform 0.25s ease;
+ box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+ white-space: nowrap;
+ max-width: 85vw;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ }
+
+ #toast-carrito.mostrar {
+ opacity: 1;
+ transform: translateX(-50%) translateY(0);
+ }
+
  .modal-carrito {
  display: none;
  position: fixed;
- z-index: 2000;
+ z-index: 2100;
  left: 0;
  top: 0;
  width: 100%;
@@ -3166,7 +3364,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.1.3</small>
+ <small>Versión 1.1.7</small>
  </div>
  </div>
  </div>
@@ -4600,16 +4798,16 @@
  <label for="telefono-negocio">Teléfono de Contacto:</label>
  <input type="tel" id="telefono-negocio" placeholder="3001234567" required />
 
- <label>Ubicación del negocio (punto de recogida):</label>
- <input type="hidden" id="negocio-ubicacion-lat" />
- <input type="hidden" id="negocio-ubicacion-lng" />
- <button type="button" onclick="abrirMapeadorUbicacionNegocio()" style="width:100%; padding:10px; border-radius:8px; background:#1f2937; color:#F59E0B; border:1px solid #374151; font-weight:700; cursor:pointer; margin-bottom:4px;">
- 📍 Seleccionar ubicación en el mapa
- </button>
- <div id="negocio-ubicacion-estado" style="font-size:12px; color:#6b7280; margin-bottom:12px;">Aún no has marcado la ubicación</div>
-
  <label for="imagen-negocio">Imagen del Negocio (opcional):</label>
  <input type="file" id="imagen-negocio" accept="image/*" />
+
+ <label for="num-secciones-negocio">¿Cuántas secciones/categorías va a tener tu tienda?</label>
+ <input type="number" id="num-secciones-negocio" min="1" max="15" placeholder="Ej: 5" required oninput="generarCamposSecciones()" />
+ <p style="color: var(--color-text-dark); font-size: 12px; margin: -6px 0 10px;">
+ Ej: si vendes ropa, podrías tener las secciones "Camisas", "Pantalones", "Zapatos"... Cada sección podrá tener hasta 15 productos.
+ </p>
+
+ <div id="secciones-dinamicas-negocio"></div>
 
  <button type="submit">Guardar Negocio</button>
  </form>
@@ -4880,6 +5078,61 @@ const TONOS_NOTIFICACION = [
  if (snd) snd.play().catch(e => console.warn('❌ Error reproduciendo el tono (play()):', e));
  } catch(e) { console.warn('❌ Error en reproducirTonoNotif:', e); }
  };
+
+ // ==================== ALARMA DE VENTA PENDIENTE (dueño de tienda) ====================
+ // Mientras haya al menos una compra "pendiente" en cualquiera de las tiendas del
+ // dueño, el tono elegido suena EN BUCLE (no una sola vez) hasta que la confirme o
+ // la rechace desde "Pedidos Activos y Compras por Confirmar". Se recalcula cada vez
+ // que cambian los pendientes (ver escucharComprasDeMiTienda).
+ let _alarmaVentaAudio = null;
+ let _alarmaVentaActiva = false;
+ window._actualizarAlarmaVentaPendiente = async function() {
+ try {
+ const mapaPendientes = window._pedidosPendientesPorTienda || {};
+ const totalPendientes = Object.values(mapaPendientes).reduce((a, b) => a + (b || 0), 0);
+
+ if (totalPendientes > 0) {
+ if (_alarmaVentaActiva) return; // ya está sonando, no reiniciar
+ const tono = TONOS_NOTIFICACION.find(t => t.id === _tonoSeleccionado) || TONOS_NOTIFICACION[0];
+ if (!tono.src) await _cargarUnTono(tono);
+ if (!tono.src) { console.warn('⚠️ No se pudo iniciar la alarma de venta pendiente: el tono no cargó.'); return; }
+ _alarmaVentaActiva = true;
+ _alarmaVentaAudio = new Audio(tono.src);
+ _alarmaVentaAudio.loop = true;
+ _alarmaVentaAudio.volume = 0.9;
+ _alarmaVentaAudio.play().catch(e => console.warn('❌ No se pudo reproducir la alarma de venta pendiente (autoplay bloqueado hasta que el usuario toque la pantalla):', e));
+ } else {
+ if (!_alarmaVentaActiva) return;
+ _alarmaVentaActiva = false;
+ if (_alarmaVentaAudio) {
+ _alarmaVentaAudio.pause();
+ _alarmaVentaAudio.currentTime = 0;
+ _alarmaVentaAudio = null;
+ }
+ }
+ } catch (e) { console.warn('❌ Error en _actualizarAlarmaVentaPendiente:', e); }
+ };
+
+ // Silencia la alarma de inmediato aunque la compra siga pendiente (ej. el
+ // dueño descartó el banner flotante). El pedido sigue apareciendo en el
+ // badge/menú; si entra otro cambio en las compras de esa tienda, la alarma
+ // se puede volver a activar normalmente desde _actualizarAlarmaVentaPendiente.
+ window._silenciarAlarmaVentaPendiente = function() {
+ _alarmaVentaActiva = false;
+ if (_alarmaVentaAudio) {
+ _alarmaVentaAudio.pause();
+ _alarmaVentaAudio.currentTime = 0;
+ _alarmaVentaAudio = null;
+ }
+ };
+
+ // Si el navegador bloqueó el autoplay (falta interacción del usuario), reintenta
+ // apenas el usuario toque la pantalla por primera vez.
+ document.addEventListener('click', function _reintentarAlarmaVenta() {
+ if (_alarmaVentaActiva && _alarmaVentaAudio && _alarmaVentaAudio.paused) {
+ _alarmaVentaAudio.play().catch(() => {});
+ }
+ });
 
 
  // ✅ Canales nativos de Android para que el push FUERA de la app (barra de
@@ -10370,7 +10623,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.1.3');
+ console.log(' Sistema del cliente inicializado v1.1.7');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10400,7 +10653,8 @@ if (dentroDeHorario) {
  equalTo,
  off,
  remove,
- update
+ update,
+ runTransaction
  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
  
  import { 
@@ -10468,7 +10722,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.1.3";
+ const APP_VERSION = "1.1.7";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -11086,7 +11340,7 @@ if (dentroDeHorario) {
  if (event && event.token) await window._guardarTokenFCM(event.token);
  });
  } catch (e) {
- console.warn('?? DEBUG PUSH: Error inicializando push FCM:', e.message, e.stack);
+ console.warn('🔴 DEBUG PUSH: Error inicializando push FCM:', e.message, e.stack);
  }
  };
 
@@ -11682,14 +11936,17 @@ if (dentroDeHorario) {
  const btnCrear = document.getElementById('btn-crear-mi-tienda');
  const mensajeLimite = document.getElementById('store-limit-message');
  
- if (misTiendasCount >= MAX_TIENDAS_POR_CLIENTE) {
- btnCrear.style.display = 'none';
- mensajeLimite.textContent = `Has alcanzado el máximo de ${MAX_TIENDAS_POR_CLIENTE} tiendas por cuenta.`;
- mensajeLimite.style.display = 'block';
- console.log(` Cliente alcanzó el límite de tiendas (${misTiendasCount}/${MAX_TIENDAS_POR_CLIENTE})`);
+ if (misTiendasCount > 0) {
+ // Ya tiene al menos una tienda: el botón se convierte en el Panel Administrativo
+ btnCrear.style.display = 'block';
+ btnCrear.textContent = '📋 Panel Administrativo';
+ btnCrear.onclick = function() { abrirModalEditarMiTienda(miTiendaId); };
+ if (mensajeLimite) mensajeLimite.style.display = 'none';
  } else {
  btnCrear.style.display = 'block';
- mensajeLimite.style.display = 'none';
+ btnCrear.textContent = 'Crear Mi Tienda';
+ btnCrear.onclick = function() { abrirModalNegocio(); };
+ if (mensajeLimite) mensajeLimite.style.display = 'none';
  console.log(` Cliente puede crear tienda (${misTiendasCount}/${MAX_TIENDAS_POR_CLIENTE})`);
  }
  
@@ -11726,18 +11983,26 @@ if (dentroDeHorario) {
  }
  }
  
- // Actualizar botón de crear tienda según cupo disponible
+ // Actualizar botón según si el cliente ya tiene tienda propia o no
  const btnCrear = document.getElementById('btn-crear-mi-tienda');
  const mensajeLimite = document.getElementById('store-limit-message');
  
- if (misTiendasCount >= MAX_TIENDAS_POR_CLIENTE) {
- btnCrear.style.display = 'none';
- if (mensajeLimite) {
- mensajeLimite.textContent = `Has alcanzado el máximo de ${MAX_TIENDAS_POR_CLIENTE} tiendas por cuenta.`;
- mensajeLimite.style.display = 'block';
+ // Buscar la primera tienda propia (para abrir su panel directamente)
+ let primeraTiendaPropiaId = null;
+ for (let id in negocios) {
+ if (negocios[id].propietario === window.currentUserID) { primeraTiendaPropiaId = id; break; }
  }
+ 
+ if (misTiendasCount > 0) {
+ // Ya tiene al menos una tienda: el botón se convierte en el Panel Administrativo
+ btnCrear.style.display = 'block';
+ btnCrear.textContent = '📋 Panel Administrativo';
+ btnCrear.onclick = function() { abrirModalEditarMiTienda(primeraTiendaPropiaId || miTiendaId); };
+ if (mensajeLimite) mensajeLimite.style.display = 'none';
  } else {
  btnCrear.style.display = 'block';
+ btnCrear.textContent = 'Crear Mi Tienda';
+ btnCrear.onclick = function() { abrirModalNegocio(); };
  if (mensajeLimite) mensajeLimite.style.display = 'none';
  }
  
@@ -11747,7 +12012,7 @@ if (dentroDeHorario) {
  const esMiTienda = negocio.propietario === window.currentUserID;
  
  // Mostrar si es aprobada (campo texto O booleano) O es una tienda propia del cliente
- if (negocio.estado === 'aprobado' || negocio.estado === 'aprobada' || negocio.aprobado === true || esMiTienda) {
+ if (negocio.estado === 'aprobado' || negocio.estado === 'aprobada' || negocio.aprobado === true || negocio.aprobada === true || esMiTienda) {
  const card = crearTarjetaNegocio(negocioId, negocio, esMiTienda);
  storeGrid.appendChild(card);
  }
@@ -11822,7 +12087,7 @@ if (dentroDeHorario) {
  // Resolver estado desde campo texto O campo booleano (compatibilidad)
  let estado = negocio.estado;
  if (!estado) {
- estado = negocio.aprobado === true ? 'aprobado' : 'pendiente';
+ estado = (negocio.aprobado === true || negocio.aprobada === true) ? 'aprobado' : 'pendiente';
  }
  estadoClase = estado;
  
@@ -11852,6 +12117,10 @@ if (dentroDeHorario) {
  }
  
  card.className = `store-card ${estadoClase}`;
+
+ // Aviso de tienda cerrada, visible para todos los clientes (no solo el dueño)
+ const tiendaCerrada = negocio.tiendaAbierta === false;
+ const badgeCerradaHTML = tiendaCerrada ? `<span class="store-status-badge rejected" style="position:absolute; top:8px; right:8px;">Cerrada</span>` : '';
  
  const imagenHTML = negocio.imagen ? 
  `<img src="${negocio.imagen}" alt="${negocio.nombre}" />` : 
@@ -11861,10 +12130,12 @@ if (dentroDeHorario) {
  const botonEditar = esMiTienda ? 
  `<button class="btn-editar-mi-tienda" onclick="event.stopPropagation(); abrirModalEditarMiTienda('${negocioId}')">
  Editar Mi Tienda
- </button>` : '';
+ </button>
+ <span id="compras-pendientes-badge-${negocioId}" class="section-card-count" style="display:none; color:#28a745; font-weight:700;"></span>` : '';
  
  card.innerHTML = `
  ${badgeHTML}
+ ${badgeCerradaHTML}
  <div class="store-image" onclick="${esMiTienda ? `abrirModalEditarMiTienda('${negocioId}')` : `verProductosTienda('${negocioId}', '${negocio.nombre.replace(/'/g, "\\'")}')`}">${imagenHTML}</div>
  <div class="store-info">
  <div class="store-name">${negocio.nombre}</div>
@@ -11876,6 +12147,11 @@ if (dentroDeHorario) {
  ${botonEditar}
  </div>
  `;
+ 
+ // Escuchar en vivo las compras pendientes (notificación + badge en tiempo real)
+ if (esMiTienda && typeof window.escucharComprasDeMiTienda === 'function') {
+ window.escucharComprasDeMiTienda(negocioId, negocio.nombre);
+ }
  
  return card;
  }
@@ -11891,7 +12167,7 @@ if (dentroDeHorario) {
  
  // Si es mi tienda, mostrar información con opción de llamar
  // Resolver estado desde campo texto O campo booleano (compatibilidad)
- let estado = negocio.estado || (negocio.aprobado === true ? 'aprobado' : 'pendiente');
+ let estado = negocio.estado || ((negocio.aprobado === true || negocio.aprobada === true) ? 'aprobado' : 'pendiente');
  
  let mensajeEstado = '';
  switch(estado) {
@@ -12022,6 +12298,8 @@ ${mensajeEstado}
  window.cerrarModalVerTienda = function() {
  document.getElementById('modal-ver-tienda').style.display = 'none';
  tiendaActualTelefono = '';
+ const _bellTienda2 = document.getElementById('notif-bell-container');
+ if (_bellTienda2 && window._bellEnabled) _bellTienda2.style.display = 'block';
  }
  
  window.contactarTiendaDesdeModal = function() {
@@ -12068,11 +12346,6 @@ ${mensajeEstado}
  window.cerrarModalNegocio = function() {
  document.getElementById('modal-negocio').style.display = 'none';
  document.getElementById('form-negocio').reset();
- const estadoEl = document.getElementById('negocio-ubicacion-estado');
- if (estadoEl) {
- estadoEl.textContent = 'Aún no has marcado la ubicación';
- estadoEl.style.color = '#6b7280';
- }
  }
 
  // =========================================
@@ -12660,29 +12933,43 @@ ${motivo}`;
  }
  }
 
- // ABRIR MAPEADOR PARA MARCAR LA UBICACIÓN DEL NEGOCIO (recogida)
- window.abrirMapeadorUbicacionNegocio = function() {
- if (typeof window.abrirMapeadorUbicacionPendiente !== 'function') {
- alert('El mapa no está disponible en este momento.');
- return;
+ // Genera dinámicamente un input de título por cada sección que el cliente indique
+ window.generarCamposSecciones = function() {
+ const cantidadInput = document.getElementById('num-secciones-negocio');
+ const container = document.getElementById('secciones-dinamicas-negocio');
+ if (!cantidadInput || !container) return;
+
+ let cantidad = parseInt(cantidadInput.value) || 0;
+ if (cantidad < 0) cantidad = 0;
+ if (cantidad > 15) cantidad = 15;
+
+ // Conservar los títulos ya escritos si el cliente ajusta el número
+ const valoresPrevios = [];
+ container.querySelectorAll('input[data-seccion-titulo]').forEach(inp => valoresPrevios.push(inp.value));
+
+ container.innerHTML = '';
+ for (let i = 0; i < cantidad; i++) {
+ const input = document.createElement('input');
+ input.type = 'text';
+ input.placeholder = `Título de la sección ${i + 1} (Ej: Bebidas)`;
+ input.setAttribute('data-seccion-titulo', 'true');
+ input.value = valoresPrevios[i] || '';
+ input.required = true;
+ container.appendChild(input);
  }
- const latActual = document.getElementById('negocio-ubicacion-lat').value;
- const lngActual = document.getElementById('negocio-ubicacion-lng').value;
- window.abrirMapeadorUbicacionPendiente({
- titulo: '📍 Ubicación de tu negocio',
- subtitulo: 'Busca la dirección o toca el mapa para fijar el punto de recogida',
- coordsIniciales: (latActual && lngActual) ? { lat: parseFloat(latActual), lng: parseFloat(lngActual) } : null,
- onConfirmar: function(lat, lng) {
- document.getElementById('negocio-ubicacion-lat').value = lat;
- document.getElementById('negocio-ubicacion-lng').value = lng;
- const estadoEl = document.getElementById('negocio-ubicacion-estado');
- if (estadoEl) {
- estadoEl.textContent = '✅ Ubicación marcada: ' + lat + ', ' + lng;
- estadoEl.style.color = '#22c55e';
  }
- }
+
+ // Obtiene la ubicación GPS actual del dispositivo (o null si no se puede)
+ function obtenerGPSActual(timeoutMs = 8000) {
+ return new Promise((resolve) => {
+ if (!navigator.geolocation) { resolve(null); return; }
+ navigator.geolocation.getCurrentPosition(
+ (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+ () => resolve(null),
+ { timeout: timeoutMs, enableHighAccuracy: true }
+ );
  });
- };
+ }
 
  // GUARDAR NEGOCIO DIRECTAMENTE (SIN VERIFICACIÓN DE ADMIN)
  window.guardarNegocio = async function(event) {
@@ -12722,11 +13009,35 @@ ${motivo}`;
  const categoria = document.getElementById('categoria-negocio').value;
  const telefono = document.getElementById('telefono-negocio').value.trim();
  const imagenFile = document.getElementById('imagen-negocio').files[0];
- const ubicLat = document.getElementById('negocio-ubicacion-lat').value;
- const ubicLng = document.getElementById('negocio-ubicacion-lng').value;
- const ubicacion = (ubicLat && ubicLng) ? { lat: parseFloat(ubicLat), lng: parseFloat(ubicLng) } : null;
+
+ // Construir las secciones a partir de los títulos que el cliente diligenció
+ const inputsSecciones = document.querySelectorAll('#secciones-dinamicas-negocio input[data-seccion-titulo]');
+ if (inputsSecciones.length === 0) {
+ alert('Indica cuántas secciones va a tener tu tienda y el título de cada una.');
+ if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar Negocio'; }
+ return;
+ }
+ const secciones = {};
+ for (const inp of inputsSecciones) {
+ const tituloSeccion = inp.value.trim();
+ if (!tituloSeccion) {
+ alert('Todas las secciones necesitan un título.');
+ if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar Negocio'; }
+ return;
+ }
+ const seccionId = push(ref(db, 'negocios')).key;
+ secciones[seccionId] = {
+ titulo: tituloSeccion,
+ orden: Object.keys(secciones).length
+ };
+ }
 
  let imagenURL = null;
+
+ // Intentar capturar la ubicación GPS de la tienda (para poder asignar
+ // repartidor y calcular domicilio en la compra directa dentro de la app).
+ // Si el cliente no da permiso o falla, queda null y se puede configurar después.
+ const ubicacionNegocio = await obtenerGPSActual();
 
  // Subir imagen a Firebase Storage
  if (imagenFile) {
@@ -12746,11 +13057,12 @@ ${motivo}`;
  categoria,
  telefono,
  imagen: imagenURL,
- ubicacion,
  propietario: window.currentUserID,
  propietarioNombre: window.USER_NAME || 'Cliente',
  fecha: Date.now(),
- estado: 'pendiente'
+ estado: 'pendiente',
+ secciones,
+ ubicacion: ubicacionNegocio
  };
 
  const nuevoNegocioRef = push(ref(db, 'negocios'));
@@ -12765,11 +13077,6 @@ ${motivo}`;
  // Recalcular cupo real (no ocultar el botón a ciegas: puede seguir teniendo cupo si el máximo es > 1)
  await window.verificarTiendaCliente();
  if (typeof window.cargarNegocios === 'function') window.cargarNegocios();
-
- // Seguir con el proceso: preguntar cuántas secciones va a tener la tienda
- if (typeof window.abrirModalElegirSecciones === 'function') {
- window.abrirModalElegirSecciones(nuevoNegocioRef.key);
- }
 
  } catch (error) {
  console.error('Error al guardar negocio:', error);
@@ -12786,6 +13093,7 @@ ${motivo}`;
  window.onclick = function(event) {
  const modalNegocio = document.getElementById('modal-negocio');
  const modalVerTienda = document.getElementById('modal-ver-tienda');
+ const modalProductoSeccion = document.getElementById('modal-producto-seccion');
  
  if (event.target === modalNegocio) {
  cerrarModalNegocio();
@@ -12793,11 +13101,14 @@ ${motivo}`;
  if (event.target === modalVerTienda) {
  cerrarModalVerTienda();
  }
+ if (event.target === modalProductoSeccion) {
+ cerrarModalProductoSeccion();
+ }
  }
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.1.3');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.1.7');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -12842,16 +13153,68 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.1.3  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.1.7  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
- // ==================== GESTIÓN DE PRODUCTOS DE MI TIENDA ====================
+ // ==================== GESTIÓN DE PRODUCTOS DE MI TIENDA (POR SECCIONES) ====================
  
  let miTiendaIdActual = null;
- 
+ let seccionActualId = null; // sección que se está viendo/editando ahora mismo (dueño)
+ let seccionActualTitulo = null;
+ const MAX_PRODUCTOS_POR_SECCION = 15;
+
+ // Migra tiendas viejas (sin `secciones`) al modelo nuevo, una sola vez, y devuelve
+ // el objeto de secciones ya sea el existente o el recién migrado.
+ async function migrarTiendaASeccionesSiNecesario(negocioId, negocioData) {
+ if (negocioData.secciones && Object.keys(negocioData.secciones).length > 0) {
+ return negocioData.secciones;
+ }
+
+ const categoriaNegocio = negocioData.categoria ? negocioData.categoria.toLowerCase() : 'general';
+ const secciones = {};
+
+ const crearSeccion = (titulo, productosViejos) => {
+ const seccionId = push(ref(db, 'negocios')).key;
+ const productos = {};
+ let count = 0;
+ for (let id in productosViejos) {
+ if (count >= MAX_PRODUCTOS_POR_SECCION) break;
+ const p = productosViejos[id];
+ productos[id] = {
+ nombre: p.nombre || 'Producto',
+ foto: p.imagen || p.imagenUrl || (p.imagenes && p.imagenes[0]) || null,
+ precio: p.precio || 0,
+ disponible: p.disponible !== false,
+ fecha: p.fechaCreacion || Date.now()
+ };
+ count++;
+ }
+ secciones[seccionId] = { titulo, orden: Object.keys(secciones).length, productos };
+ };
+
+ if (categoriaNegocio === 'restaurante' || categoriaNegocio === 'restaurantes') {
+ const [desayunosSnap, almuerzosSnap, otrosSnap] = await Promise.all([
+ get(ref(db, `negocios/${negocioId}/menu/desayunos`)),
+ get(ref(db, `negocios/${negocioId}/menu/almuerzos`)),
+ get(ref(db, `negocios/${negocioId}/menu/otros`))
+ ]);
+ crearSeccion('Desayunos', desayunosSnap.exists() ? desayunosSnap.val() : {});
+ crearSeccion('Almuerzos', almuerzosSnap.exists() ? almuerzosSnap.val() : {});
+ crearSeccion('Otros', otrosSnap.exists() ? otrosSnap.val() : {});
+ } else {
+ const productosSnap = await get(ref(db, `negocios/${negocioId}/productos`));
+ crearSeccion(negocioData.categoria || 'Productos', productosSnap.exists() ? productosSnap.val() : {});
+ }
+
+ await update(ref(db, `negocios/${negocioId}`), { secciones });
+ return secciones;
+ }
+
  window.abrirModalEditarMiTienda = async function(negocioId) {
  miTiendaIdActual = negocioId;
+ window.miTiendaIdActual = negocioId; // espejo global: lo necesitan otros bloques <script> (ej. la alarma de ventas y el menú lateral)
+ seccionActualId = null;
  
  try {
  const negocioSnapshot = await get(ref(db, 'negocios/' + negocioId));
@@ -12863,19 +13226,34 @@ ${motivo}`;
  const negocio = negocioSnapshot.val();
  
  // Mostrar información de la tienda
+ const ubicacionOK = negocio.ubicacion && negocio.ubicacion.lat;
+ // Compatibilidad: acepta 'aprobado' (masculino) o 'aprobada' (femenino) como booleano
+ const estaAprobada = negocio.estado === 'aprobado' || negocio.estado === 'aprobada' || negocio.aprobado === true || negocio.aprobada === true;
+ const tiendaAbierta = negocio.tiendaAbierta !== false; // por defecto abierta si nunca se ha definido
  document.getElementById('mi-tienda-info').innerHTML = `
  <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
  <h4 style="color: var(--color-primary); margin-bottom: 10px;"> ${negocio.nombre}</h4>
+ <p style="color: ${estaAprobada ? '#28a745' : '#ffa500'}; margin: 0 0 8px; font-size: 13px; font-weight:600;">
+ ${estaAprobada ? ' Tienda aprobada y visible para clientes' : ' Pendiente de aprobación por el administrador'}
+ </p>
  <p style="color: var(--color-text-dark); margin: 5px 0;"><strong>Categoría:</strong> ${negocio.categoria}</p>
  <p style="color: var(--color-text-dark); margin: 5px 0;"><strong>Teléfono:</strong> ${negocio.telefono}</p>
  <p style="color: var(--color-text-dark); margin: 5px 0;"><strong>Descripción:</strong> ${negocio.descripcion}</p>
+ <p style="color: ${ubicacionOK ? '#28a745' : '#ffa500'}; margin: 8px 0 5px; font-size: 13px;">
+ ${ubicacionOK ? ' Ubicación de la tienda configurada' : ' Ubicación de la tienda sin configurar (necesaria para la compra directa en la app)'}
+ </p>
+ <button type="button" class="btn-agregar-producto-mi-tienda" style="margin-top:5px;" onclick="actualizarUbicacionMiTienda('${negocioId}')">
+ ${ubicacionOK ? 'Actualizar ubicación de mi tienda' : 'Configurar ubicación de mi tienda'}
+ </button>
+ <button type="button" id="btn-toggle-apertura-tienda" class="btn-agregar-producto-mi-tienda" style="margin-top:8px; background:${tiendaAbierta ? 'linear-gradient(135deg,#dc3545,#a71d2a)' : 'linear-gradient(135deg,#28a745,#1e7e34)'};" onclick="alternarAperturaMiTienda('${negocioId}')">
+ ${tiendaAbierta ? '🔴 Cerrar Tienda' : '🟢 Abrir Tienda'}
+ </button>
  </div>
  `;
  
- // Cargar secciones y productos (sistema nuevo por secciones)
- await window.mostrarSeccionesEnContenedor(negocioId, true, 'lista-productos-mi-tienda');
- const btnViejo = document.getElementById('btn-agregar-producto-viejo');
- if (btnViejo) btnViejo.style.display = 'none'; // ya se agrega desde dentro de cada sección
+ // Asegurar que existan las secciones (migrando si es una tienda vieja sin secciones),
+ // pero sin mostrarlas todavía: se ven desde el menú ☰ para dejar más espacio a la info.
+ await migrarTiendaASeccionesSiNecesario(negocioId, negocio);
  
  // Mostrar modal
  document.getElementById('modal-mi-tienda-productos').style.display = 'block';
@@ -12891,144 +13269,322 @@ ${motivo}`;
  // NO resetear miTiendaIdActual aquí para que se mantenga disponible
  // miTiendaIdActual = null;
  }
- 
- async function cargarProductosMiTienda(negocioId) {
- const listaProductos = document.getElementById('lista-productos-mi-tienda');
- 
- try {
- // Obtener la categoría del negocio para determinar qué rutas leer
- const negocioSnapshot = await get(ref(db, 'negocios/' + negocioId));
- let categoriaNegocio = 'general';
- 
- if (negocioSnapshot.exists()) {
- const negocioData = negocioSnapshot.val();
- categoriaNegocio = negocioData.categoria ? negocioData.categoria.toLowerCase() : 'general';
- }
- 
- console.log(' Cargando productos - Categoría:', categoriaNegocio);
- 
- listaProductos.innerHTML = '';
- 
- let todosLosProductos = {};
- 
- // Para restaurantes, leer de múltiples nodos
- if (categoriaNegocio === 'restaurante' || categoriaNegocio === 'restaurantes') {
- console.log(' Es restaurante, leyendo menús...');
- 
- // Leer desayunos
- try {
- const desayunosSnapshot = await get(ref(db, `negocios/${negocioId}/menu/desayunos`));
- if (desayunosSnapshot.exists()) {
- const desayunos = desayunosSnapshot.val();
- for (let id in desayunos) {
- todosLosProductos[id] = { ...desayunos[id], _rutaOrigen: 'menu/desayunos' };
- }
- console.log(' Desayunos cargados:', Object.keys(desayunos).length);
- }
- } catch (error) {
- console.log(' No hay desayunos:', error.message);
- }
- 
- // Leer almuerzos
- try {
- const almuerzosSnapshot = await get(ref(db, `negocios/${negocioId}/menu/almuerzos`));
- if (almuerzosSnapshot.exists()) {
- const almuerzos = almuerzosSnapshot.val();
- for (let id in almuerzos) {
- todosLosProductos[id] = { ...almuerzos[id], _rutaOrigen: 'menu/almuerzos' };
- }
- console.log(' Almuerzos cargados:', Object.keys(almuerzos).length);
- }
- } catch (error) {
- console.log(' No hay almuerzos:', error.message);
- }
- 
- // Leer otros (si existen)
- try {
- const otrosSnapshot = await get(ref(db, `negocios/${negocioId}/menu/otros`));
- if (otrosSnapshot.exists()) {
- const otros = otrosSnapshot.val();
- for (let id in otros) {
- todosLosProductos[id] = { ...otros[id], _rutaOrigen: 'menu/otros' };
- }
- console.log(' Otros cargados:', Object.keys(otros).length);
- }
- } catch (error) {
- console.log(' No hay otros menús:', error.message);
- }
+
+ // Abre/cierra el menú lateral (hamburguesa) del Panel Administrativo
+ window.abrirMenuLateralPanelAdmin = function() {
+ const badge = document.getElementById('menu-lateral-badge-pendientes');
+ if (badge) {
+ const pendientes = (miTiendaIdActual && window._pedidosPendientesPorTienda) ? (window._pedidosPendientesPorTienda[miTiendaIdActual] || 0) : 0;
+ if (pendientes > 0) {
+ badge.textContent = pendientes;
+ badge.style.display = 'inline-block';
  } else {
- // Para otros tipos de negocios, leer de /productos
- console.log(' Leyendo productos generales...');
- const productosSnapshot = await get(ref(db, 'negocios/' + negocioId + '/productos'));
- 
- if (productosSnapshot.exists()) {
- todosLosProductos = productosSnapshot.val();
- console.log(' Productos cargados:', Object.keys(todosLosProductos).length);
+ badge.style.display = 'none';
  }
  }
- 
- // Si no hay productos
- if (Object.keys(todosLosProductos).length === 0) {
- listaProductos.innerHTML = '<p class="no-products-message">No tienes productos aún. ¡Agrega tu primer producto!</p>';
+ document.getElementById('menu-lateral-panel-admin').classList.add('abierto');
+ }
+
+ window.cerrarMenuLateralPanelAdmin = function() {
+ document.getElementById('menu-lateral-panel-admin').classList.remove('abierto');
+ }
+
+ // Abre o cierra la tienda al público. Cuando está cerrada, los clientes
+ // ven un aviso en la app y no pueden hacer pedidos por compra directa.
+ window.alternarAperturaMiTienda = async function(negocioId) {
+ const btn = document.getElementById('btn-toggle-apertura-tienda');
+ try {
+ const negocioSnapshot = await get(ref(db, 'negocios/' + negocioId));
+ if (!negocioSnapshot.exists()) return;
+ const negocio = negocioSnapshot.val();
+ const estaAbiertaAhora = negocio.tiendaAbierta !== false;
+ const nuevoEstado = !estaAbiertaAhora;
+ if (btn) { btn.disabled = true; }
+ await update(ref(db, `negocios/${negocioId}`), { tiendaAbierta: nuevoEstado });
+ if (btn) {
+ btn.disabled = false;
+ btn.textContent = nuevoEstado ? '🔴 Cerrar Tienda' : '🟢 Abrir Tienda';
+ btn.style.background = nuevoEstado ? 'linear-gradient(135deg,#dc3545,#a71d2a)' : 'linear-gradient(135deg,#28a745,#1e7e34)';
+ }
+ } catch (error) {
+ console.error('Error al cambiar apertura de la tienda:', error);
+ alert('No se pudo actualizar el estado de la tienda.');
+ if (btn) btn.disabled = false;
+ }
+ }
+
+ // Captura el GPS actual del dueño y lo guarda como ubicación de la tienda
+ window.actualizarUbicacionMiTienda = async function(negocioId) {
+ const btn = event.target;
+ const textoOriginal = btn.textContent;
+ btn.disabled = true;
+ btn.textContent = 'Obteniendo ubicación...';
+
+ try {
+ const coords = await obtenerGPSActual();
+ if (!coords) {
+ alert('No se pudo obtener tu ubicación GPS. Verifica que el permiso de ubicación esté activo e inténtalo de nuevo desde el local.');
  return;
  }
- 
- // Renderizar productos
- for (let productoId in todosLosProductos) {
- const producto = todosLosProductos[productoId];
+ await update(ref(db, 'negocios/' + negocioId), { ubicacion: coords });
+ alert('Ubicación de tu tienda guardada correctamente.');
+ await window.abrirModalEditarMiTienda(negocioId);
+ } catch (error) {
+ console.error('Error al actualizar ubicación de la tienda:', error);
+ alert('Error al guardar la ubicación: ' + error.message);
+ } finally {
+ btn.disabled = false;
+ btn.textContent = textoOriginal;
+ }
+ }
+
+ // Muestra la grilla de secciones (tarjetas) de la tienda del dueño
+ function renderSeccionesMiTienda(negocioId, secciones) {
+ const listaProductos = document.getElementById('lista-productos-mi-tienda');
+ document.getElementById('btn-agregar-producto-seccion-wrapper')?.remove();
+ seccionActualId = null;
+
+ const idsOrdenados = Object.keys(secciones || {}).sort((a, b) => (secciones[a].orden || 0) - (secciones[b].orden || 0));
+
+ if (idsOrdenados.length === 0) {
+ listaProductos.innerHTML = '<p class="no-products-message">Esta tienda aún no tiene secciones.</p>';
+ return;
+ }
+
+ listaProductos.innerHTML = '';
+ idsOrdenados.forEach(seccionId => {
+ const seccion = secciones[seccionId];
+ const cantidad = seccion.productos ? Object.keys(seccion.productos).length : 0;
+
+ const card = document.createElement('div');
+ card.className = 'product-item-edit';
+ card.style.cursor = 'pointer';
+ card.onclick = () => abrirGestionSeccion(negocioId, seccionId, seccion.titulo);
+ card.innerHTML = `
+ <div class="product-info-edit">
+ <div class="product-name-edit">${seccion.titulo}</div>
+ <div class="section-card-count">${cantidad}/${MAX_PRODUCTOS_POR_SECCION} productos</div>
+ </div>
+ `;
+ listaProductos.appendChild(card);
+ });
+ }
+
+ // Entra a una sección específica: muestra sus productos y permite agregar/editar
+ window.abrirGestionSeccion = async function(negocioId, seccionId, titulo) {
+ seccionActualId = seccionId;
+ seccionActualTitulo = titulo;
+ await cargarProductosDeSeccionMiTienda(negocioId, seccionId, titulo);
+ }
+
+ window.volverASeccionesMiTienda = async function() {
+ const negocioSnapshot = await get(ref(db, 'negocios/' + miTiendaIdActual));
+ if (!negocioSnapshot.exists()) return;
+ const negocio = negocioSnapshot.val();
+ renderSeccionesMiTienda(miTiendaIdActual, negocio.secciones || {});
+ }
+
+ // Editor de horario de atención al público (días de la semana + hora de apertura/cierre)
+ const DIAS_SEMANA_HORARIO = [
+ { id: 'lunes', label: 'Lunes' },
+ { id: 'martes', label: 'Martes' },
+ { id: 'miercoles', label: 'Miércoles' },
+ { id: 'jueves', label: 'Jueves' },
+ { id: 'viernes', label: 'Viernes' },
+ { id: 'sabado', label: 'Sábado' },
+ { id: 'domingo', label: 'Domingo' }
+ ];
+
+ window.abrirHorarioMiTienda = async function(negocioId) {
+ const listaProductos = document.getElementById('lista-productos-mi-tienda');
+ document.getElementById('btn-agregar-producto-seccion-wrapper')?.remove();
+ seccionActualId = null;
+ listaProductos.innerHTML = '<p class="no-products-message">Cargando horario...</p>';
+
+ // Asegura que el modal principal esté abierto para ver el editor
+ document.getElementById('modal-mi-tienda-productos').style.display = 'block';
+
+ try {
+ const negocioSnapshot = await get(ref(db, 'negocios/' + negocioId));
+ const negocio = negocioSnapshot.exists() ? negocioSnapshot.val() : {};
+ const horarioActual = negocio.horarioAtencion || {};
+
+ listaProductos.innerHTML = '';
+
+ const backBtn = document.createElement('button');
+ backBtn.type = 'button';
+ backBtn.className = 'section-back-btn';
+ backBtn.textContent = '← Volver a secciones';
+ backBtn.onclick = () => volverASeccionesMiTienda();
+ listaProductos.appendChild(backBtn);
+
+ const encabezado = document.createElement('h4');
+ encabezado.style.color = 'var(--color-primary)';
+ encabezado.style.marginBottom = '10px';
+ encabezado.textContent = '🕐 Horario de Atención';
+ listaProductos.appendChild(encabezado);
+
+ const contenedor = document.createElement('div');
+ contenedor.id = 'horario-atencion-editor';
+
+ DIAS_SEMANA_HORARIO.forEach(dia => {
+ const datosDia = horarioActual[dia.id] || { abierto: false, desde: '08:00', hasta: '18:00' };
+ const fila = document.createElement('div');
+ fila.className = 'product-item-edit';
+ fila.style.flexDirection = 'column';
+ fila.style.alignItems = 'stretch';
+ fila.innerHTML = `
+ <label style="display:flex; align-items:center; gap:8px; color: var(--color-text-light); font-weight:600;">
+ <input type="checkbox" id="horario-${dia.id}-abierto" ${datosDia.abierto ? 'checked' : ''} style="width:18px; height:18px;">
+ ${dia.label}
+ </label>
+ <div style="display:flex; gap:10px; margin-top:8px;">
+ <div style="flex:1;">
+ <label style="font-size:12px; color: var(--color-text-dark);">Desde</label>
+ <input type="time" id="horario-${dia.id}-desde" value="${datosDia.desde || '08:00'}" style="width:100%;">
+ </div>
+ <div style="flex:1;">
+ <label style="font-size:12px; color: var(--color-text-dark);">Hasta</label>
+ <input type="time" id="horario-${dia.id}-hasta" value="${datosDia.hasta || '18:00'}" style="width:100%;">
+ </div>
+ </div>
+ `;
+ contenedor.appendChild(fila);
+ });
+
+ listaProductos.appendChild(contenedor);
+
+ const btnGuardar = document.createElement('button');
+ btnGuardar.type = 'button';
+ btnGuardar.id = 'btn-guardar-horario';
+ btnGuardar.className = 'btn-agregar-producto-mi-tienda';
+ btnGuardar.style.marginTop = '14px';
+ btnGuardar.textContent = 'Guardar Horario';
+ btnGuardar.onclick = () => guardarHorarioMiTienda(negocioId);
+ listaProductos.appendChild(btnGuardar);
+
+ } catch (error) {
+ console.error('Error al cargar el horario de la tienda:', error);
+ listaProductos.innerHTML = '<p class="no-products-message">Error al cargar el horario</p>';
+ }
+ }
+
+ window.guardarHorarioMiTienda = async function(negocioId) {
+ const btnGuardar = document.getElementById('btn-guardar-horario');
+ try {
+ if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+ const horarioAtencion = {};
+ DIAS_SEMANA_HORARIO.forEach(dia => {
+ const abierto = document.getElementById(`horario-${dia.id}-abierto`).checked;
+ const desde = document.getElementById(`horario-${dia.id}-desde`).value || '08:00';
+ const hasta = document.getElementById(`horario-${dia.id}-hasta`).value || '18:00';
+ horarioAtencion[dia.id] = { abierto, desde, hasta };
+ });
+ await update(ref(db, `negocios/${negocioId}`), { horarioAtencion });
+ if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = ' Horario Guardado'; }
+ setTimeout(() => { if (btnGuardar) btnGuardar.textContent = 'Guardar Horario'; }, 2000);
+ } catch (error) {
+ console.error('Error al guardar el horario:', error);
+ alert('No se pudo guardar el horario. Intenta de nuevo.');
+ if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar Horario'; }
+ }
+ }
+
+ async function cargarProductosDeSeccionMiTienda(negocioId, seccionId, titulo) {
+ const listaProductos = document.getElementById('lista-productos-mi-tienda');
+ // FIX: quitar el botón "Agregar Nuevo Producto" de una carga anterior antes de
+ // volver a pintar — si no, se iba acumulando uno nuevo cada vez que se recargaba
+ // esta sección (ej. al marcar disponible/no disponible o eliminar un producto).
+ document.getElementById('btn-agregar-producto-seccion-wrapper')?.remove();
+ listaProductos.innerHTML = '<p class="no-products-message">Cargando productos...</p>';
+
+ try {
+ const productosSnapshot = await get(ref(db, `negocios/${negocioId}/secciones/${seccionId}/productos`));
+ const productos = productosSnapshot.exists() ? productosSnapshot.val() : {};
+ const cantidad = Object.keys(productos).length;
+
+ listaProductos.innerHTML = '';
+
+ const backBtn = document.createElement('button');
+ backBtn.type = 'button';
+ backBtn.className = 'section-back-btn';
+ backBtn.textContent = '← Volver a secciones';
+ backBtn.onclick = () => volverASeccionesMiTienda();
+ listaProductos.appendChild(backBtn);
+
+ const encabezado = document.createElement('h4');
+ encabezado.style.color = 'var(--color-primary)';
+ encabezado.style.marginBottom = '10px';
+ encabezado.textContent = `${titulo} (${cantidad}/${MAX_PRODUCTOS_POR_SECCION})`;
+ listaProductos.appendChild(encabezado);
+
+ if (cantidad === 0) {
+ const vacio = document.createElement('p');
+ vacio.className = 'no-products-message';
+ vacio.textContent = 'Esta sección aún no tiene productos. ¡Agrega el primero!';
+ listaProductos.appendChild(vacio);
+ }
+
+ for (let productoId in productos) {
+ const producto = productos[productoId];
  const disponible = producto.disponible !== false;
- 
+
  const productoDiv = document.createElement('div');
  productoDiv.className = 'product-item-edit';
- 
+
+ const fotoHTML = producto.foto ? `<div class="product-images-gallery"><img src="${producto.foto}" alt="${producto.nombre}" onclick="window.open('${producto.foto}', '_blank')"></div>` : '';
  const precioHTML = producto.precio ? `<div style="color: var(--color-primary); font-size: 14px;">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
- 
- // Mostrar tipo de menú si existe
- let tipoMenuHTML = '';
- if (producto.tipoMenu) {
- const emoji = producto.tipoMenu === 'desayuno' ? '' : producto.tipoMenu === 'almuerzo' ? '' : '';
- tipoMenuHTML = `<div style="color: #999; font-size: 12px; margin-top: 5px;">${emoji} ${producto.tipoMenu.charAt(0).toUpperCase() + producto.tipoMenu.slice(1)}</div>`;
- }
- 
- // Generar galería de imágenes si existen
- let imagenesHTML = '';
- if (producto.imagenes && producto.imagenes.length > 0) {
- imagenesHTML = '<div class="product-images-gallery">';
- producto.imagenes.forEach((url, index) => {
- imagenesHTML += `<img src="${url}" alt="${producto.nombre} ${index + 1}" onclick="window.open('${url}', '_blank')">`;
- });
- imagenesHTML += '</div>';
- }
- 
- // Determinar la ruta completa para las operaciones
- let rutaProducto = producto._rutaOrigen || 'productos';
- 
+
+ // Badge de "últimos X": solo se muestra si el producto tiene stock definido (numero >=0) y quedan 5 o menos
+ const tieneStock = typeof producto.stock === 'number';
+ const stockBajoHTML = (tieneStock && producto.stock <= 5)
+ ? `<div class="product-status-edit ${producto.stock > 0 ? 'no-disponible' : 'no-disponible'}" style="background:#dc2626; color:#fff;">${producto.stock > 0 ? '¡Últimos ' + producto.stock + '!' : 'Agotado'}</div>`
+ : '';
+ const btnVendiUnoHTML = (tieneStock && producto.stock > 0)
+ ? `<button class="btn-toggle-disponibilidad disponible" onclick="descontarStockProducto('${negocioId}', '${productoId}', 'secciones/${seccionId}/productos')">Vendí uno (quedan ${producto.stock})</button>`
+ : '';
+
  productoDiv.innerHTML = `
  <div class="product-info-edit">
  <div class="product-name-edit">${producto.nombre}</div>
  ${precioHTML}
- ${tipoMenuHTML}
- ${imagenesHTML}
+ ${fotoHTML}
  <div class="product-status-edit ${disponible ? 'disponible' : 'no-disponible'}">
  ${disponible ? ' Disponible' : ' No disponible'}
  </div>
+ ${stockBajoHTML}
  </div>
  <div class="product-actions-edit">
+ ${btnVendiUnoHTML}
  <button class="btn-toggle-disponibilidad ${disponible ? 'disponible' : 'no-disponible'}" 
- onclick="toggleDisponibilidadProducto('${negocioId}', '${productoId}', ${!disponible}, '${rutaProducto}')">
+ onclick="toggleDisponibilidadProducto('${negocioId}', '${productoId}', ${!disponible}, 'secciones/${seccionId}/productos')">
  ${disponible ? 'Marcar No Disponible' : 'Marcar Disponible'}
  </button>
- <button class="btn-eliminar-producto" onclick="eliminarProductoMiTienda('${negocioId}', '${productoId}', '${producto.nombre}', '${rutaProducto}')">
+ <button class="btn-eliminar-producto" onclick="eliminarProductoMiTienda('${negocioId}', '${productoId}', '${producto.nombre.replace(/'/g, "\\'")}', 'secciones/${seccionId}/productos')">
  
  </button>
  </div>
  `;
- 
+
  listaProductos.appendChild(productoDiv);
  }
- 
+
+ // Botón "Agregar Nuevo Producto" scoped a esta sección, respetando el cupo de 15
+ const wrapper = document.createElement('div');
+ wrapper.id = 'btn-agregar-producto-seccion-wrapper';
+ if (cantidad >= MAX_PRODUCTOS_POR_SECCION) {
+ wrapper.innerHTML = `<p class="section-cap-msg">Esta sección ya tiene el máximo de ${MAX_PRODUCTOS_POR_SECCION} productos.</p>`;
+ } else {
+ const btn = document.createElement('button');
+ btn.className = 'btn-agregar-producto-mi-tienda';
+ btn.textContent = 'Agregar Nuevo Producto';
+ btn.onclick = () => window.abrirModalAgregarProducto();
+ wrapper.appendChild(btn);
+ }
+ listaProductos.parentElement.appendChild(wrapper);
+
  } catch (error) {
- console.error('Error al cargar productos:', error);
+ console.error('Error al cargar productos de la sección:', error);
  listaProductos.innerHTML = '<p class="no-products-message">Error al cargar productos</p>';
  }
  }
@@ -13042,8 +13598,8 @@ ${motivo}`;
  disponible: nuevoEstado
  });
  
- // Recargar productos
- await cargarProductosMiTienda(negocioId);
+ // Recargar la sección actual
+ if (seccionActualId) await cargarProductosDeSeccionMiTienda(negocioId, seccionActualId, seccionActualTitulo || '');
  
  } catch (error) {
  console.error('Error al cambiar disponibilidad:', error);
@@ -13051,6 +13607,31 @@ ${motivo}`;
  }
  }
  
+ // Descuenta 1 unidad del stock de un producto (transacción atómica para evitar carreras
+ // si el dueño lo marca manualmente justo cuando también se confirma un pedido).
+ // Si el producto no tiene stock definido (undefined/null), no hace nada.
+ // Al llegar a 0 marca el producto como no disponible automáticamente.
+ window.descontarStockProducto = async function(negocioId, productoId, rutaProducto = 'productos', cantidad = 1, recargarUI = true) {
+ try {
+ const rutaCompleta = `negocios/${negocioId}/${rutaProducto}/${productoId}`;
+ const stockRef = ref(db, `${rutaCompleta}/stock`);
+ const resultado = await runTransaction(stockRef, (stockActual) => {
+ if (typeof stockActual !== 'number') return stockActual; // sin control de stock: no tocar
+ return Math.max(0, stockActual - cantidad);
+ });
+
+ if (resultado.committed && typeof resultado.snapshot.val() === 'number' && resultado.snapshot.val() <= 0) {
+ await update(ref(db, rutaCompleta), { disponible: false });
+ }
+
+ if (recargarUI && seccionActualId) await cargarProductosDeSeccionMiTienda(negocioId, seccionActualId, seccionActualTitulo || '');
+
+ } catch (error) {
+ console.error('Error al descontar stock:', error);
+ if (recargarUI) alert('Error al actualizar el stock del producto');
+ }
+ }
+
  window.eliminarProductoMiTienda = async function(negocioId, productoId, nombreProducto, rutaProducto = 'productos') {
  if (!confirm(`¿Seguro que quieres eliminar "${nombreProducto}"?`)) {
  return;
@@ -13063,8 +13644,8 @@ ${motivo}`;
  await remove(ref(db, rutaCompleta));
  alert('Producto eliminado exitosamente');
  
- // Recargar productos
- await cargarProductosMiTienda(negocioId);
+ // Recargar la sección actual
+ if (seccionActualId) await cargarProductosDeSeccionMiTienda(negocioId, seccionActualId, seccionActualTitulo || '');
  
  } catch (error) {
  console.error('Error al eliminar producto:', error);
@@ -13072,16 +13653,111 @@ ${motivo}`;
  }
  }
  
+ // Abre el modal simple (título, foto, precio) para agregar un producto a la sección actual
  window.abrirModalAgregarProducto = function() {
- console.log('Abriendo modal agregar producto. miTiendaIdActual:', miTiendaIdActual);
- 
  if (!miTiendaIdActual) {
  alert('Error: No se encontró tu tienda. Por favor recarga la página.');
  console.error('miTiendaIdActual no está definida');
  return;
  }
- 
- document.getElementById('modal-producto-mi-tienda').style.display = 'block';
+ if (!seccionActualId) {
+ alert('Error: no hay una sección seleccionada.');
+ return;
+ }
+
+ // Limpiar el formulario antes de mostrarlo
+ document.getElementById('titulo-producto-seccion').value = '';
+ document.getElementById('precio-producto-seccion').value = '';
+ document.getElementById('foto-producto-seccion').value = '';
+
+ document.getElementById('modal-producto-seccion').style.display = 'block';
+ }
+
+ window.cerrarModalProductoSeccion = function() {
+ document.getElementById('modal-producto-seccion').style.display = 'none';
+ }
+
+ // Guarda el nuevo producto dentro de la sección actual (título, foto opcional, precio)
+ window.guardarProductoSeccion = async function(event) {
+ event.preventDefault();
+
+ if (!miTiendaIdActual || !seccionActualId) {
+ alert('Error: no se encontró la tienda o la sección.');
+ return;
+ }
+
+ const btnGuardar = document.getElementById('btn-guardar-producto-seccion');
+ if (btnGuardar) {
+ if (btnGuardar.disabled) return;
+ btnGuardar.disabled = true;
+ btnGuardar.textContent = 'Guardando...';
+ }
+
+ try {
+ // Doble check del cupo de 15 antes de guardar
+ const productosSnap = await get(ref(db, `negocios/${miTiendaIdActual}/secciones/${seccionActualId}/productos`));
+ const cantidadActual = productosSnap.exists() ? Object.keys(productosSnap.val()).length : 0;
+ if (cantidadActual >= MAX_PRODUCTOS_POR_SECCION) {
+ alert(`Esta sección ya tiene el máximo de ${MAX_PRODUCTOS_POR_SECCION} productos.`);
+ cerrarModalProductoSeccion();
+ return;
+ }
+
+ const nombre = document.getElementById('titulo-producto-seccion').value.trim();
+ const precio = document.getElementById('precio-producto-seccion').value;
+ const fotoFile = document.getElementById('foto-producto-seccion').files[0];
+ const stockInput = document.getElementById('stock-producto-seccion').value;
+ const stock = stockInput !== '' ? parseInt(stockInput, 10) : null; // null = sin control de stock
+
+ if (!nombre) {
+ alert('Por favor ingresa el título del producto.');
+ return;
+ }
+ if (!precio || precio <= 0) {
+ alert('Por favor ingresa un precio válido.');
+ return;
+ }
+
+ let fotoURL = null;
+ if (fotoFile) {
+ try {
+ const imageRef = storageRef(storage, `negocios/${miTiendaIdActual}/secciones/${seccionActualId}/${Date.now()}_${fotoFile.name}`);
+ await uploadBytesResumable(imageRef, fotoFile);
+ fotoURL = await getDownloadURL(imageRef);
+ } catch (error) {
+ // FIX: se deja visible el código real del error (ej. storage/unauthorized
+ // = falta permiso en las Storage Rules para esta ruta, o un error de red/CORS)
+ // en vez de solo un mensaje genérico, para poder diagnosticar por qué falla.
+ console.error('Error al subir foto del producto:', error.code, error.message, error);
+ alert('No se pudo subir la foto (' + (error.code || error.message || 'error desconocido') + '). Se guardará el producto sin foto.');
+ }
+ }
+
+ const nuevoProducto = {
+ nombre,
+ foto: fotoURL,
+ precio: parseFloat(precio),
+ disponible: true,
+ fecha: Date.now()
+ };
+ if (stock !== null && !isNaN(stock) && stock >= 0) {
+ nuevoProducto.stock = stock;
+ }
+
+ await push(ref(db, `negocios/${miTiendaIdActual}/secciones/${seccionActualId}/productos`), nuevoProducto);
+
+ cerrarModalProductoSeccion();
+ await cargarProductosDeSeccionMiTienda(miTiendaIdActual, seccionActualId, seccionActualTitulo || '');
+
+ } catch (error) {
+ console.error('Error al guardar el producto:', error);
+ alert('Error al guardar el producto: ' + error.message);
+ } finally {
+ if (btnGuardar) {
+ btnGuardar.disabled = false;
+ btnGuardar.textContent = 'Guardar Producto';
+ }
+ }
  }
  
  // VER PRODUCTOS DE OTRAS TIENDAS
@@ -13157,62 +13833,18 @@ ${motivo}`;
  // Mostrar modal
  document.getElementById('modal-ver-tienda').style.display = 'block';
  document.getElementById('nombre-tienda-ver').textContent = nombreTienda;
+ // La campana global flota fija arriba a la derecha y, al ser este modal de
+ // pantalla completa, tapaba el botón "×" de cerrar. La ocultamos mientras
+ // se navega la tienda (se restaura en cerrarModalVerTienda).
+ const _bellVerTienda = document.getElementById('notif-bell-container');
+ if (_bellVerTienda) _bellVerTienda.style.display = 'none';
  
  const listaProductosVer = document.getElementById('lista-productos-ver');
- listaProductosVer.innerHTML = '<p class="no-products-message">Cargando productos...</p>';
+ listaProductosVer.innerHTML = '<p class="no-products-message">Cargando secciones...</p>';
  
- let todosLosProductos = {};
- 
- // Para restaurantes, leer de múltiples nodos
- if (categoriaNegocio === 'restaurante' || categoriaNegocio === 'restaurantes') {
- console.log(' Es restaurante, leyendo menús...');
- 
- // Leer desayunos
- try {
- const desayunosSnapshot = await get(ref(db, `negocios/${negocioId}/menu/desayunos`));
- if (desayunosSnapshot.exists()) {
- const desayunos = desayunosSnapshot.val();
- for (let id in desayunos) {
- todosLosProductos[id] = { ...desayunos[id], _rutaOrigen: 'menu/desayunos' };
- }
- }
- } catch (error) {
- console.log(' No hay desayunos');
- }
- 
- // Leer almuerzos
- try {
- const almuerzosSnapshot = await get(ref(db, `negocios/${negocioId}/menu/almuerzos`));
- if (almuerzosSnapshot.exists()) {
- const almuerzos = almuerzosSnapshot.val();
- for (let id in almuerzos) {
- todosLosProductos[id] = { ...almuerzos[id], _rutaOrigen: 'menu/almuerzos' };
- }
- }
- } catch (error) {
- console.log(' No hay almuerzos');
- }
- 
- // Leer otros
- try {
- const otrosSnapshot = await get(ref(db, `negocios/${negocioId}/menu/otros`));
- if (otrosSnapshot.exists()) {
- const otros = otrosSnapshot.val();
- for (let id in otros) {
- todosLosProductos[id] = { ...otros[id], _rutaOrigen: 'menu/otros' };
- }
- }
- } catch (error) {
- console.log(' No hay otros menús');
- }
- } else {
- // (rama vieja de categoría no-restaurante: ya no se usa para cargar la vista,
- // el sistema nuevo de secciones de abajo reemplaza esta carga plana)
- }
- 
- // Sistema nuevo: mostrar la tienda organizada por secciones (con migración automática
- // si la tienda es de antes de este sistema)
- await window.mostrarSeccionesEnContenedor(negocioId, false, 'lista-productos-ver');
+ // Migra tiendas viejas (sin `secciones`) automáticamente
+ const secciones = await migrarTiendaASeccionesSiNecesario(negocioId, tiendaData);
+ renderSeccionesClienteTienda(negocioId, nombreTienda, secciones);
  
  // Agregar botón flotante del carrito si no existe
  if (!document.getElementById('carrito-flotante')) {
@@ -13222,6 +13854,104 @@ ${motivo}`;
  } catch (error) {
  console.error('Error al cargar productos:', error);
  alert('Error al cargar los productos de la tienda');
+ }
+ }
+
+ // Muestra la grilla de secciones de la tienda para el cliente final
+ function renderSeccionesClienteTienda(negocioId, nombreTienda, secciones) {
+ const listaProductosVer = document.getElementById('lista-productos-ver');
+ const idsOrdenados = Object.keys(secciones || {}).sort((a, b) => (secciones[a].orden || 0) - (secciones[b].orden || 0));
+
+ if (idsOrdenados.length === 0) {
+ listaProductosVer.innerHTML = '<p class="no-products-message">Esta tienda aún no tiene productos disponibles.</p>';
+ return;
+ }
+
+ listaProductosVer.innerHTML = '';
+ idsOrdenados.forEach(seccionId => {
+ const seccion = secciones[seccionId];
+ const productos = seccion.productos || {};
+ // Imagen representativa: la del primer producto disponible que tenga foto
+ let fotoRepresentativa = null;
+ for (let pid in productos) {
+ if (productos[pid].foto) { fotoRepresentativa = productos[pid].foto; break; }
+ }
+ const cantidadDisponible = Object.values(productos).filter(p => p.disponible !== false).length;
+
+ const card = document.createElement('div');
+ card.className = 'store-card';
+ card.onclick = () => verSeccionClienteTienda(negocioId, nombreTienda, seccionId, seccion.titulo);
+ card.innerHTML = `
+ <div class="store-image">${fotoRepresentativa ? `<img src="${fotoRepresentativa}" alt="${seccion.titulo}">` : ''}</div>
+ <div class="store-info">
+ <div class="store-name">${seccion.titulo}</div>
+ <div class="section-card-count">${cantidadDisponible} producto${cantidadDisponible === 1 ? '' : 's'} disponible${cantidadDisponible === 1 ? '' : 's'}</div>
+ </div>
+ `;
+ listaProductosVer.appendChild(card);
+ });
+ }
+
+ // Muestra los productos de una sección puntual para que el cliente los agregue al pedido
+ window.verSeccionClienteTienda = async function(negocioId, nombreTienda, seccionId, titulo) {
+ const listaProductosVer = document.getElementById('lista-productos-ver');
+ listaProductosVer.innerHTML = '<p class="no-products-message">Cargando productos...</p>';
+
+ try {
+ const productosSnapshot = await get(ref(db, `negocios/${negocioId}/secciones/${seccionId}/productos`));
+ const productos = productosSnapshot.exists() ? productosSnapshot.val() : {};
+
+ listaProductosVer.innerHTML = '';
+
+ const backBtn = document.createElement('button');
+ backBtn.type = 'button';
+ backBtn.className = 'section-back-btn';
+ backBtn.textContent = '← Volver a secciones';
+ backBtn.onclick = () => window.verProductosTienda(negocioId, nombreTienda);
+ listaProductosVer.appendChild(backBtn);
+
+ const encabezado = document.createElement('h4');
+ encabezado.style.color = 'var(--color-primary)';
+ encabezado.style.marginBottom = '10px';
+ encabezado.style.gridColumn = '1 / -1';
+ encabezado.textContent = titulo;
+ listaProductosVer.appendChild(encabezado);
+
+ let mostrados = 0;
+ for (let productoId in productos) {
+ const producto = productos[productoId];
+ const disponible = producto.disponible !== false;
+ if (!disponible) continue;
+ mostrados++;
+
+ const productoDiv = document.createElement('div');
+ productoDiv.className = 'menu-producto-card';
+
+ const fotoHTML = producto.foto ? `<div class="product-images-gallery"><img src="${producto.foto}" alt="${producto.nombre}" onclick="window.open('${producto.foto}', '_blank')"></div>` : '';
+ const precioHTML = producto.precio ? `<div class="menu-producto-precio">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
+
+ productoDiv.innerHTML = `
+ ${fotoHTML}
+ <div class="menu-producto-header">
+ <div class="menu-producto-nombre">${producto.nombre}</div>
+ ${precioHTML}
+ </div>
+ ${producto.precio ? `<button class="btn-agregar-carrito" onclick="agregarAlCarrito('${productoId}', 'secciones/${seccionId}/productos')"> Agregar al Pedido</button>` : ''}
+ `;
+
+ listaProductosVer.appendChild(productoDiv);
+ }
+
+ if (mostrados === 0) {
+ const vacio = document.createElement('p');
+ vacio.className = 'no-products-message';
+ vacio.textContent = 'No hay productos disponibles en esta sección por ahora.';
+ listaProductosVer.appendChild(vacio);
+ }
+
+ } catch (error) {
+ console.error('Error al cargar productos de la sección:', error);
+ listaProductosVer.innerHTML = '<p class="no-products-message">Error al cargar productos</p>';
  }
  }
  
@@ -13241,8 +13971,8 @@ ${motivo}`;
  <div class="carrito-total-texto">Total a pagar:</div>
  <div class="carrito-total-monto" id="carrito-total-monto">$0</div>
  </div>
- <button class="btn-whatsapp-pedido" onclick="enviarPedidoWhatsApp()">
- Enviar Pedido por WhatsApp
+ <button class="btn-whatsapp-pedido" style="background:linear-gradient(135deg,#28a745,#1e7e34);" onclick="iniciarCompraEnTienda()">
+ Comprar y Pagar en la App
  </button>
  <button class="btn-cancelar-producto-mi-tienda" onclick="cerrarCarrito()" style="margin-top: 10px;">
  Cerrar
@@ -13255,6 +13985,27 @@ ${motivo}`;
  `;
  
  document.body.insertAdjacentHTML('beforeend', carritoHTML);
+ }
+
+ // Mensaje flotante "Agregado al carrito" que se desvanece solo, para dar
+ // feedback claro e inmediato y evitar que el cliente toque el botón varias
+ // veces pensando que no funcionó.
+ let _toastCarritoTimeout = null;
+ function mostrarToastCarrito(texto) {
+ let toast = document.getElementById('toast-carrito');
+ if (!toast) {
+ toast = document.createElement('div');
+ toast.id = 'toast-carrito';
+ document.body.appendChild(toast);
+ }
+ toast.textContent = texto;
+ toast.classList.remove('mostrar');
+ void toast.offsetWidth; // fuerza reflow para reiniciar la animación si ya estaba visible
+ toast.classList.add('mostrar');
+ if (_toastCarritoTimeout) clearTimeout(_toastCarritoTimeout);
+ _toastCarritoTimeout = setTimeout(() => {
+ toast.classList.remove('mostrar');
+ }, 1500);
  }
 
  // Agregar producto al carrito
@@ -13276,6 +14027,7 @@ ${motivo}`;
  // Agregar al carrito
  carritoTienda.push({
  id: productoId,
+ rutaProducto: rutaProducto,
  nombre: producto.nombre,
  descripcion: producto.descripcion || '',
  precio: producto.precio || 0,
@@ -13284,6 +14036,7 @@ ${motivo}`;
  });
  
  actualizarCarritoUI();
+ mostrarToastCarrito('✅ Agregado al carrito');
  
  // Feedback visual
  const btn = event.target;
@@ -13384,6 +14137,378 @@ ${motivo}`;
  // Cerrar modal del carrito
  window.cerrarCarrito = function() {
  document.getElementById('modal-carrito').style.display = 'none';
+ }
+
+ // ==========================================
+ // COMPRA DIRECTA EN LA TIENDA (marketplace): la app asigna repartidor,
+ // calcula el costo total (productos + domicilio), el cliente paga todo
+ // en la app y el repartidor paga la compra en el local al recogerla.
+ // ==========================================
+ window.iniciarCompraEnTienda = async function() {
+ if (!carritoTienda || carritoTienda.length === 0) {
+ alert('Tu carrito está vacío.');
+ return;
+ }
+ if (!window.currentUserID) {
+ alert('Debes iniciar sesión para comprar.');
+ return;
+ }
+
+ const btn = event.target;
+ const textoOriginal = btn.textContent;
+ btn.disabled = true;
+ btn.textContent = 'Calculando...';
+
+ try {
+ // Ubicación de la tienda (fresca desde Firebase)
+ const negocioSnap = await get(ref(db, 'negocios/' + tiendaActual.id));
+ if (!negocioSnap.exists()) {
+ alert('No se encontró la tienda.');
+ return;
+ }
+ const negocioData = negocioSnap.val();
+ const ubicacionTienda = negocioData.ubicacion;
+
+ if (negocioData.tiendaAbierta === false) {
+ alert('Esta tienda está cerrada en este momento. Vuelve a intentarlo cuando esté abierta.');
+ return;
+ }
+
+ if (!ubicacionTienda || !ubicacionTienda.lat) {
+ alert('Esta tienda todavía no tiene su ubicación configurada. Mientras se configura, puedes usar "Enviar Pedido por WhatsApp".');
+ return;
+ }
+
+ // Ubicación del cliente (usa la que ya se está rastreando, o pide una nueva)
+ let ubicacionCliente = window.clienteUbicacionActual;
+ if (!ubicacionCliente || !ubicacionCliente.lat) {
+ ubicacionCliente = await obtenerGPSActual();
+ }
+ if (!ubicacionCliente || !ubicacionCliente.lat) {
+ alert('No pudimos obtener tu ubicación GPS. Actívala en tu dispositivo e inténtalo de nuevo.');
+ return;
+ }
+
+ const distanciaKm = (await window._distanciaRealEntrePuntos(ubicacionTienda, ubicacionCliente)) || 0;
+ const montoDomicilio = window._precioSegunKmArmenia(distanciaKm);
+ const montoProductos = carritoTienda.reduce((sum, item) => sum + (item.precio || 0), 0);
+ const montoTotal = montoProductos + montoDomicilio;
+
+ const confirmar = confirm(
+ `Resumen de tu compra en ${tiendaActual.nombre}:\n\n` +
+ `Productos: $${montoProductos.toLocaleString('es-CO')}\n` +
+ `Domicilio (${(Math.round(distanciaKm * 10) / 10)} km): $${montoDomicilio.toLocaleString('es-CO')}\n` +
+ `Total a pagar en la app: $${montoTotal.toLocaleString('es-CO')}\n\n` +
+ `Tu compra se enviará a la tienda para que la confirmen; en cuanto la confirmen se asignará un repartidor que pagará la compra en el local y tú le pagas el total al momento de la entrega. ¿Confirmas el pedido?`
+ );
+ if (!confirmar) return;
+
+ await crearCompraPendienteEnTienda({ ubicacionTienda, ubicacionCliente, distanciaKm, montoProductos, montoDomicilio, montoTotal });
+
+ } catch (error) {
+ console.error('Error al iniciar compra en tienda:', error);
+ alert('Ocurrió un error al procesar tu compra: ' + error.message);
+ } finally {
+ btn.disabled = false;
+ btn.textContent = textoOriginal;
+ }
+ }
+
+ // Busca el repartidor en línea con menos pedidos activos, respetando bloqueos de servicio con el cliente
+ async function seleccionarRepartidorMenosOcupado(clienteId) {
+ let repartidorAsignado = null;
+ const repsSnap = await get(ref(db, 'repartidores_info'));
+
+ let _bloqueosConEsteCliente = new Set();
+ try {
+ const blSnap = await get(ref(db, 'bloqueos_servicio'));
+ if (blSnap.exists()) {
+ const ahora = Date.now();
+ Object.values(blSnap.val()).forEach(b => {
+ if (b.clienteId === clienteId) {
+ const vigente = b.duracion === 'indefinido' || (b.hasta && b.hasta > ahora);
+ if (vigente) _bloqueosConEsteCliente.add(b.repartidorId);
+ }
+ });
+ }
+ } catch (e) { console.warn('No se pudo verificar bloqueos de servicio:', e); }
+
+ if (repsSnap.exists()) {
+ const reps = repsSnap.val();
+ let menosOcupado = null;
+ for (const [uid, data] of Object.entries(reps)) {
+ if (data.online === true && !_bloqueosConEsteCliente.has(uid)) {
+ if (!menosOcupado || (data.pedidosActivos || 0) < (menosOcupado.pedidosActivos || 0)) {
+ menosOcupado = { uid, ...data };
+ }
+ }
+ }
+ repartidorAsignado = menosOcupado;
+ }
+ return repartidorAsignado;
+ }
+
+ // Crea la compra y la deja PENDIENTE DE CONFIRMACIÓN por parte de la tienda.
+ // Todavía no se asigna repartidor: eso ocurre cuando el dueño confirma el pedido.
+ async function crearCompraPendienteEnTienda({ ubicacionTienda, ubicacionCliente, distanciaKm, montoProductos, montoDomicilio, montoTotal }) {
+ let clienteNombre = 'Cliente';
+ let clienteEmail = '';
+ let clienteTelefono = '';
+ let clienteDireccion = '';
+ try {
+ const uSnap = await get(ref(db, `usuarios/${window.currentUserID}`));
+ if (uSnap.exists()) {
+ const uData = uSnap.val();
+ clienteNombre = uData.nombre || 'Cliente';
+ clienteEmail = uData.correo || '';
+ // Mismos datos que el cliente diligenció al registrarse (perfil), para
+ // que le lleguen completos a la tienda: teléfono principal (tel1) y la
+ // dirección que escribió (normalmente incluye el barrio, ej. "Cra 15
+ // #20-10, Barrio El Centro"). Si algún día falta, mejor '' que undefined:
+ // undefined rompe el set() del repartidor al aceptar el pedido.
+ clienteTelefono = uData.tel1 || '';
+ clienteDireccion = uData.direccion || '';
+ }
+ } catch (e) {}
+
+ const timestamp = Date.now();
+ const codigoEntrega = String(Math.floor(1000 + Math.random() * 9000));
+ const itemsCarrito = carritoTienda.map(it => ({ id: it.id || null, rutaProducto: it.rutaProducto || 'productos', nombre: it.nombre, precio: it.precio }));
+
+ const pedidoData = {
+ tipo: 'compra_tienda',
+ telefonoCliente: clienteTelefono,
+ estado: 'pendiente_confirmacion_tienda',
+ codigoEntrega,
+
+ // Compatibles con los reportes/paneles que ya leen estos nombres de campo
+ negocioId: tiendaActual.id,
+ nombreEntrega: tiendaActual.nombre,
+ dirRecogida: 'Ubicación GPS de la tienda (ver mapa)',
+ direccionCliente: clienteDireccion || 'Ubicación GPS del cliente (ver mapa)',
+
+ // Ubicaciones específicas de esta transacción
+ ubicacionRecogida: ubicacionTienda,
+ ubicacionEntrega: ubicacionCliente,
+ // Mismos datos que arriba, pero con el nombre de campo que lee el mapa de
+ // seguimiento (agregarMarcadorRecogida/agregarMarcadorEntrega esperan
+ // "gpsRecogida"/"gpsDestino"); sin esto el punto de la tienda no aparecía.
+ gpsRecogida: ubicacionTienda,
+ gpsDestino: ubicacionCliente,
+ distanciaKm: Math.round(distanciaKm * 10) / 10,
+
+ itemsCarrito,
+ montoProductos,
+ montoDomicilio,
+ montoTotal,
+ pagoRepartidorAdelantaEnTienda: true,
+
+ clienteIdAsignado: window.currentUserID,
+ clienteNombre,
+ clienteEmail,
+
+ repartidorUID: null,
+ repartidorNombre: 'Sin asignar',
+
+ timestampCreacion: timestamp,
+ timestampAsignacion: null,
+ fecha: new Date().toISOString()
+ };
+
+ // Guardar en el historial general (fuente de verdad del pedido)
+ const histRef = ref(db, 'pedidos_historial');
+ const newPedido = await push(histRef, pedidoData);
+ const pedidoId = newPedido.key;
+
+ // Guardar en la bandeja de "Compras" de la tienda, para que el dueño la confirme
+ // (incluye nombre, teléfono y dirección/barrio del cliente, tal como los
+ // diligenció al registrarse, para que la tienda tenga todo antes de confirmar)
+ await update(ref(db, `compras_tienda/${tiendaActual.id}/${pedidoId}`), {
+ pedidoId,
+ clienteId: window.currentUserID,
+ clienteNombre,
+ clienteTelefono,
+ clienteDireccion,
+ itemsCarrito,
+ montoProductos,
+ montoDomicilio,
+ montoTotal,
+ distanciaKm: Math.round(distanciaKm * 10) / 10,
+ ubicacionTienda,
+ ubicacionCliente,
+ estado: 'pendiente',
+ fecha: timestamp
+ });
+
+ // Notificar al cliente cuando la tienda confirme/rechace o cambie el estado
+ if (typeof window.escucharEstadoPedidoNotif === 'function')
+ window.escucharEstadoPedidoNotif(pedidoId, tiendaActual.nombre);
+
+ // Vaciar carrito sin la confirmación de vaciarCarrito() (ya se confirmó la compra)
+ carritoTienda = [];
+ limpiarCarritoStorage();
+ actualizarCarritoUI();
+ cerrarCarrito();
+ cerrarModalVerTienda();
+
+ alert(`¡Compra enviada a ${tiendaActual.nombre}! Código: ${codigoEntrega}. Te avisaremos apenas la tienda confirme tu pedido para asignar el domicilio.`);
+ }
+
+ // Trae las compras pendientes/confirmadas/rechazadas de una tienda, para que el dueño las gestione
+ window.verComprasDeMiTienda = async function(negocioId) {
+ const listaProductos = document.getElementById('lista-productos-mi-tienda');
+ document.getElementById('btn-agregar-producto-seccion-wrapper')?.remove();
+ seccionActualId = null;
+ listaProductos.innerHTML = '<p class="no-products-message">Cargando compras...</p>';
+
+ try {
+ const comprasSnap = await get(ref(db, `compras_tienda/${negocioId}`));
+ const compras = comprasSnap.exists() ? comprasSnap.val() : {};
+ const idsOrdenados = Object.keys(compras).sort((a, b) => (compras[b].fecha || 0) - (compras[a].fecha || 0));
+
+ listaProductos.innerHTML = '';
+
+ const backBtn = document.createElement('button');
+ backBtn.type = 'button';
+ backBtn.className = 'section-back-btn';
+ backBtn.textContent = '← Volver a secciones';
+ backBtn.onclick = () => volverASeccionesMiTienda();
+ listaProductos.appendChild(backBtn);
+
+ const encabezado = document.createElement('h4');
+ encabezado.style.color = 'var(--color-primary)';
+ encabezado.style.marginBottom = '10px';
+ encabezado.textContent = ' Compras de mi tienda';
+ listaProductos.appendChild(encabezado);
+
+ if (idsOrdenados.length === 0) {
+ const vacio = document.createElement('p');
+ vacio.className = 'no-products-message';
+ vacio.textContent = 'Todavía no te han comprado nada por aquí.';
+ listaProductos.appendChild(vacio);
+ return;
+ }
+
+ idsOrdenados.forEach(compraId => {
+ const compra = compras[compraId];
+ const itemsTexto = (compra.itemsCarrito || []).map(it => `${it.nombre} ($${(it.precio || 0).toLocaleString('es-CO')})`).join(', ');
+
+ const card = document.createElement('div');
+ card.className = 'product-item-edit';
+
+ let accionesHTML = '';
+ let estadoHTML = '';
+ if (compra.estado === 'pendiente') {
+ estadoHTML = `<div class="product-status-edit no-disponible"> Esperando tu confirmación</div>`;
+ accionesHTML = `
+ <button class="btn-toggle-disponibilidad disponible" onclick="confirmarCompraTienda('${negocioId}', '${compraId}')">Confirmar Pedido</button>
+ <button class="btn-eliminar-producto" onclick="rechazarCompraTienda('${negocioId}', '${compraId}')">Rechazar</button>
+ `;
+ } else if (compra.estado === 'confirmado') {
+ estadoHTML = `<div class="product-status-edit disponible"> Confirmado, en camino un repartidor</div>`;
+ } else if (compra.estado === 'rechazado') {
+ estadoHTML = `<div class="product-status-edit no-disponible"> Rechazado</div>`;
+ }
+
+ card.innerHTML = `
+ <div class="product-info-edit">
+ <div class="product-name-edit">${compra.clienteNombre} te compró:</div>
+ <div style="color: var(--color-text-dark); font-size: 13px; margin: 4px 0;">${itemsTexto}</div>
+ <div style="color: var(--color-text-light); font-size: 13px; margin: 6px 0 2px;">📞 ${compra.clienteTelefono || 'Sin teléfono registrado'}</div>
+ <div style="color: var(--color-text-light); font-size: 13px; margin: 0 0 4px;">📍 ${compra.clienteDireccion || 'Sin dirección registrada (ver ubicación GPS en el mapa)'}</div>
+ <div style="color: var(--color-primary); font-size: 14px;">Productos: $${(compra.montoProductos || 0).toLocaleString('es-CO')} · Domicilio: $${(compra.montoDomicilio || 0).toLocaleString('es-CO')} · Total: $${(compra.montoTotal || 0).toLocaleString('es-CO')}</div>
+ ${estadoHTML}
+ </div>
+ <div class="product-actions-edit">${accionesHTML}</div>
+ `;
+ listaProductos.appendChild(card);
+ });
+
+ } catch (error) {
+ console.error('Error al cargar compras de la tienda:', error);
+ listaProductos.innerHTML = '<p class="no-products-message">Error al cargar las compras</p>';
+ }
+ }
+
+ // El dueño confirma el pedido: recién en este momento se asigna un repartidor
+ window.confirmarCompraTienda = async function(negocioId, compraId) {
+ try {
+ const compraSnap = await get(ref(db, `compras_tienda/${negocioId}/${compraId}`));
+ if (!compraSnap.exists()) { alert('No se encontró esta compra.'); return; }
+ const compra = compraSnap.val();
+ const pedidoId = compra.pedidoId || compraId;
+
+ const repartidorAsignado = await seleccionarRepartidorMenosOcupado(compra.clienteId);
+ const timestamp = Date.now();
+
+ const actualizacionPedido = {
+ estado: repartidorAsignado ? 'pendiente' : 'sin_repartidor',
+ repartidorUID: repartidorAsignado ? repartidorAsignado.uid : null,
+ repartidorNombre: repartidorAsignado ? (repartidorAsignado.nombre || 'Repartidor') : 'Sin asignar',
+ timestampAsignacion: repartidorAsignado ? timestamp : null
+ };
+
+ await update(ref(db, `pedidos_historial/${pedidoId}`), actualizacionPedido);
+
+ const pedidoSnap = await get(ref(db, `pedidos_historial/${pedidoId}`));
+ const pedidoData = pedidoSnap.exists() ? pedidoSnap.val() : { ...compra, ...actualizacionPedido };
+ // FIX: nunca escribir 'undefined' en telefonoCliente (rompe el set() del repartidor al aceptar)
+ if (pedidoData.telefonoCliente === undefined) pedidoData.telefonoCliente = '';
+
+ await update(ref(db, `pedidos_pendientes/${pedidoId}`), { ...pedidoData, pedidoId, historialId: pedidoId });
+
+ if (repartidorAsignado) {
+ await update(ref(db, `repartidores_info/${repartidorAsignado.uid}`), { pedidosActivos: (repartidorAsignado.pedidosActivos || 0) + 1 });
+ await update(ref(db, `repartidores_pedidos/${repartidorAsignado.uid}/${pedidoId}`), { ...pedidoData, pedidoId });
+ }
+
+ await update(ref(db, `compras_tienda/${negocioId}/${compraId}`), { estado: 'confirmado' });
+
+ // Descontar stock automáticamente por cada unidad vendida en este pedido
+ // (los productos sin stock definido simplemente se ignoran dentro de descontarStockProducto)
+ try {
+ const itemsPedido = compra.itemsCarrito || [];
+ const conteoPorProducto = {};
+ itemsPedido.forEach(item => {
+ if (!item.id) return;
+ const clave = item.id + '|' + (item.rutaProducto || 'productos');
+ conteoPorProducto[clave] = (conteoPorProducto[clave] || 0) + 1;
+ });
+ for (const clave in conteoPorProducto) {
+ const [prodId, rutaProd] = clave.split('|');
+ await window.descontarStockProducto(negocioId, prodId, rutaProd, conteoPorProducto[clave], false);
+ }
+ } catch (e) { console.warn('No se pudo descontar el stock automáticamente:', e); }
+
+ alert(repartidorAsignado
+ ? `Pedido confirmado. Se asignó a ${repartidorAsignado.nombre || 'un repartidor'} para que pague en tu tienda y lleve el pedido.`
+ : 'Pedido confirmado. Todavía no hay repartidores en línea; se asignará apenas uno se conecte.');
+
+ await window.verComprasDeMiTienda(negocioId);
+
+ } catch (error) {
+ console.error('Error al confirmar la compra:', error);
+ alert('Error al confirmar el pedido: ' + error.message);
+ }
+ }
+
+ // El dueño rechaza el pedido (ej. producto agotado); el cliente se entera por notificación
+ window.rechazarCompraTienda = async function(negocioId, compraId) {
+ if (!confirm('¿Seguro que quieres rechazar este pedido? El cliente será notificado.')) return;
+ try {
+ const compraSnap = await get(ref(db, `compras_tienda/${negocioId}/${compraId}`));
+ if (!compraSnap.exists()) { alert('No se encontró esta compra.'); return; }
+ const compra = compraSnap.val();
+ const pedidoId = compra.pedidoId || compraId;
+
+ await update(ref(db, `pedidos_historial/${pedidoId}`), { estado: 'rechazado_tienda' });
+ await update(ref(db, `compras_tienda/${negocioId}/${compraId}`), { estado: 'rechazado' });
+
+ await window.verComprasDeMiTienda(negocioId);
+ } catch (error) {
+ console.error('Error al rechazar la compra:', error);
+ alert('Error al rechazar el pedido: ' + error.message);
+ }
  }
 
  // Enviar pedido por WhatsApp
@@ -13682,6 +14807,11 @@ ${motivo}`;
  
  window.cerrarModalVerTienda = function() {
  document.getElementById('modal-ver-tienda').style.display = 'none';
+ // Restaurar la campana global de notificaciones (se ocultó al abrir la
+ // tienda porque, al ser el modal de pantalla completa, quedaba justo
+ // encima del botón "×" de cerrar y bloqueaba el toque).
+ const _bellTienda = document.getElementById('notif-bell-container');
+ if (_bellTienda && window._bellEnabled) _bellTienda.style.display = 'block';
  }
  
  window.cerrarModalProductoMiTienda = function() {
@@ -14049,7 +15179,7 @@ Tu menú ya está visible para los clientes.`);
  }, 300);
  
  // Recargar productos
- await cargarProductosMiTienda(miTiendaIdActual);
+ if (seccionActualId) await cargarProductosDeSeccionMiTienda(miTiendaIdActual, seccionActualId, seccionActualTitulo || '');
  
  } catch (error) {
  console.error(' Error al guardar:', error);
@@ -14217,7 +15347,7 @@ Tu menú ya está visible para los clientes en tu tienda.`);
  
  // Recargar productos
  try {
- await cargarProductosMiTienda(miTiendaIdActual);
+ if (seccionActualId) await cargarProductosDeSeccionMiTienda(miTiendaIdActual, seccionActualId, seccionActualTitulo || '');
  console.log('Productos recargados exitosamente');
  } catch (reloadError) {
  console.error('Error al recargar productos:', reloadError);
@@ -14876,21 +16006,64 @@ Detalles técnicos en la consola (F12)`;
  </div>
 </div>
 
+<!-- ==================== MODAL: AGREGAR PRODUCTO A UNA SECCIÓN (NUEVO SISTEMA) ==================== -->
+<div id="modal-producto-seccion" class="modal">
+ <div class="modal-content">
+ <span class="close-modal" onclick="cerrarModalProductoSeccion()">&times;</span>
+ <h3> Agregar Producto</h3>
+
+ <form id="form-producto-seccion" onsubmit="guardarProductoSeccion(event)">
+ <label for="titulo-producto-seccion">Título del Producto:</label>
+ <input type="text" id="titulo-producto-seccion" placeholder="Ej: Camisa azul talla M" required />
+
+ <label for="precio-producto-seccion">Precio:</label>
+ <input type="number" id="precio-producto-seccion" placeholder="Ej: 45000" min="0" required />
+
+ <label for="foto-producto-seccion">Foto del Producto (opcional):</label>
+ <input type="file" id="foto-producto-seccion" accept="image/*" />
+
+ <label for="stock-producto-seccion">Cantidad disponible (opcional):</label>
+ <input type="number" id="stock-producto-seccion" placeholder="Déjalo vacío si no quieres controlar el stock" min="0" />
+
+ <button type="submit" id="btn-guardar-producto-seccion">Guardar Producto</button>
+ </form>
+ </div>
+</div>
+
 <!-- ==================== MODAL: VER/EDITAR MI TIENDA ==================== -->
 <div id="modal-mi-tienda-productos" class="modal">
- <div class="modal-content">
- <span class="close-modal" onclick="cerrarModalMiTienda()">&times;</span>
- <h3> Gestionar Mi Tienda</h3>
+ <div class="modal-content" style="position:relative;">
+ <div style="display:grid; grid-template-columns:32px 1fr 32px; align-items:center; gap:8px; margin-bottom:20px;">
+ <button type="button" class="btn-hamburguesa-panel-admin" style="position:static; padding:0; width:32px; text-align:left; justify-self:start;" onclick="abrirMenuLateralPanelAdmin()">☰</button>
+ <h3 style="margin:0; min-width:0; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:16px;">📋 Panel Administrativo</h3>
+ <span class="close-modal" style="position:static; float:none; width:32px; text-align:right; justify-self:end;" onclick="cerrarModalMiTienda()">&times;</span>
+ </div>
  <div id="mi-tienda-info"></div>
  <div class="my-store-products">
- <h3> Mis Productos</h3>
  <div id="lista-productos-mi-tienda" class="product-list-edit">
- <p class="no-products-message">Cargando productos...</p>
+ <p class="no-products-message">Usa el menú ☰ de arriba para ver tus secciones, pedidos y horario de atención.</p>
  </div>
- <button id="btn-agregar-producto-viejo" class="btn-agregar-producto-mi-tienda" onclick="abrirModalAgregarProducto()">
- Agregar Nuevo Producto
+ </div>
+ </div>
+</div>
+
+<!-- ==================== MENÚ LATERAL (HAMBURGUESA) DEL PANEL ADMINISTRATIVO ==================== -->
+<div id="menu-lateral-panel-admin" class="menu-lateral-overlay" onclick="if(event.target===this) cerrarMenuLateralPanelAdmin()">
+ <div class="menu-lateral-panel">
+ <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+ <h3 style="margin:0; color:var(--color-primary);">📋 Panel Administrativo</h3>
+ <span class="close-modal" style="font-size:26px;" onclick="cerrarMenuLateralPanelAdmin()">&times;</span>
+ </div>
+ <button type="button" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin(); if(window.miTiendaIdActual) verComprasDeMiTienda(window.miTiendaIdActual);">
+ <span>🔔 Pedidos Activos y Compras por Confirmar</span>
+ <span id="menu-lateral-badge-pendientes" class="menu-lateral-badge" style="display:none;">0</span>
  </button>
- </div>
+ <button type="button" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin(); if(window.miTiendaIdActual) volverASeccionesMiTienda();">
+ <span>🗂 Secciones de mi Tienda</span>
+ </button>
+ <button type="button" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin(); if(window.miTiendaIdActual) abrirHorarioMiTienda(window.miTiendaIdActual);">
+ <span>🕐 Horario de Atención</span>
+ </button>
  </div>
 </div>
 
@@ -14925,398 +16098,6 @@ Detalles técnicos en la consola (F12)`;
  </button>
  </div>
 </div>
-
-<!-- ============================================================
-     SECCIÓN 20B · MODALES DEL SISTEMA DE SECCIONES DE TIENDA (NUEVO)
-============================================================ -->
-<style>
-  .grid-secciones-tienda { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 10px 0; }
-  .seccion-card-tienda { background: #2a2a2a; border: 2px solid #444; border-radius: 12px; padding: 16px 10px; text-align: center; cursor: pointer; transition: border-color .15s; }
-  .seccion-card-tienda:hover { border-color: var(--color-primary, #FFD700); }
-  .seccion-card-tienda .seccion-icono { font-size: 28px; margin-bottom: 6px; }
-  .seccion-card-tienda .seccion-titulo { color: #fff; font-weight: bold; font-size: 14px; }
-  .seccion-card-tienda .seccion-conteo { color: #999; font-size: 12px; margin-top: 4px; }
-  .btn-volver-secciones { background: #444; color: #fff; border: none; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; cursor: pointer; font-size: 13px; }
-  .grid-productos-seccion { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-  .producto-seccion-card { background: #2a2a2a; border-radius: 12px; overflow: hidden; border: 1px solid #444; }
-  .producto-seccion-card img { width: 100%; height: 110px; object-fit: cover; display: block; }
-  .producto-seccion-card .producto-seccion-sin-foto { width: 100%; height: 110px; background: #333; display: flex; align-items: center; justify-content: center; color: #666; font-size: 12px; }
-  .producto-seccion-info { padding: 8px 10px; }
-  .producto-seccion-nombre { color: #fff; font-weight: bold; font-size: 13px; margin-bottom: 4px; }
-  .producto-seccion-precio { color: #28a745; font-weight: bold; font-size: 14px; }
-  #campos-titulos-secciones label { display: block; margin-top: 10px; color: var(--color-text-dark); font-size: 13px; }
-  #campos-titulos-secciones input { width: 100%; padding: 10px; border-radius: 8px; background: #333; color: #fff; border: 2px solid #555; margin-top: 4px; }
-</style>
-
-<!-- Modal: elegir cuántas secciones va a tener la tienda (se abre justo al crearla) -->
-<div id="modal-elegir-secciones" class="modal">
-  <div class="modal-content">
-    <span class="close-modal" onclick="cerrarModalElegirSecciones()">&times;</span>
-    <h3>Organiza tu Tienda en Secciones</h3>
-    <p style="color: var(--color-text-dark); font-size: 13px; margin-bottom: 15px;">
-      Divide tu tienda en secciones (por ejemplo: Bebidas, Comidas, Postres). Cada sección admite hasta 15 productos.
-    </p>
-
-    <div id="paso-cantidad-secciones">
-      <label for="cantidad-secciones" style="color: var(--color-text-dark); font-size: 13px;">¿Cuántas secciones va a tener tu tienda?</label>
-      <input type="number" id="cantidad-secciones" min="1" max="15" value="1"
-        style="width:100%;padding:12px;border-radius:8px;background:#333;color:#fff;border:2px solid #555;font-size:16px;margin:8px 0 15px;">
-      <button type="button" onclick="generarCamposTitulosSecciones()">Continuar</button>
-    </div>
-
-    <div id="paso-titulos-secciones" style="display:none;">
-      <div id="campos-titulos-secciones"></div>
-      <button type="button" style="margin-top:15px;" onclick="guardarSeccionesTienda()">Guardar Secciones</button>
-      <button type="button" class="btn-cancelar-producto-mi-tienda" style="margin-top:10px;"
-        onclick="document.getElementById('paso-titulos-secciones').style.display='none'; document.getElementById('paso-cantidad-secciones').style.display='block';">
-        Atrás
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: nuevo producto dentro de una sección (título + foto + precio, sin domicilio) -->
-<div id="modal-nuevo-producto-seccion" class="modal-producto-mi-tienda">
-  <div class="modal-producto-content-mi-tienda">
-    <h3>Nuevo Producto</h3>
-
-    <label style="color:#FFD700;font-weight:bold;">Título:</label>
-    <input type="text" id="titulo-producto-seccion" placeholder="Ej: Hamburguesa Clásica"
-      style="width:100%;padding:12px;border-radius:8px;background:#333;color:#fff;border:2px solid #555;font-size:16px;margin-bottom:15px;">
-
-    <label style="color:#FFD700;font-weight:bold;">Foto:</label>
-    <input type="file" id="foto-producto-seccion" accept="image/*"
-      style="width:100%;padding:8px;margin-bottom:15px;color:#fff;">
-
-    <label style="color:#FFD700;font-weight:bold;">Precio:</label>
-    <input type="number" id="precio-producto-seccion" placeholder="Ej: 8000" min="0"
-      style="width:100%;padding:12px;border-radius:8px;background:#333;color:#fff;border:2px solid #555;font-size:16px;margin-bottom:20px;">
-
-    <button type="button" class="btn-guardar-producto-mi-tienda" onclick="guardarProductoEnSeccion()">Guardar Producto</button>
-    <button type="button" class="btn-cancelar-producto-mi-tienda" onclick="cerrarModalNuevoProductoSeccion()">Cancelar</button>
-  </div>
-</div>
-
-<script>
-// ============================================================
-// SECCIÓN 21 · SISTEMA DE SECCIONES DE TIENDA (marketplace) — NUEVO
-// ------------------------------------------------------------
-// Modelo Firebase:
-//   negocios/{id}/secciones/{seccionId}                        = { titulo, orden, fecha }
-//   negocios/{id}/secciones/{seccionId}/productos/{productoId} = { nombre, precio, imagenes:[url], disponible, fecha }
-//
-// A partir de ahora TODAS las tiendas (nuevas y viejas) navegan por
-// secciones. Las tiendas viejas se migran solas la primera vez que se
-// abren (ver migrarTiendaASecciones): las de categoría "restaurante" pasan
-// sus menús (desayunos/almuerzos/otros) a secciones con esos mismos
-// nombres; el resto pasan su lista plana de productos a una sola sección
-// "General". No se borra ni se toca el sistema viejo (menú personalizable
-// con opciones de desayuno/almuerzo): sigue existiendo tal cual para lo
-// que ya estaba armado, esto es una capa nueva encima.
-// ============================================================
-
-const MAX_PRODUCTOS_POR_SECCION = 15;
-const MAX_SECCIONES_POR_TIENDA = 15;
-
-let negocioIdSeccionesActual = null;   // tienda para la que se está eligiendo el # de secciones
-let contextoSeccionesActual = null;    // { negocioId, esMiTienda, contenedorId }
-let seccionAbiertaActual = null;       // { negocioId, seccionId, titulo, esMiTienda, contenedorId }
-
-// ---------- PASO 1: elegir cuántas secciones, justo al crear la tienda ----------
-window.abrirModalElegirSecciones = function(negocioId) {
-  negocioIdSeccionesActual = negocioId;
-  document.getElementById('cantidad-secciones').value = 1;
-  document.getElementById('campos-titulos-secciones').innerHTML = '';
-  document.getElementById('paso-titulos-secciones').style.display = 'none';
-  document.getElementById('paso-cantidad-secciones').style.display = 'block';
-  document.getElementById('modal-elegir-secciones').style.display = 'block';
-}
-
-window.cerrarModalElegirSecciones = function() {
-  document.getElementById('modal-elegir-secciones').style.display = 'none';
-}
-
-window.generarCamposTitulosSecciones = function() {
-  let cantidad = parseInt(document.getElementById('cantidad-secciones').value);
-  if (!cantidad || cantidad < 1) cantidad = 1;
-  if (cantidad > MAX_SECCIONES_POR_TIENDA) {
-    alert(`El máximo de secciones por tienda es ${MAX_SECCIONES_POR_TIENDA}.`);
-    cantidad = MAX_SECCIONES_POR_TIENDA;
-  }
-
-  const cont = document.getElementById('campos-titulos-secciones');
-  cont.innerHTML = '';
-  for (let i = 0; i < cantidad; i++) {
-    const label = document.createElement('label');
-    label.textContent = `Nombre de la sección ${i + 1}:`;
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'input-titulo-seccion';
-    input.placeholder = 'Ej: Bebidas, Comidas, Postres...';
-    input.maxLength = 30;
-    cont.appendChild(label);
-    cont.appendChild(input);
-  }
-
-  document.getElementById('paso-cantidad-secciones').style.display = 'none';
-  document.getElementById('paso-titulos-secciones').style.display = 'block';
-}
-
-window.guardarSeccionesTienda = async function() {
-  if (!negocioIdSeccionesActual) return;
-
-  const inputs = document.querySelectorAll('#campos-titulos-secciones .input-titulo-seccion');
-  const actualizaciones = {};
-  let orden = 0;
-  let huboVacio = false;
-  let totalSecciones = 0;
-
-  inputs.forEach((inp) => {
-    const titulo = inp.value.trim();
-    if (!titulo) { huboVacio = true; return; }
-    const seccionRef = window.push(window.ref(window.db, `negocios/${negocioIdSeccionesActual}/secciones`));
-    actualizaciones[`negocios/${negocioIdSeccionesActual}/secciones/${seccionRef.key}`] = { titulo, orden: orden++, fecha: Date.now() };
-    totalSecciones++;
-  });
-
-  if (huboVacio || totalSecciones === 0) {
-    alert('Por favor ponle nombre a todas las secciones.');
-    return;
-  }
-
-  try {
-    await window.update(window.ref(window.db), actualizaciones);
-    alert(`Tu tienda quedó creada con ${totalSecciones} sección(es). Ya puedes entrar a cada una a subir tus productos.`);
-    cerrarModalElegirSecciones();
-    negocioIdSeccionesActual = null;
-  } catch (error) {
-    console.error('Error al guardar secciones:', error);
-    alert('Error al guardar las secciones. Intenta de nuevo.');
-  }
-}
-
-// ---------- MIGRACIÓN AUTOMÁTICA de tiendas creadas antes de este sistema ----------
-async function migrarTiendaASecciones(negocioId, negocioData) {
-  const seccionesSnap = await window.get(window.ref(window.db, `negocios/${negocioId}/secciones`));
-  if (seccionesSnap.exists()) return; // ya está migrada, no hacer nada
-
-  const categoria = (negocioData.categoria || '').toLowerCase();
-  const actualizaciones = {};
-
-  if (categoria === 'restaurante' || categoria === 'restaurantes') {
-    const nombresMenu = { desayunos: 'Desayunos', almuerzos: 'Almuerzos', otros: 'Otros' };
-    let orden = 0;
-    for (const clave in nombresMenu) {
-      const snap = await window.get(window.ref(window.db, `negocios/${negocioId}/menu/${clave}`));
-      if (snap.exists()) {
-        const seccionRef = window.push(window.ref(window.db, `negocios/${negocioId}/secciones`));
-        actualizaciones[`negocios/${negocioId}/secciones/${seccionRef.key}`] = { titulo: nombresMenu[clave], orden: orden++, fecha: Date.now() };
-        actualizaciones[`negocios/${negocioId}/secciones/${seccionRef.key}/productos`] = snap.val();
-      }
-    }
-    // Si el restaurante no tenía nada todavía, igual le damos una sección de arranque
-    if (Object.keys(actualizaciones).length === 0) {
-      const seccionRef = window.push(window.ref(window.db, `negocios/${negocioId}/secciones`));
-      actualizaciones[`negocios/${negocioId}/secciones/${seccionRef.key}`] = { titulo: 'General', orden: 0, fecha: Date.now() };
-    }
-  } else {
-    const snap = await window.get(window.ref(window.db, `negocios/${negocioId}/productos`));
-    const seccionRef = window.push(window.ref(window.db, `negocios/${negocioId}/secciones`));
-    actualizaciones[`negocios/${negocioId}/secciones/${seccionRef.key}`] = { titulo: 'General', orden: 0, fecha: Date.now() };
-    if (snap.exists()) {
-      actualizaciones[`negocios/${negocioId}/secciones/${seccionRef.key}/productos`] = snap.val();
-    }
-  }
-
-  await window.update(window.ref(window.db), actualizaciones);
-}
-
-// ---------- VISTA: grid de secciones (sirve para "mi tienda" y para clientes) ----------
-window.mostrarSeccionesEnContenedor = async function(negocioId, esMiTienda, contenedorId) {
-  contextoSeccionesActual = { negocioId, esMiTienda, contenedorId };
-  const cont = document.getElementById(contenedorId);
-  if (!cont) return;
-  cont.innerHTML = '<p class="no-products-message">Cargando secciones...</p>';
-
-  try {
-    const negocioSnap = await window.get(window.ref(window.db, 'negocios/' + negocioId));
-    if (!negocioSnap.exists()) {
-      cont.innerHTML = '<p class="no-products-message">Tienda no encontrada.</p>';
-      return;
-    }
-    const negocioData = negocioSnap.val();
-
-    await migrarTiendaASecciones(negocioId, negocioData);
-
-    const seccionesSnap = await window.get(window.ref(window.db, `negocios/${negocioId}/secciones`));
-    if (!seccionesSnap.exists()) {
-      cont.innerHTML = '<p class="no-products-message">Esta tienda todavía no tiene secciones.</p>';
-      return;
-    }
-
-    const secciones = seccionesSnap.val();
-    const idsOrdenados = Object.keys(secciones).sort((a, b) => (secciones[a].orden || 0) - (secciones[b].orden || 0));
-
-    let html = '<div class="grid-secciones-tienda">';
-    for (const seccionId of idsOrdenados) {
-      const seccion = secciones[seccionId];
-      const conteo = seccion.productos ? Object.keys(seccion.productos).length : 0;
-      html += `
-        <div class="seccion-card-tienda" onclick="abrirSeccionTienda('${negocioId}', '${seccionId}', '${(seccion.titulo || '').replace(/'/g, "\\'")}', ${esMiTienda}, '${contenedorId}')">
-          <div class="seccion-icono">🗂️</div>
-          <div class="seccion-titulo">${seccion.titulo || 'Sección'}</div>
-          <div class="seccion-conteo">${conteo}/${MAX_PRODUCTOS_POR_SECCION} productos</div>
-        </div>`;
-    }
-    html += '</div>';
-
-    if (esMiTienda && idsOrdenados.length === 0) {
-      html = '<p class="no-products-message">Esta tienda todavía no tiene secciones configuradas.</p>';
-    }
-
-    cont.innerHTML = html;
-  } catch (error) {
-    console.error('Error al mostrar secciones:', error);
-    cont.innerHTML = '<p class="no-products-message">Error al cargar las secciones.</p>';
-  }
-}
-
-// ---------- VISTA: productos dentro de una sección ----------
-window.abrirSeccionTienda = async function(negocioId, seccionId, titulo, esMiTienda, contenedorId) {
-  seccionAbiertaActual = { negocioId, seccionId, titulo, esMiTienda, contenedorId };
-  const cont = document.getElementById(contenedorId);
-  if (!cont) return;
-  cont.innerHTML = '<p class="no-products-message">Cargando productos...</p>';
-
-  try {
-    const productosSnap = await window.get(window.ref(window.db, `negocios/${negocioId}/secciones/${seccionId}/productos`));
-    const productos = productosSnap.exists() ? productosSnap.val() : {};
-    const ids = Object.keys(productos).filter(id => productos[id].disponible !== false);
-
-    let html = `<button type="button" class="btn-volver-secciones" onclick="mostrarSeccionesEnContenedor('${negocioId}', ${esMiTienda}, '${contenedorId}')">← Volver a secciones</button>`;
-    html += `<h4 style="color:#FFD700;margin-bottom:10px;">${titulo}</h4>`;
-
-    if (esMiTienda) {
-      const disabled = ids.length >= MAX_PRODUCTOS_POR_SECCION ? 'disabled title="Esta sección ya tiene el máximo de 15 productos"' : '';
-      html += `<button type="button" class="btn-agregar-producto-mi-tienda" style="margin-bottom:14px;" ${disabled} onclick="abrirModalNuevoProductoSeccion('${negocioId}', '${seccionId}')">Agregar Producto (${ids.length}/${MAX_PRODUCTOS_POR_SECCION})</button>`;
-    }
-
-    if (ids.length === 0) {
-      html += '<p class="no-products-message">Todavía no hay productos en esta sección.</p>';
-    } else {
-      html += '<div class="grid-productos-seccion">';
-      ids.forEach((productoId) => {
-        const p = productos[productoId];
-        const foto = (p.imagenes && p.imagenes[0])
-          ? `<img src="${p.imagenes[0]}" alt="${p.nombre}">`
-          : `<div class="producto-seccion-sin-foto">Sin foto</div>`;
-        const precioTxt = p.precio ? `$${parseInt(p.precio).toLocaleString('es-ES')}` : '';
-        const accionesMiTienda = esMiTienda
-          ? `<button type="button" class="btn-cancelar-producto-mi-tienda" style="margin-top:6px;padding:6px;font-size:12px;" onclick="eliminarProductoDeSeccion('${negocioId}', '${seccionId}', '${productoId}')">Eliminar</button>`
-          : `<button class="btn-agregar-carrito" onclick="agregarAlCarrito('${productoId}', 'secciones/${seccionId}/productos')">Agregar al Pedido</button>`;
-        html += `
-          <div class="producto-seccion-card">
-            ${foto}
-            <div class="producto-seccion-info">
-              <div class="producto-seccion-nombre">${p.nombre || ''}</div>
-              <div class="producto-seccion-precio">${precioTxt}</div>
-              ${accionesMiTienda}
-            </div>
-          </div>`;
-      });
-      html += '</div>';
-    }
-
-    cont.innerHTML = html;
-
-    // Si es la vista de cliente (no es mi tienda), asegurar carrito flotante
-    if (!esMiTienda && typeof crearCarritoFlotanteSiFalta === 'function') {
-      crearCarritoFlotanteSiFalta();
-    } else if (!esMiTienda && !document.getElementById('carrito-flotante') && typeof window.abrirCarrito === 'function') {
-      // el carrito flotante ya lo crea el flujo viejo (crearCarritoFlotante) al usar tiendaActual;
-      // si tiendaActual está seteado (viene de verProductosTienda) no hace falta nada más aquí.
-    }
-  } catch (error) {
-    console.error('Error al abrir sección:', error);
-    cont.innerHTML = '<p class="no-products-message">Error al cargar los productos de la sección.</p>';
-  }
-}
-
-// ---------- Agregar producto nuevo a una sección (título + foto + precio) ----------
-window.abrirModalNuevoProductoSeccion = function(negocioId, seccionId) {
-  seccionAbiertaActual = { ...seccionAbiertaActual, negocioId, seccionId };
-  document.getElementById('titulo-producto-seccion').value = '';
-  document.getElementById('foto-producto-seccion').value = '';
-  document.getElementById('precio-producto-seccion').value = '';
-  document.getElementById('modal-nuevo-producto-seccion').style.display = 'block';
-}
-
-window.cerrarModalNuevoProductoSeccion = function() {
-  document.getElementById('modal-nuevo-producto-seccion').style.display = 'none';
-}
-
-window.guardarProductoEnSeccion = async function() {
-  if (!seccionAbiertaActual || !seccionAbiertaActual.negocioId || !seccionAbiertaActual.seccionId) return;
-  const { negocioId, seccionId, esMiTienda, contenedorId } = seccionAbiertaActual;
-
-  const nombre = document.getElementById('titulo-producto-seccion').value.trim();
-  const precio = parseFloat(document.getElementById('precio-producto-seccion').value);
-  const fotoFile = document.getElementById('foto-producto-seccion').files[0];
-
-  if (!nombre) { alert('Por favor ponle un título al producto.'); return; }
-  if (!precio || precio <= 0) { alert('Por favor ingresa un precio válido.'); return; }
-
-  try {
-    // Doble check del cupo de 15 justo antes de guardar (por si se agregó desde otro lado)
-    const productosSnap = await window.get(window.ref(window.db, `negocios/${negocioId}/secciones/${seccionId}/productos`));
-    const totalActual = productosSnap.exists() ? Object.keys(productosSnap.val()).length : 0;
-    if (totalActual >= MAX_PRODUCTOS_POR_SECCION) {
-      alert(`Esta sección ya tiene el máximo de ${MAX_PRODUCTOS_POR_SECCION} productos.`);
-      return;
-    }
-
-    let imagenURL = null;
-    if (fotoFile) {
-      try {
-        const imgRef = window.storageRef(window.storage, `negocios/${negocioId}/secciones/${seccionId}/${Date.now()}_${fotoFile.name}`);
-        await window.uploadBytesResumable(imgRef, fotoFile);
-        imagenURL = await window.getDownloadURL(imgRef);
-      } catch (error) {
-        console.error('Error al subir la foto del producto:', error);
-        alert('No se pudo subir la foto. Se guardará el producto sin foto.');
-      }
-    }
-
-    const nuevoProductoRef = window.push(window.ref(window.db, `negocios/${negocioId}/secciones/${seccionId}/productos`));
-    await window.set(nuevoProductoRef, {
-      nombre,
-      precio,
-      imagenes: imagenURL ? [imagenURL] : [],
-      disponible: true,
-      fecha: Date.now()
-    });
-
-    cerrarModalNuevoProductoSeccion();
-    // Refrescar la vista de la sección para ver el producto nuevo y el contador actualizado
-    await abrirSeccionTienda(negocioId, seccionId, seccionAbiertaActual.titulo || '', esMiTienda, contenedorId);
-  } catch (error) {
-    console.error('Error al guardar producto en sección:', error);
-    alert('Error al guardar el producto. Intenta de nuevo.');
-  }
-}
-
-window.eliminarProductoDeSeccion = async function(negocioId, seccionId, productoId) {
-  if (!confirm('¿Eliminar este producto de la sección?')) return;
-  try {
-    await window.set(window.ref(window.db, `negocios/${negocioId}/secciones/${seccionId}/productos/${productoId}`), null);
-    const ctx = seccionAbiertaActual || {};
-    await abrirSeccionTienda(negocioId, seccionId, ctx.titulo || '', ctx.esMiTienda, ctx.contenedorId);
-  } catch (error) {
-    console.error('Error al eliminar producto:', error);
-    alert('Error al eliminar el producto.');
-  }
-}
-</script>
 
 <!-- ============================================================
      SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
@@ -20412,6 +21193,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  let _adminNotifListener = null;
  let _pedidoEstadoListeners = {};
  let _chatP2PNotifListeners = {};
+ let _comprasListeners = {};
 
  function _save() {
  if (_notifs.length > 50) _notifs = _notifs.slice(-50);
@@ -20464,6 +21246,14 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  _panelOpen = false;
  document.getElementById('notif-panel').classList.remove('open');
  if (typeof changeTab === 'function') changeTab('tracking');
+ } else if (n.action === 'ver_compras' && n.negocioId) {
+ _panelOpen = false;
+ document.getElementById('notif-panel').classList.remove('open');
+ if (typeof window.abrirModalEditarMiTienda === 'function') {
+ Promise.resolve(window.abrirModalEditarMiTienda(n.negocioId)).then(() => {
+ if (typeof window.verComprasDeMiTienda === 'function') window.verComprasDeMiTienda(n.negocioId);
+ });
+ }
  }
  });
  list.appendChild(div);
@@ -20560,6 +21350,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  _pedidoEstadoListeners[pedidoId] = true;
  const pedidoRef = window.ref(window.db, 'pedidos_historial/' + pedidoId);
  const labels = {
+ 'pendiente_confirmacion_tienda': ' Tu compra fue enviada a la tienda, esperando que la confirmen',
  'pendiente': '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg>Pedido pendiente',
  'aceptado': ' Tu pedido fue aceptado',
  'esperando': ' Repartidor en punto de recogida',
@@ -20567,7 +21358,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  'en camino': ' ¡Tu pedido va en camino!',
  'completado': ' ¡Pedido entregado!',
  'entregado': ' ¡Pedido entregado!',
- 'cancelado': ' Pedido cancelado'
+ 'cancelado': ' Pedido cancelado',
+ 'rechazado_tienda': ' La tienda rechazó tu pedido',
+ 'sin_repartidor': ' Tu pedido fue confirmado, buscando repartidor disponible'
  };
  const _registrarOnValue = (estadoInicial) => {
  window.onValue(pedidoRef, (snap) => {
@@ -20578,10 +21371,21 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (nuevoEstado && nuevoEstado !== anterior) {
  _lastPedidoEstado[pedidoId] = nuevoEstado;
  if (anterior !== undefined) {
- const titulo = labels[nuevoEstado] || ' Estado actualizado';
  const rep = repartidorNombre || d.repartidorNombre || '';
+ // Caso especial: la tienda acaba de confirmar la compra (pasa de
+ // "pendiente_confirmacion_tienda" a "pendiente"/"sin_repartidor").
+ // Se avisa con un mensaje claro en vez del genérico "Pedido pendiente".
+ if (anterior === 'pendiente_confirmacion_tienda' && (nuevoEstado === 'pendiente' || nuevoEstado === 'sin_repartidor')) {
+ const titulo = ' ¡Tu pedido fue confirmado por la tienda!';
+ const cuerpo = nuevoEstado === 'pendiente'
+ ? 'Ya se asignó un repartidor' + (rep ? ' (' + rep + ')' : '') + ' para ir a recogerlo y llevártelo.'
+ : 'En un momento se te asignará un repartidor para ir a recogerlo y llevártelo.';
+ window.agregarNotificacion(titulo, cuerpo, 'pedido', 'tracking', { pedidoId });
+ } else {
+ const titulo = labels[nuevoEstado] || ' Estado actualizado';
  const cuerpo = rep ? 'Tu repartidor ' + rep + ': ' + nuevoEstado : 'Estado: ' + nuevoEstado;
  window.agregarNotificacion(titulo, cuerpo, 'pedido', 'tracking', { pedidoId });
+ }
  }
  }
  });
@@ -20620,6 +21424,143 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  rep + ' te escribió' + (texto ? ': "' + texto + '"' : ''),
  'chat', 'chat_p2p', { pedidoId, repartidorNombre: rep }
  );
+ });
+ };
+
+ // Escuchar en vivo las compras nuevas de MI tienda (para notificar y actualizar el badge sin recargar)
+ // ==================== BANNER FLOTANTE DE VENTA NUEVA ====================
+ // Aviso visual arriba de la app (no navega solo). Se muestra 5s y luego se
+ // oculta solo (la alarma de sonido sigue viva en segundo plano hasta que se
+ // confirme el pedido). Si el dueño toca el banner, lo lleva directo al panel
+ // de "Compras por Confirmar" de esa tienda. Si lo descarta con la X, además
+ // de ocultarse silencia la alarma de una vez (window._silenciarAlarmaVentaPendiente).
+ let _bannerVentaTimeout = null;
+ window.mostrarBannerVentaFlotante = function(compra, negocioId, nombreTienda) {
+ try {
+ const existente = document.getElementById('banner-venta-flotante');
+ if (existente) existente.remove();
+ if (_bannerVentaTimeout) { clearTimeout(_bannerVentaTimeout); _bannerVentaTimeout = null; }
+
+ const itemsTexto = (compra.itemsCarrito || []).map(it => it.nombre).join(', ') || 'productos';
+ const montoTexto = '$' + (compra.montoProductos || 0).toLocaleString('es-CO');
+
+ const banner = document.createElement('div');
+ banner.id = 'banner-venta-flotante';
+ banner.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:99999; ' +
+ 'padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px 16px; ' +
+ 'background:linear-gradient(135deg,#0D1526,#060B17); border-bottom:3px solid #FFC200; ' +
+ 'box-shadow:0 4px 18px rgba(0,0,0,0.5); display:flex; align-items:center; gap:10px; ' +
+ 'transform:translateY(-100%); transition:transform 0.3s ease; cursor:pointer;';
+
+ banner.innerHTML =
+ '<div style="font-size:26px; line-height:1;">🛎️</div>' +
+ '<div style="flex:1; min-width:0;">' +
+ '<div style="color:#FFC200; font-weight:bold; font-size:14px;">¡Nueva venta en ' + (nombreTienda || 'tu tienda') + '!</div>' +
+ '<div style="color:#f0f0f0; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' +
+ (compra.clienteNombre || 'Un cliente') + ' compró: ' + itemsTexto + ' — ' + montoTexto +
+ '</div>' +
+ '</div>' +
+ '<button type="button" id="banner-venta-flotante-cerrar" aria-label="Cerrar" ' +
+ 'style="background:none; border:none; color:#aaa; font-size:20px; line-height:1; padding:4px 6px; flex-shrink:0;">✕</button>';
+
+ document.body.appendChild(banner);
+ requestAnimationFrame(() => { banner.style.transform = 'translateY(0)'; });
+
+ const ocultarBanner = () => {
+ if (!document.body.contains(banner)) return;
+ banner.style.transform = 'translateY(-100%)';
+ setTimeout(() => banner.remove(), 320);
+ };
+
+ banner.querySelector('#banner-venta-flotante-cerrar').addEventListener('click', (ev) => {
+ ev.stopPropagation();
+ if (_bannerVentaTimeout) { clearTimeout(_bannerVentaTimeout); _bannerVentaTimeout = null; }
+ if (typeof window._silenciarAlarmaVentaPendiente === 'function') window._silenciarAlarmaVentaPendiente();
+ ocultarBanner();
+ });
+
+ banner.addEventListener('click', () => {
+ if (_bannerVentaTimeout) { clearTimeout(_bannerVentaTimeout); _bannerVentaTimeout = null; }
+ ocultarBanner();
+ if (typeof window.abrirModalEditarMiTienda === 'function') {
+ Promise.resolve(window.abrirModalEditarMiTienda(negocioId)).then(() => {
+ if (typeof window.verComprasDeMiTienda === 'function') window.verComprasDeMiTienda(negocioId);
+ });
+ }
+ });
+
+ // Auto-ocultar a los 5s. Solo oculta el banner: la alarma de sonido
+ // sigue activa hasta que se confirme/rechace el pedido o se descarte
+ // manualmente con la X.
+ _bannerVentaTimeout = setTimeout(() => { _bannerVentaTimeout = null; ocultarBanner(); }, 5000);
+ } catch (e) { console.warn('❌ Error mostrando banner de venta flotante:', e); }
+ };
+
+ window.escucharComprasDeMiTienda = function(negocioId, nombreTienda) {
+ if (!window.db || !window.ref || !window.onValue) return;
+ if (_comprasListeners[negocioId]) return;
+ _comprasListeners[negocioId] = true;
+
+ const comprasRef = window.ref(window.db, `compras_tienda/${negocioId}`);
+ let _comprasConocidas = null; // línea base: se llena en la primera lectura, sin notificar retroactivamente
+
+ window.onValue(comprasRef, (snap) => {
+ const compras = snap.exists() ? snap.val() : {};
+ const idsPendientes = Object.keys(compras).filter(id => compras[id].estado === 'pendiente');
+
+ // Guardar el conteo de pendientes de ESTA tienda y recalcular la alarma global
+ // (puede sonar por pendientes de cualquiera de las tiendas del dueño)
+ window._pedidosPendientesPorTienda = window._pedidosPendientesPorTienda || {};
+ window._pedidosPendientesPorTienda[negocioId] = idsPendientes.length;
+ if (typeof window._actualizarAlarmaVentaPendiente === 'function') window._actualizarAlarmaVentaPendiente();
+
+ if (_comprasConocidas === null) {
+ _comprasConocidas = new Set(idsPendientes);
+ } else {
+ idsPendientes.forEach(id => {
+ if (!_comprasConocidas.has(id)) {
+ _comprasConocidas.add(id);
+ const c = compras[id];
+ const itemsTexto = (c.itemsCarrito || []).map(it => it.nombre).join(', ') || 'productos';
+ window.agregarNotificacion(
+ ' ¡Nueva venta en ' + (nombreTienda || 'tu tienda') + '!',
+ (c.clienteNombre || 'Un cliente') + ' te compró: ' + itemsTexto + ' — $' + (c.montoProductos || 0).toLocaleString('es-CO'),
+ 'pedido', 'ver_compras', { negocioId }
+ );
+ if (typeof window.mostrarBannerVentaFlotante === 'function') {
+ window.mostrarBannerVentaFlotante(c, negocioId, nombreTienda);
+ }
+ }
+ });
+ // Sacar de la línea base las que ya se confirmaron/rechazaron
+ Array.from(_comprasConocidas).forEach(id => {
+ if (!compras[id] || compras[id].estado !== 'pendiente') _comprasConocidas.delete(id);
+ });
+ }
+
+ // Actualizar el badge de la tarjeta de la tienda si está en pantalla en este momento
+ const badge = document.getElementById('compras-pendientes-badge-' + negocioId);
+ if (badge) {
+ if (idsPendientes.length > 0) {
+ badge.textContent = ' ' + idsPendientes.length + ' compra' + (idsPendientes.length === 1 ? '' : 's') + ' nueva' + (idsPendientes.length === 1 ? '' : 's');
+ badge.style.display = 'block';
+ } else {
+ badge.style.display = 'none';
+ }
+ }
+
+ // Actualizar el badge del menú lateral (hamburguesa) si es la tienda que está abierta
+ if (negocioId === window.miTiendaIdActual) {
+ const badgeMenu = document.getElementById('menu-lateral-badge-pendientes');
+ if (badgeMenu) {
+ if (idsPendientes.length > 0) {
+ badgeMenu.textContent = idsPendientes.length;
+ badgeMenu.style.display = 'inline-block';
+ } else {
+ badgeMenu.style.display = 'none';
+ }
+ }
+ }
  });
  };
  // Escuchar notificaciones del admin

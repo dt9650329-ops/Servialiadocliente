@@ -2412,7 +2412,7 @@
  cursor: pointer;
  font-weight: bold;
  font-size: 16px;
- z-index: 1000;
+ z-index: 2050;
  display: flex;
  align-items: center;
  gap: 10px;
@@ -2436,10 +2436,40 @@
  font-weight: bold;
  }
 
+ /* Mensaje flotante "Agregado al carrito" que aparece y se desvanece solo,
+ para que quede claro que el toque sí funcionó y el cliente no siga
+ tocando el botón repetidamente pensando que no hizo nada. */
+ #toast-carrito {
+ position: fixed;
+ bottom: 90px;
+ left: 50%;
+ transform: translateX(-50%) translateY(15px);
+ background: rgba(40,167,69,0.97);
+ color: #fff;
+ padding: 12px 22px;
+ border-radius: 30px;
+ font-weight: bold;
+ font-size: 14px;
+ z-index: 2200;
+ opacity: 0;
+ pointer-events: none;
+ transition: opacity 0.25s ease, transform 0.25s ease;
+ box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+ white-space: nowrap;
+ max-width: 85vw;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ }
+
+ #toast-carrito.mostrar {
+ opacity: 1;
+ transform: translateX(-50%) translateY(0);
+ }
+
  .modal-carrito {
  display: none;
  position: fixed;
- z-index: 2000;
+ z-index: 2100;
  left: 0;
  top: 0;
  width: 100%;
@@ -12268,6 +12298,8 @@ ${mensajeEstado}
  window.cerrarModalVerTienda = function() {
  document.getElementById('modal-ver-tienda').style.display = 'none';
  tiendaActualTelefono = '';
+ const _bellTienda2 = document.getElementById('notif-bell-container');
+ if (_bellTienda2 && window._bellEnabled) _bellTienda2.style.display = 'block';
  }
  
  window.contactarTiendaDesdeModal = function() {
@@ -13801,6 +13833,11 @@ ${motivo}`;
  // Mostrar modal
  document.getElementById('modal-ver-tienda').style.display = 'block';
  document.getElementById('nombre-tienda-ver').textContent = nombreTienda;
+ // La campana global flota fija arriba a la derecha y, al ser este modal de
+ // pantalla completa, tapaba el botón "×" de cerrar. La ocultamos mientras
+ // se navega la tienda (se restaura en cerrarModalVerTienda).
+ const _bellVerTienda = document.getElementById('notif-bell-container');
+ if (_bellVerTienda) _bellVerTienda.style.display = 'none';
  
  const listaProductosVer = document.getElementById('lista-productos-ver');
  listaProductosVer.innerHTML = '<p class="no-products-message">Cargando secciones...</p>';
@@ -13950,6 +13987,27 @@ ${motivo}`;
  document.body.insertAdjacentHTML('beforeend', carritoHTML);
  }
 
+ // Mensaje flotante "Agregado al carrito" que se desvanece solo, para dar
+ // feedback claro e inmediato y evitar que el cliente toque el botón varias
+ // veces pensando que no funcionó.
+ let _toastCarritoTimeout = null;
+ function mostrarToastCarrito(texto) {
+ let toast = document.getElementById('toast-carrito');
+ if (!toast) {
+ toast = document.createElement('div');
+ toast.id = 'toast-carrito';
+ document.body.appendChild(toast);
+ }
+ toast.textContent = texto;
+ toast.classList.remove('mostrar');
+ void toast.offsetWidth; // fuerza reflow para reiniciar la animación si ya estaba visible
+ toast.classList.add('mostrar');
+ if (_toastCarritoTimeout) clearTimeout(_toastCarritoTimeout);
+ _toastCarritoTimeout = setTimeout(() => {
+ toast.classList.remove('mostrar');
+ }, 1500);
+ }
+
  // Agregar producto al carrito
  window.agregarAlCarrito = async function(productoId, rutaProducto = 'productos') {
  try {
@@ -13978,6 +14036,7 @@ ${motivo}`;
  });
  
  actualizarCarritoUI();
+ mostrarToastCarrito('✅ Agregado al carrito');
  
  // Feedback visual
  const btn = event.target;
@@ -14748,6 +14807,11 @@ ${motivo}`;
  
  window.cerrarModalVerTienda = function() {
  document.getElementById('modal-ver-tienda').style.display = 'none';
+ // Restaurar la campana global de notificaciones (se ocultó al abrir la
+ // tienda porque, al ser el modal de pantalla completa, quedaba justo
+ // encima del botón "×" de cerrar y bloqueaba el toque).
+ const _bellTienda = document.getElementById('notif-bell-container');
+ if (_bellTienda && window._bellEnabled) _bellTienda.style.display = 'block';
  }
  
  window.cerrarModalProductoMiTienda = function() {

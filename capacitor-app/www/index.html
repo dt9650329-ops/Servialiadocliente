@@ -8351,7 +8351,7 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  const snap = await window.get(window.ref(window.db, 'pedidos_historial'));
  if (!snap.exists()) return;
  // Incluir completado/entregado para no perder notificaciones recientes
- const estadosActivos = ['pendiente','aceptado','esperando','esperando pedido','en camino','sin_repartidor','completado','entregado'];
+ const estadosActivos = ['pendiente_confirmacion_tienda','pendiente','aceptado','esperando','esperando pedido','en camino','sin_repartidor','completado','entregado'];
  // FIX1: normalizar UID (quitar prefijo) antes de comparar
  const _strip = (id) => (id || '').replace(/^cliente_auth_/, '');
  const _cidNorm = _strip(window.currentUserID);
@@ -9737,7 +9737,7 @@ async function _cargarBarriosFirebaseCliente() {
  }
 
  // Filtrar SOLO pedidos activos (excluir completados/entregados/cancelados)
- const estadosActivos = ['pendiente', 'aceptado', 'esperando', 'esperando pedido', 'en camino', 'sin_repartidor'];
+ const estadosActivos = ['pendiente_confirmacion_tienda', 'pendiente', 'aceptado', 'esperando', 'esperando pedido', 'en camino', 'sin_repartidor'];
  const pedidosActivos = pedidosEncontrados.filter(p =>
  estadosActivos.includes((p.estado || '').toLowerCase())
  );
@@ -9805,6 +9805,9 @@ async function _cargarBarriosFirebaseCliente() {
 
  let estadoDescripcion = '';
  switch(estado.toLowerCase()) {
+ case 'pendiente_confirmacion_tienda':
+ estadoDescripcion = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg><strong>Pendiente por confirmar en la tienda.</strong><br><span style="font-size:12px;color:#aaa;">Todavía no se asigna repartidor. Si tarda mucho, puedes llamar a la tienda para que te confirmen.</span>';
+ break;
  case 'pendiente':
  estadoDescripcion = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg>Tu pedido está pendiente de ser aceptado.';
  break;
@@ -10099,6 +10102,9 @@ if (dentroDeHorario) {
  // Actualizar descripción del estado
  let nuevaDescripcion = '';
  switch(nuevoEstado.toLowerCase()) {
+ case 'pendiente_confirmacion_tienda':
+ nuevaDescripcion = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg><strong>Pendiente por confirmar en la tienda.</strong><br><span style="font-size:12px;color:#aaa;">Todavía no se asigna repartidor. Si tarda mucho, puedes llamar a la tienda para que te confirmen.</span>';
+ break;
  case 'pendiente':
  nuevaDescripcion = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg>Tu pedido está pendiente de ser aceptado.';
  break;
@@ -14429,6 +14435,16 @@ ${motivo}`;
  encabezado.textContent = ' Compras de mi tienda';
  listaProductos.appendChild(encabezado);
 
+ // 🆕 Contador de pedidos por confirmar (pendiente + recibido, ambos
+ // esperan acción del dueño) para verlo de un vistazo al abrir la lista.
+ const porConfirmar = idsOrdenados.filter(id => compras[id].estado === 'pendiente' || compras[id].estado === 'recibido').length;
+ if (porConfirmar > 0) {
+ const resumenPorConfirmar = document.createElement('p');
+ resumenPorConfirmar.style.cssText = 'color:#F59E0B; font-weight:700; font-size:14px; margin:0 0 14px 0;';
+ resumenPorConfirmar.textContent = `🔔 ${porConfirmar} pedido${porConfirmar === 1 ? '' : 's'} por confirmar`;
+ listaProductos.appendChild(resumenPorConfirmar);
+ }
+
  if (idsOrdenados.length === 0) {
  const vacio = document.createElement('p');
  vacio.className = 'no-products-message';
@@ -14538,7 +14554,7 @@ ${motivo}`;
  }
 
  await update(ref(db, `compras_tienda/${negocioId}/${compraId}`), { estado: 'confirmado' });
- await update(ref(db, `asignaciones_programadas/${pedidoId}`), null);
+ await remove(ref(db, `asignaciones_programadas/${pedidoId}`));
 
  // Descontar stock automáticamente por cada unidad vendida en este pedido
  // (los productos sin stock definido simplemente se ignoran dentro de descontarStockProducto)
@@ -14560,23 +14576,62 @@ ${motivo}`;
  }
 
  // El dueño confirma el pedido. En vez de asignar el repartidor de inmediato,
- // primero pregunta en cuánto tiempo estará listo: si faltan más de 12 minutos
- // para esa hora, el repartidor se asigna automáticamente más tarde (~12 min
- // antes de que esté listo) para que no espere tanto parado en la tienda; si
- // ya casi está listo, se asigna de una vez.
+ // primero pregunta en cuánto tiempo estará listo (4 botones fijos, sin texto
+ // libre): si faltan más de 12 minutos para esa hora, el repartidor se asigna
+ // automáticamente más tarde (~12 min antes de que esté listo) para que no
+ // espere tanto parado en la tienda; si ya casi está listo, se asigna de una vez.
  window.confirmarCompraTienda = async function(negocioId, compraId) {
  try {
  const compraSnap = await get(ref(db, `compras_tienda/${negocioId}/${compraId}`));
  if (!compraSnap.exists()) { alert('No se encontró esta compra.'); return; }
  const compra = compraSnap.val();
  const pedidoId = compra.pedidoId || compraId;
+ window._pendienteConfirmarTienda = { negocioId, compraId, compra, pedidoId };
+ _mostrarModalTiempoPreparacionTienda();
+ } catch (error) {
+ console.error('Error al confirmar la compra:', error);
+ alert('Error al confirmar el pedido: ' + error.message);
+ }
+ }
 
+ // 🆕 Modal de 4 botones fijos (reemplaza el prompt() de texto libre, que
+ // dejaba escribir "0" y disparaba el error "Ingresa un número de minutos
+ // válido" en vez de asignar de una vez). Se crea una sola vez y se reusa.
+ function _mostrarModalTiempoPreparacionTienda() {
+ let modal = document.getElementById('modal-tiempo-prep-tienda');
+ if (!modal) {
+ modal = document.createElement('div');
+ modal.id = 'modal-tiempo-prep-tienda';
+ modal.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9500; overflow-y:auto;';
+ modal.innerHTML = `
+ <div style="background:#333; border-radius:14px; margin:15% auto; padding:24px; max-width:380px; width:88%; border:2px solid var(--color-primary);">
+ <h3 style="color:var(--color-primary); text-align:center; margin-top:0;">¿En cuánto tiempo está listo el pedido?</h3>
+ <div style="display:flex; flex-direction:column; gap:10px; margin-top:16px;">
+ <button type="button" onclick="_confirmarTiendaConTiempo(0)" style="padding:14px; border-radius:8px; border:none; background:linear-gradient(135deg,#28a745,#1e7e34); color:#fff; font-weight:bold; font-size:15px; cursor:pointer;">Ya está listo</button>
+ <button type="button" onclick="_confirmarTiendaConTiempo(10)" style="padding:14px; border-radius:8px; border:2px solid var(--color-primary); background:#2a2a2a; color:var(--color-primary); font-weight:bold; font-size:15px; cursor:pointer;">En 10 minutos</button>
+ <button type="button" onclick="_confirmarTiendaConTiempo(20)" style="padding:14px; border-radius:8px; border:2px solid var(--color-primary); background:#2a2a2a; color:var(--color-primary); font-weight:bold; font-size:15px; cursor:pointer;">En 20 minutos</button>
+ <button type="button" onclick="_confirmarTiendaConTiempo(30)" style="padding:14px; border-radius:8px; border:2px solid var(--color-primary); background:#2a2a2a; color:var(--color-primary); font-weight:bold; font-size:15px; cursor:pointer;">En 30 minutos</button>
+ </div>
+ <button type="button" onclick="document.getElementById('modal-tiempo-prep-tienda').style.display='none'; window._pendienteConfirmarTienda=null;" style="margin-top:16px; width:100%; padding:10px; border-radius:8px; border:none; background:#555; color:#eee; font-weight:bold; cursor:pointer;">Cancelar</button>
+ </div>`;
+ document.body.appendChild(modal);
+ }
+ modal.style.display = 'block';
+ }
+
+ // Se ejecuta al tocar uno de los 4 botones. Misma lógica de asignación
+ // inmediata/programada que antes, solo que ahora "Ya está listo" (0 min)
+ // sí entra por el camino de asignación inmediata en vez de rechazarse.
+ window._confirmarTiendaConTiempo = async function(tiempoPreparacionMinutos) {
+ const modal = document.getElementById('modal-tiempo-prep-tienda');
+ if (modal) modal.style.display = 'none';
+ const ctx = window._pendienteConfirmarTienda;
+ if (!ctx) return;
+ const { negocioId, compraId, compra, pedidoId } = ctx;
+ window._pendienteConfirmarTienda = null;
+
+ try {
  const ANTICIPACION_MIN = 12;
- const minutosTexto = prompt('¿En cuántos minutos estará listo el pedido?\n(El repartidor se asignará automáticamente ~' + ANTICIPACION_MIN + ' minutos antes de esa hora, para que no espere parado en tu tienda)', '20');
- if (minutosTexto === null) return; // el dueño canceló, no se confirma nada todavía
- const tiempoPreparacionMinutos = parseInt(minutosTexto, 10);
- if (!tiempoPreparacionMinutos || tiempoPreparacionMinutos <= 0) { alert('Ingresa un número de minutos válido.'); return; }
-
  const timestamp = Date.now();
  const horaListoEstimada = timestamp + tiempoPreparacionMinutos * 60000;
  const horaAsignacionProgramada = horaListoEstimada - (ANTICIPACION_MIN * 60000);

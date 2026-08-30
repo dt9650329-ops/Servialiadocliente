@@ -1796,6 +1796,36 @@
  gap: 8px;
  }
  
+ /* Tarjeta de "Compras de mi tienda": más espaciosa, con la info arriba
+ y los botones de acción abajo (en columna, ancho completo) para que
+ todo quede contenido dentro del recuadro y no se salga de la pantalla. */
+ .compra-pedido-card {
+ display: flex !important;
+ flex-direction: column !important;
+ align-items: stretch !important;
+ padding: 16px !important;
+ gap: 12px;
+ }
+ 
+ .compra-pedido-card .product-info-edit {
+ width: 100%;
+ line-height: 1.5;
+ }
+ 
+ .compra-pedido-card .product-actions-edit {
+ flex-direction: column;
+ width: 100%;
+ gap: 8px;
+ margin-top: 2px;
+ }
+ 
+ .compra-pedido-card .product-actions-edit button {
+ width: 100%;
+ padding: 11px;
+ font-size: 13.5px;
+ box-sizing: border-box;
+ }
+ 
  .btn-toggle-disponibilidad {
  padding: 6px 12px;
  border: none;
@@ -14458,7 +14488,7 @@ ${motivo}`;
  const itemsTexto = (compra.itemsCarrito || []).map(it => `${it.nombre} ($${(it.precio || 0).toLocaleString('es-CO')})`).join(', ');
 
  const card = document.createElement('div');
- card.className = 'product-item-edit';
+ card.className = 'product-item-edit compra-pedido-card';
 
  let accionesHTML = '';
  let estadoHTML = '';

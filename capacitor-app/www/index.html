@@ -3394,7 +3394,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.2.1</small>
+ <small>Versión 1.2.2</small>
  </div>
  </div>
  </div>
@@ -10659,7 +10659,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.2.1');
+ console.log(' Sistema del cliente inicializado v1.2.2');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10758,7 +10758,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.2.1";
+ const APP_VERSION = "1.2.2";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -13157,7 +13157,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.2.1');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.2.2');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -13202,7 +13202,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.2.1  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.2.2  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -14632,7 +14632,12 @@ ${motivo}`;
  if (!modal) {
  modal = document.createElement('div');
  modal.id = 'modal-tiempo-prep-tienda';
- modal.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9500; overflow-y:auto;';
+ // FIX 2026-08-31: antes z-index:9500 quedaba DETRÁS del panel "Mi Tienda"
+ // (class .modal, z-index:10200), asi que al tocar "Confirmar Pedido" este
+ // modal se abria pero no se veia hasta cerrar el panel. Se sube por encima
+ // de .modal (10200) y #modal-producto-seccion (10210) para que siempre
+ // aparezca al frente y se pueda confirmar el tiempo sin cerrar nada.
+ modal.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10300; overflow-y:auto;';
  modal.innerHTML = `
  <div style="background:#333; border-radius:14px; margin:15% auto; padding:24px; max-width:380px; width:88%; border:2px solid var(--color-primary);">
  <h3 style="color:var(--color-primary); text-align:center; margin-top:0;">¿En cuánto tiempo está listo el pedido?</h3>

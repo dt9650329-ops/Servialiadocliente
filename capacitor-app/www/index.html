@@ -14584,7 +14584,18 @@ ${motivo}`;
  }
 
  await update(ref(db, `compras_tienda/${negocioId}/${compraId}`), { estado: 'confirmado' });
+ // FIX: este remove es solo una limpieza "por si acaso" de una posible
+ // asignación programada previa. La mayoría de pedidos NUNCA pasaron por
+ // ese flujo, así que el nodo no existe — y como no existe, las reglas de
+ // Firebase no pueden verificar el dueño (ni por newData ni por data) y
+ // devuelven PERMISSION_DENIED aunque el pedido ya se confirmó bien arriba.
+ // Se envuelve en su propio try/catch para que ese error no aborte el resto
+ // de la función (como el descuento de stock que viene después).
+ try {
  await remove(ref(db, `asignaciones_programadas/${pedidoId}`));
+ } catch (e) {
+ console.warn('No se pudo limpiar asignaciones_programadas (probablemente no existía):', e);
+ }
 
  // Descontar stock automáticamente por cada unidad vendida en este pedido
  // (los productos sin stock definido simplemente se ignoran dentro de descontarStockProducto)

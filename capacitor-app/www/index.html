@@ -14042,6 +14042,37 @@ ${motivo}`;
  <div class="carrito-total-texto">Total a pagar:</div>
  <div class="carrito-total-monto" id="carrito-total-monto">$0</div>
  </div>
+
+ <!-- ===== CUPÓN / CRÉDITOS DE DESCUENTO (compra en tienda) ===== -->
+ <div id="tienda-cupon-section" style="background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(168,85,247,0.1));border:1.5px solid rgba(167,139,250,0.35);border-radius:14px;padding:14px 16px;margin:14px 0;">
+ <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+ <span style="color:#a78bfa;font-weight:800;font-size:14px;"> Usar créditos / cupón</span>
+ <span id="tienda-cupon-bonos-count" style="background:rgba(167,139,250,0.2);color:#c4b5fd;font-size:11px;padding:3px 10px;border-radius:99px;font-weight:700;">0 disponibles</span>
+ </div>
+
+ <select id="tienda-cupon-selector" onchange="if(this.value) agregarCuponStack('tienda')" style="width:100%;padding:10px;border:1px solid rgba(167,139,250,0.4);border-radius:8px;background:#1A2845;color:#e0d7ff;font-size:13px;margin-bottom:8px;">
+ <option value="">— Sin cupón —</option>
+ </select>
+
+ <div id="tienda-cupones-stack" style="display:none;margin-bottom:8px;">
+ <p style="color:#818cf8;font-size:11px;margin:0 0 6px;">Cupones aplicados:</p>
+ <div id="tienda-cupones-stack-list"></div>
+ </div>
+ <div style="display:flex;gap:8px;">
+ <button type="button" onclick="agregarCuponStack('tienda')" style="flex:1;padding:9px;margin:0;font-size:13px;background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;border-radius:8px;">
+ Agregar cupón
+ </button>
+ <button type="button" onclick="limpiarCuponesStack()" style="flex:1;padding:9px;margin:0;font-size:13px;background:#374151;color:#cbd5e1;border-radius:8px;">
+ Limpiar
+ </button>
+ </div>
+
+ <div id="tienda-cupon-resumen" style="display:none;margin-top:10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:10px;text-align:center;">
+ <p style="color:#34d399;font-size:13px;font-weight:700;margin:0 0 2px;"> Descuento aplicado</p>
+ <p id="tienda-cupon-resumen-texto" style="color:#e0d7ff;font-size:15px;font-weight:800;margin:0;"></p>
+ </div>
+ </div>
+
  <button class="btn-whatsapp-pedido" style="background:linear-gradient(135deg,#28a745,#1e7e34);" onclick="iniciarCompraEnTienda()">
  Comprar y Pagar en la App
  </button>
@@ -14203,6 +14234,7 @@ ${motivo}`;
  // Si no hay pedido pendiente, abrir carrito normal
  document.getElementById('modal-carrito').style.display = 'block';
  actualizarCarritoUI();
+ if (typeof window.inicializarCuponSelector === 'function') window.inicializarCuponSelector();
  }
 
  // Cerrar modal del carrito
@@ -14268,18 +14300,41 @@ ${motivo}`;
  const distanciaKm = (await window._distanciaRealEntrePuntos(ubicacionTienda, ubicacionCliente)) || 0;
  const montoDomicilio = window._precioSegunKmArmenia(distanciaKm);
  const montoProductos = carritoTienda.reduce((sum, item) => sum + (item.precio || 0), 0);
- const montoTotal = montoProductos + montoDomicilio;
+ const montoTotalSinDescuento = montoProductos + montoDomicilio;
+
+ // Cupones/créditos aplicados en el carrito: el descuento SIEMPRE lo asume
+ // el repartidor (se descuenta de su tarifa de domicilio), nunca lo que la
+ // tienda recibe por los productos — por eso el descuento nunca supera montoDomicilio.
+ const cuponesUsados = window._cuponesAplicados || [];
+ let descuentoCupon = 0;
+ if (cuponesUsados.length > 0) {
+ const calcCupon = window._calcularPrecioConCupones(montoTotalSinDescuento, cuponesUsados);
+ descuentoCupon = Math.min(calcCupon.descuento, montoDomicilio);
+ }
+ const montoDomicilioCliente = montoDomicilio - descuentoCupon;
+ const montoTotal = montoProductos + montoDomicilioCliente;
+
+ const textoDescuento = descuentoCupon > 0
+ ? `Descuento por cupón: −$${descuentoCupon.toLocaleString('es-CO')} (lo asume el repartidor)\n`
+ : '';
 
  const confirmar = confirm(
  `Resumen de tu compra en ${tiendaActual.nombre}:\n\n` +
  `Productos: $${montoProductos.toLocaleString('es-CO')}\n` +
  `Domicilio (${(Math.round(distanciaKm * 10) / 10)} km): $${montoDomicilio.toLocaleString('es-CO')}\n` +
+ textoDescuento +
  `Total a pagar en la app: $${montoTotal.toLocaleString('es-CO')}\n\n` +
  `Tu compra se enviará a la tienda para que la confirmen; en cuanto la confirmen se asignará un repartidor que pagará la compra en el local y tú le pagas el total al momento de la entrega. ¿Confirmas el pedido?`
  );
  if (!confirmar) return;
 
- await crearCompraPendienteEnTienda({ ubicacionTienda, ubicacionCliente, distanciaKm, montoProductos, montoDomicilio, montoTotal });
+ await crearCompraPendienteEnTienda({ ubicacionTienda, ubicacionCliente, distanciaKm, montoProductos, montoDomicilio, montoDomicilioCliente, montoTotal, descuentoCupon, cuponesUsados });
+
+ // Cupones ya usados: se marcan como redimidos en el servidor y se limpia el stack local
+ if (cuponesUsados.length > 0 && typeof window._marcarBonoUsado === 'function') {
+ for (const c of cuponesUsados) { await window._marcarBonoUsado(c.codigo); }
+ }
+ if (typeof window.limpiarCuponesStack === 'function') window.limpiarCuponesStack();
 
  } catch (error) {
  console.error('Error al iniciar compra en tienda:', error);
@@ -14326,7 +14381,10 @@ ${motivo}`;
 
  // Crea la compra y la deja PENDIENTE DE CONFIRMACIÓN por parte de la tienda.
  // Todavía no se asigna repartidor: eso ocurre cuando el dueño confirma el pedido.
- async function crearCompraPendienteEnTienda({ ubicacionTienda, ubicacionCliente, distanciaKm, montoProductos, montoDomicilio, montoTotal }) {
+ async function crearCompraPendienteEnTienda({ ubicacionTienda, ubicacionCliente, distanciaKm, montoProductos, montoDomicilio, montoDomicilioCliente, montoTotal, descuentoCupon, cuponesUsados }) {
+ montoDomicilioCliente = (montoDomicilioCliente != null) ? montoDomicilioCliente : montoDomicilio;
+ descuentoCupon = descuentoCupon || 0;
+ cuponesUsados = cuponesUsados || [];
  let clienteNombre = 'Cliente';
  let clienteEmail = '';
  let clienteTelefono = '';
@@ -14384,7 +14442,11 @@ ${motivo}`;
  itemsCarrito,
  montoProductos,
  montoDomicilio,
+ montoDomicilioCliente,
  montoTotal,
+ descuentoCupon,
+ cuponesAplicados: cuponesUsados.map(function(c){ return c.codigo+':'+c.label; }).join(', '),
+ descuentoAsumidoPor: descuentoCupon > 0 ? 'repartidor' : null,
  pagoRepartidorAdelantaEnTienda: true,
 
  clienteIdAsignado: window.currentUserID,
@@ -14416,7 +14478,11 @@ ${motivo}`;
  itemsCarrito,
  montoProductos,
  montoDomicilio,
+ montoDomicilioCliente,
  montoTotal,
+ descuentoCupon,
+ cuponesAplicados: cuponesUsados.map(function(c){ return c.codigo+':'+c.label; }).join(', '),
+ descuentoAsumidoPor: descuentoCupon > 0 ? 'repartidor' : null,
  distanciaKm: Math.round(distanciaKm * 10) / 10,
  ubicacionTienda,
  ubicacionCliente,
@@ -17003,8 +17069,8 @@ if (window.db) {
  window.actualizarSelectorCupones = function() {
  const yaAplicados = (window._cuponesAplicados || []).map(function(c){ return c.codigo; });
  const disponibles = _bonosCombinados().filter(function(b){ return !b.usado && !yaAplicados.includes(b.codigo); });
- // Actualizar TODOS los selectores (domicilios y favores)
- ['cupon-selector', 'favor-cupon-selector', 'favor-cupon-selector-pago', 'favor-cupon-selector-recibo'].forEach(function(selId) {
+ // Actualizar TODOS los selectores (domicilios, favores y compra en tienda)
+ ['cupon-selector', 'favor-cupon-selector', 'favor-cupon-selector-pago', 'favor-cupon-selector-recibo', 'tienda-cupon-selector'].forEach(function(selId) {
  const sel = document.getElementById(selId);
  if (!sel) return;
  sel.innerHTML = '<option value="">— Sin cupón —</option>';
@@ -17015,15 +17081,15 @@ if (window.db) {
  sel.appendChild(opt);
  });
  });
- ['cupon-bonos-count', 'favor-cupon-bonos-count', 'favor-cupon-bonos-count-pago', 'favor-cupon-bonos-count-recibo'].forEach(function(id) {
+ ['cupon-bonos-count', 'favor-cupon-bonos-count', 'favor-cupon-bonos-count-pago', 'favor-cupon-bonos-count-recibo', 'tienda-cupon-bonos-count'].forEach(function(id) {
  const el = document.getElementById(id);
  if (el) el.textContent = disponibles.length + ' disponibles';
  });
  };
 
  window.agregarCuponStack = function(origen) {
- // origen puede ser 'favor' o undefined (domicilio)
- const selId = (origen === 'favor') ? 'favor-cupon-selector' : 'cupon-selector';
+ // origen puede ser 'favor', 'tienda' o undefined (domicilio)
+ const selId = (origen === 'favor') ? 'favor-cupon-selector' : (origen === 'tienda') ? 'tienda-cupon-selector' : 'cupon-selector';
  const sel = document.getElementById(selId);
  if (!sel || !sel.value) { alert('Selecciona un cupón primero.'); return; }
  if (!window._cuponesAplicados) window._cuponesAplicados = [];
@@ -17056,10 +17122,11 @@ if (window.db) {
  };
 
  function _renderCuponesStack() {
- // Renderizar en AMBOS contextos (domicilio y favor)
+ // Renderizar en TODOS los contextos (domicilio, favor y compra en tienda)
  [
  { stackId: 'cupones-stack', listId: 'cupones-stack-list' },
- { stackId: 'favor-cupones-stack', listId: 'favor-cupones-stack-list' }
+ { stackId: 'favor-cupones-stack', listId: 'favor-cupones-stack-list' },
+ { stackId: 'tienda-cupones-stack', listId: 'tienda-cupones-stack-list' }
  ].forEach(function(ids) {
  const stackDiv = document.getElementById(ids.stackId);
  const stackList = document.getElementById(ids.listId);
@@ -17080,10 +17147,11 @@ if (window.db) {
 
  function _actualizarResumenCupon() {
  const calc = _calcDescuentoTotal();
- // Actualizar en AMBOS contextos
+ // Actualizar en TODOS los contextos
  [
  { resumenId: 'cupon-resumen', textoId: 'cupon-resumen-texto', precioId: 'domi-precio-valor' },
- { resumenId: 'favor-cupon-resumen', textoId: 'favor-cupon-resumen-texto', precioId: null }
+ { resumenId: 'favor-cupon-resumen', textoId: 'favor-cupon-resumen-texto', precioId: null },
+ { resumenId: 'tienda-cupon-resumen', textoId: 'tienda-cupon-resumen-texto', precioId: null }
  ].forEach(function(ids) {
  const resumen = document.getElementById(ids.resumenId);
  const resumenTxt = document.getElementById(ids.textoId);

@@ -3394,7 +3394,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.2.2</small>
+ <small>Versión 1.3.0</small>
  </div>
  </div>
  </div>
@@ -4945,8 +4945,19 @@
  <button class="ai-quick-btn" onclick="document.getElementById('servibot-tab-input').value='¿Hay repartidores disponibles o cuántos pedidos hay en cola?'; sendAIMessageTab()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8Z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Pedidos en cola</button>
  </div>
 
+ <!-- Vista previa de la imagen adjunta (foto con datos del destinatario) -->
+ <div id="servibot-tab-imagen-preview" style="display:none; align-items:center; gap:10px; padding:8px 14px; background:#1e1e1e; border-top:1px solid #333; flex-shrink:0;">
+ <img id="servibot-tab-imagen-preview-thumb" src="" style="width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid #555;" />
+ <span style="color:#ccc; font-size:12px; flex:1;"> Foto lista para enviar</span>
+ <button type="button" onclick="quitarImagenServibotTab()" style="background:#333; border:none; color:#fff; width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:14px; line-height:1; flex-shrink:0;">✕</button>
+ </div>
+
  <!-- Input -->
  <div style="display:flex; gap:10px; padding:12px 14px 20px; border-top:1px solid #333; background:#1e1e1e; flex-shrink:0; position:relative; z-index:1;">
+ <input type="file" id="servibot-tab-imagen-input" accept="image/*" style="display:none;" onchange="adjuntarImagenServibotTab(this)" />
+ <button id="servibot-foto-btn" onclick="document.getElementById('servibot-tab-imagen-input').click()" title="Adjuntar foto con los datos del destinatario" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:46px !important; height:46px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+ </button>
  <input type="text" id="servibot-tab-input" placeholder="Escribe tu pregunta..." maxlength="400"
  style="flex:1; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:12px 18px; font-size:15px; outline:none; width:auto; margin:0;"
  onkeydown="if(event.key==='Enter') sendAIMessageTab()">
@@ -10659,7 +10670,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.2.2');
+ console.log(' Sistema del cliente inicializado v1.3.0');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10758,7 +10769,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.2.2";
+ const APP_VERSION = "1.3.0";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -10892,8 +10903,13 @@ if (dentroDeHorario) {
  window.borrarContactoLocalUnoCallable = borrarContactoLocalUnoCallable;
  window.guardarContactoLocalConMapaCallable = guardarContactoLocalConMapaCallable;
  window.cotizarPrecioDomicilioCallable = cotizarPrecioDomicilioCallable;
- window.consultarServibot = async function(mensaje, historial) {
-   const res = await servibotChatCallable({ mensaje, historial });
+ window.consultarServibot = async function(mensaje, historial, imagenAdjunta) {
+   const payload = { mensaje, historial };
+   if (imagenAdjunta && imagenAdjunta.base64) {
+     payload.imagenBase64 = imagenAdjunta.base64;
+     payload.imagenMimeType = imagenAdjunta.mimeType;
+   }
+   const res = await servibotChatCallable(payload);
    window._sbAccionPendiente = res.data.accion || null;
    window._sbDatosAgendaPendiente = res.data.datosAgenda || null;
    window._sbDatosUbicacionPendiente = res.data.datosUbicacion || null;
@@ -12000,8 +12016,17 @@ if (dentroDeHorario) {
  }
  
  // CARGAR NEGOCIOS (TODOS LOS APROBADOS + EL PROPIO DEL CLIENTE)
+ // FIX PERF: antes esto enganchaba un onValue nuevo cada vez que el cliente
+ // entraba al tab "Tienda", SIN quitar el anterior. Después de entrar/salir
+ // varias veces en la misma sesión quedaban N listeners activos a la vez,
+ // y cada actualización de CUALQUIER negocio en toda la plataforma disparaba
+ // N reconstrucciones completas del grid (con imágenes) simultáneamente —
+ // esto era una causa real de lentitud/trabas que empeoraba con el uso.
+ // Ahora se reutiliza un solo listener persistente (se engancha una sola vez).
  window.cargarNegocios = function() {
  const storeGrid = document.getElementById('store-grid');
+ if (window._negociosListenerActivo) return; // ya está escuchando, no duplicar
+ window._negociosListenerActivo = true;
  const negociosRef = ref(db, 'negocios');
  
  onValue(negociosRef, (snapshot) => {
@@ -13157,7 +13182,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.2.2');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.0');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -13202,7 +13227,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.2.2  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.3.0  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -19475,8 +19500,12 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  // (precios, zonas, tiempos, cómo pedir, estado del pedido, charla libre)
  // pasa por servibotChat (Gemini). El motor de reglas viejo (TEMAS /
  // obtenerRespuesta) queda solo como red de seguridad si la IA falla.
- async function obtenerRespuestaAsync(msg) {
- const m = msg.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+ async function obtenerRespuestaAsync(msg, imagenAdjunta) {
+ const textoParaReglas = msg || '';
+ // Si viene una foto adjunta, se salta el motor de reglas por palabras clave
+ // (no aplica sin texto) y se va directo a Gemini, que sí puede leerla.
+ if (!imagenAdjunta) {
+ const m = textoParaReglas.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
  if (RE_COLA.test(m)) {
  ultimoTema = 'cola';
  return await respuestaColaRepartidores();
@@ -19484,17 +19513,21 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  if (ultimoTema === 'cola' && RE_COLA_SEGUIMIENTO.test(m)) {
  return await respuestaColaRepartidores();
  }
+ }
  if (typeof window.consultarServibot === 'function') {
  try {
- return await window.consultarServibot(msg, construirHistorialParaIA());
+ return await window.consultarServibot(textoParaReglas, construirHistorialParaIA(), imagenAdjunta);
  } catch (e) {
  console.error('[ServiBot] Error consultando servibotChat:', e);
  // Si falla la Cloud Function (sin internet, cuota agotada, etc.),
  // cae a la respuesta genérica de siempre en vez de dejar al cliente sin nada.
- return obtenerRespuesta(msg);
+ // (Si venía una foto, el motor de reglas no la puede leer, así que se avisa.)
+ return imagenAdjunta
+ ? ' No pude leer la foto en este momento (sin conexión con el asistente). Intenta de nuevo en un momento o escribe los datos directamente.'
+ : obtenerRespuesta(textoParaReglas);
  }
  }
- return obtenerRespuesta(msg);
+ return obtenerRespuesta(textoParaReglas);
  }
 
 
@@ -19768,13 +19801,14 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // 
 
  // Renderizar un mensaje en el panel del tab (misma lógica que addBotMessage/addUserMessage)
- function renderMsgEnTab(role, text, id) {
+ function renderMsgEnTab(role, text, id, imagenPreviewUrl) {
  const container = document.getElementById('servibot-tab-messages');
  if (!container) return;
  const div = document.createElement('div');
  div.className = 'ai-msg ' + (role === 'user' ? 'user' : 'bot');
  if (id) div.id = 'tab-msg-' + id;
- div.innerHTML = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/\n/g,'<br>');
+ const textoHtml = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/\n/g,'<br>');
+ div.innerHTML = (imagenPreviewUrl ? '<img src="' + imagenPreviewUrl + '" style="max-width:180px;max-height:220px;border-radius:10px;display:block;margin-bottom:6px;object-fit:cover;" />' : '') + textoHtml;
  container.appendChild(div);
  container.scrollTop = container.scrollHeight;
  return div;
@@ -20067,6 +20101,56 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  };
 
  // Enviar mensaje desde el tab de ServiBot
+ // ================================================================
+ // FOTO CON DATOS DEL DESTINATARIO ADJUNTA AL CHAT DE SERVIBOT
+ // El cliente adjunta una foto (nota, captura de WhatsApp, etc.) y
+ // ServiBot (Gemini) la lee para sacar nombre/teléfono/dirección/barrio
+ // y armar el domicilio con esos datos, sin tener que escribirlos.
+ // ================================================================
+ window._sbImagenPendiente = null; // { base64, mimeType, previewUrl }
+
+ window.adjuntarImagenServibotTab = function(input) {
+ const file = input.files && input.files[0];
+ if (!file) return;
+ if (!file.type.startsWith('image/')) {
+ alert(' Por favor selecciona una imagen válida');
+ input.value = '';
+ return;
+ }
+ // Límite razonable para no saturar la función (Gemini igual reescala).
+ if (file.size > 8 * 1024 * 1024) {
+ alert(' La imagen es muy pesada (máx 8MB). Intenta con otra foto o una captura más liviana.');
+ input.value = '';
+ return;
+ }
+ const reader = new FileReader();
+ reader.onload = function(e) {
+ const base64Full = e.target.result; // data:image/jpeg;base64,...
+ const partes = base64Full.split(',');
+ const mimeMatch = partes[0].match(/data:(.*?);base64/);
+ window._sbImagenPendiente = {
+ base64: partes[1] || '',
+ mimeType: (mimeMatch && mimeMatch[1]) || file.type,
+ previewUrl: base64Full,
+ };
+ const preview = document.getElementById('servibot-tab-imagen-preview');
+ const thumb = document.getElementById('servibot-tab-imagen-preview-thumb');
+ if (thumb) thumb.src = base64Full;
+ if (preview) preview.style.display = 'flex';
+ };
+ reader.onerror = function() {
+ alert(' No se pudo leer la imagen, intenta de nuevo.');
+ };
+ reader.readAsDataURL(file);
+ input.value = ''; // permite volver a elegir la misma foto si la quita y la vuelve a adjuntar
+ };
+
+ window.quitarImagenServibotTab = function() {
+ window._sbImagenPendiente = null;
+ const preview = document.getElementById('servibot-tab-imagen-preview');
+ if (preview) preview.style.display = 'none';
+ };
+
  window.sendAIMessageTab = function() {
  if (aiWorking) return;
  // Si el cliente todavía está dictando por voz, dar clic en enviar corta
@@ -20075,16 +20159,18 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const input = document.getElementById('servibot-tab-input');
  if (!input) return;
  const text = input.value.trim();
- if (!text) return;
+ const imagenPendiente = window._sbImagenPendiente;
+ if (!text && !imagenPendiente) return;
  input.value = '';
+ window.quitarImagenServibotTab();
 
  // Ocultar botones rápidos del tab
  const qbtns = document.getElementById('servibot-tab-quick-btns');
  if (qbtns) qbtns.style.display = 'none';
 
- // Renderizar mensaje usuario en tab
- renderMsgEnTab('user', text);
- aiHistory.push({ role: 'user', content: text });
+ // Renderizar mensaje usuario en tab (con la miniatura de la foto si venía una)
+ renderMsgEnTab('user', text || ' Foto enviada', null, imagenPendiente ? imagenPendiente.previewUrl : null);
+ aiHistory.push({ role: 'user', content: text || ' [Foto con datos del destinatario]' });
  aiWorking = true;
 
  // Mensaje escribiendo...
@@ -20093,7 +20179,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  setTimeout(async function() {
  try {
- const respuesta = await obtenerRespuestaAsync(text);
+ const respuesta = await obtenerRespuestaAsync(text, imagenPendiente);
 
  const msgLower = text.toLowerCase();
  if (/queja|reclamo|sugerencia|falla|error|problema|mal servicio|mejora/.test(msgLower)) {

@@ -2,6 +2,10 @@
   "appId": "com.servialiados.cliente",
   "appName": "servi aliados ",
   "webDir": "www",
+  "server": {
+    "url": "https://TU-PROYECTO.web.app",
+    "cleartext": false
+  },
   "plugins": {
     "FirebaseAuthentication": {
       "skipNativeAuth": false,

@@ -1,6 +1,42 @@
 <!DOCTYPE html>
 <html lang="es">
-<!-- Índice de secciones: ver /secciones/00-INDICE.md en la carpeta del proyecto (no se mantiene aquí porque se desactualiza cada vez que el archivo crece). -->
+<!--
+================================================================================
+  ÍNDICE DE SECCIONES — index.html (Cliente) · Servi Aliados
+================================================================================
+
+  BLOQUE CSS (dentro de <head>)
+  ─────────────────────────────
+  Línea    51  │ INICIO DEL BLOQUE CSS
+  Línea  2920  │ FIN DEL BLOQUE CSS
+
+  CUERPO HTML (<body>)
+  ─────────────────────────────────────────────────────────────────────────────
+  Línea  2927  │ SECCIÓN  1 · MENÚ HAMBURGUESA, CAMPANITA Y PANEL DE NOTIFICACIONES
+  Línea  3152  │ SECCIÓN  2 · PANTALLAS DE AUTENTICACIÓN, SPLASH Y LOADING
+  Línea  3256  │ SECCIÓN  3 · VISTA CLIENTE (navegación tabs + TAB TIENDA)
+  Línea  3278  │ SECCIÓN  4 · TAB PERFIL
+  Línea  3389  │ SECCIÓN  5 · TAB SERVICIO (formulario de pedido)
+  Línea  4030  │ SECCIÓN  6 · TAB SEGUIMIENTO (TRACKING)
+  Línea  4083  │ SECCIÓN  7 · TAB PREMIOS
+  Línea  4380  │ SECCIÓN  8 · TAB SERVIBOT
+  Línea  4430  │ SECCIÓN  9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
+  Línea  9208  │ SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
+  Línea 13016  │ SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
+  Línea 13108  │ SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
+  Línea 14684  │ SECCIÓN 13 · MODAL SUGERIR NUEVO LUGAR
+  Línea 14772  │ SECCIÓN 13B · MAPEADOR DE UBICACIÓN PARA SUGERENCIAS (pin en mapa)
+  Línea 14892  │ SECCIÓN 14 · SELECTOR DE DESTINO (Armenia / Municipio fuera)
+  Línea 15078  │ SECCIÓN 15 · GEOCODIFICACIÓN Y GPS (Nominatim + ubicación)
+  Línea 15213  │ SECCIÓN 16 · SERVIBOT CHATBOT (motor de respuestas por reglas)
+  Línea 15916  │ SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
+  Línea 16128  │ SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
+  Línea 16404  │ SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO
+  Línea 16564  │ SECCIÓN 19 · MODAL HOJA DE RUTA DE NIVELES
+  Línea 16713  │ SECCIÓN 20 · MODAL VISOR DE IMAGEN
+
+================================================================================
+-->
 <head>
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -139,11 +175,11 @@
  }
  
  .store-card {
- background: linear-gradient(135deg, var(--color-surface2), var(--color-surface));
- border-radius: 10px;
+ background: linear-gradient(160deg, var(--color-surface2), var(--color-surface));
+ border-radius: 16px;
  overflow: hidden;
- box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
- transition: transform 0.3s, box-shadow 0.3s;
+ box-shadow: 0 3px 14px rgba(0, 0, 0, 0.35);
+ transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
  cursor: pointer;
  border: 1px solid var(--color-border);
  position: relative;
@@ -153,40 +189,42 @@
  }
  
  .store-card:hover {
- transform: translateY(-5px);
- box-shadow: 0 8px 25px rgba(245,158,11,0.2);
+ transform: translateY(-4px);
+ box-shadow: 0 10px 28px rgba(245,158,11,0.22);
  border-color: var(--color-primary);
  }
  
  /* Estados de la tienda */
  .store-card.pending {
- border: 2px solid #ffa500;
+ border: 1.5px solid var(--color-warning);
  }
  
  .store-card.approved {
- border: 2px solid var(--color-success);
+ border: 1.5px solid var(--color-success);
  }
  
  .store-card.rejected {
- border: 2px solid #dc3545;
+ border: 1.5px solid var(--color-danger);
  opacity: 0.7;
  }
  
  .store-status-badge {
  position: absolute;
- top: 3px;
- right: 3px;
- padding: 2px 6px;
- border-radius: 10px;
+ top: 6px;
+ right: 6px;
+ padding: 3px 8px;
+ border-radius: 20px;
  font-size: 8px;
- font-weight: bold;
+ font-weight: 700;
+ letter-spacing: 0.2px;
  text-transform: uppercase;
  z-index: 2;
+ box-shadow: 0 2px 6px rgba(0,0,0,0.35);
  }
  
  .store-status-badge.pending {
- background: #ffa500;
- color: #000;
+ background: var(--color-warning);
+ color: #1a1200;
  }
  
  .store-status-badge.approved {
@@ -195,16 +233,16 @@
  }
  
  .store-status-badge.rejected {
- background: #dc3545;
+ background: var(--color-danger);
  color: white;
  }
  
  .store-image {
  width: 100%;
  min-width: 0;
- height: 72px;
+ height: 92px;
  object-fit: cover;
- background: linear-gradient(135deg, #444, #333);
+ background: linear-gradient(135deg, var(--color-surface3), var(--color-surface));
  display: flex;
  align-items: center;
  justify-content: center;
@@ -220,7 +258,7 @@
  }
  
  .store-info {
- padding: 8px 9px;
+ padding: 10px 11px 11px;
  flex: 1;
  min-width: 0;
  display: flex;
@@ -229,9 +267,9 @@
  }
  
  .store-name {
- font-size: 13px;
+ font-size: 13.5px;
  font-weight: bold;
- color: var(--color-primary);
+ color: var(--color-text-light);
  margin-bottom: 2px;
  white-space: nowrap;
  overflow: hidden;
@@ -241,7 +279,7 @@
  .store-description {
  font-size: 10.5px;
  color: var(--color-text-dark);
- margin-bottom: 3px;
+ margin-bottom: 5px;
  line-height: 1.3;
  max-height: 13px;
  overflow: hidden;
@@ -253,21 +291,22 @@
  display: flex;
  justify-content: space-between;
  align-items: center;
- margin-top: 3px;
- padding-top: 3px;
- border-top: 1px solid #444;
+ margin-top: 4px;
+ padding-top: 7px;
+ border-top: 1px solid var(--color-border);
  gap: 6px;
  }
  
  .store-category {
  font-size: 9px;
- background: var(--color-surface3);
- padding: 2px 6px;
- border-radius: 10px;
- color: var(--color-text-light);
+ background: var(--accent-dim);
+ padding: 3px 8px;
+ border-radius: 20px;
+ color: var(--color-primary-h);
  white-space: nowrap;
  overflow: hidden;
  text-overflow: ellipsis;
+ font-weight: 600;
  }
  
  .store-phone {
@@ -290,15 +329,17 @@
  /* Mensaje de tienda propia */
  .my-store-indicator {
  position: absolute;
- top: 3px;
- left: 3px;
+ top: 6px;
+ left: 6px;
  background: var(--color-primary);
  color: var(--color-secondary);
- padding: 2px 6px;
- border-radius: 10px;
+ padding: 3px 8px;
+ border-radius: 20px;
  font-size: 7px;
  font-weight: bold;
+ letter-spacing: 0.2px;
  z-index: 2;
+ box-shadow: 0 2px 6px rgba(0,0,0,0.35);
  }
  
  /* Botón crear tienda */
@@ -2303,95 +2344,146 @@
  display: block;
  }
 
- /* ===== VISTA DE MENÚ PARA CLIENTES ===== */
+ /* ===== VISTA DE MENÚ PARA CLIENTES (estilo lista, foto a la derecha) ===== */
 
  .menu-cliente-container {
- background: #1f1f1f;
+ background: var(--color-surface);
  border-radius: 12px;
  padding: 20px;
  margin: 20px 0;
  }
 
- .menu-producto-card {
- background: #2a2a2a;
- border-radius: 10px;
- padding: 10px;
- margin-bottom: 0;
- border: 2px solid #444;
- transition: all 0.3s;
+ /* El contenedor #lista-productos-ver es una grilla por defecto (para las
+    tarjetas de SECCIÓN); cuando muestra los PRODUCTOS de una sección puntual
+    se le agrega esta clase para pasar a una sola columna, lista tipo menú. */
+ #lista-productos-ver.lista-modo-productos {
  display: flex;
  flex-direction: column;
+ gap: 10px;
+ }
+
+ .menu-producto-card {
+ background: linear-gradient(160deg, var(--color-surface2), var(--color-surface));
+ border-radius: 14px;
+ padding: 12px;
+ border: 1px solid var(--color-border);
+ transition: border-color 0.25s, transform 0.25s;
+ display: flex;
+ align-items: center;
+ gap: 12px;
  }
 
  .menu-producto-card:hover {
- border-color: #FFD700;
- transform: translateY(-2px);
+ border-color: var(--color-primary);
+ transform: translateY(-1px);
+ }
+
+ .menu-producto-thumb {
+ width: 68px;
+ height: 68px;
+ border-radius: 12px;
+ overflow: hidden;
+ flex-shrink: 0;
+ background: linear-gradient(135deg, var(--color-surface3), var(--color-surface));
+ cursor: pointer;
+ }
+
+ .menu-producto-thumb img {
+ width: 100%;
+ height: 100%;
+ object-fit: cover;
+ }
+
+ .menu-producto-body {
+ flex: 1;
+ min-width: 0;
+ display: flex;
+ flex-direction: column;
+ gap: 3px;
  }
 
  .menu-producto-header {
  display: flex;
- flex-direction: column;
- gap: 2px;
- margin-bottom: 8px;
+ align-items: flex-start;
+ justify-content: space-between;
+ gap: 8px;
  }
 
  .menu-producto-nombre {
- color: #FFD700;
- font-size: 14px;
+ color: var(--color-text-light);
+ font-size: 14.5px;
  font-weight: bold;
  line-height: 1.3;
  }
 
  .menu-producto-precio {
- color: #28a745;
- font-size: 15px;
+ color: var(--color-success);
+ font-size: 14px;
  font-weight: bold;
+ white-space: nowrap;
+ flex-shrink: 0;
  }
 
  .menu-producto-descripcion {
- color: #ccc;
- line-height: 1.6;
- margin-bottom: 15px;
+ color: var(--color-text-dark);
+ font-size: 12px;
+ line-height: 1.45;
+ display: -webkit-box;
+ -webkit-line-clamp: 2;
+ -webkit-box-orient: vertical;
+ overflow: hidden;
+ }
+
+ .menu-producto-descripcion.expandida {
+ -webkit-line-clamp: unset;
+ overflow: visible;
+ }
+
+ .menu-producto-vermas {
+ color: var(--color-link);
+ font-size: 11px;
+ font-weight: 600;
+ cursor: pointer;
+ width: fit-content;
  }
 
  .menu-producto-detalle {
- background: #1a1a1a;
+ background: var(--color-surface3);
  padding: 12px;
  border-radius: 8px;
  margin-top: 10px;
  }
 
  .menu-producto-detalle-item {
- color: #f0f0f0;
+ color: var(--color-text-light);
  padding: 5px 0;
  display: flex;
  align-items: center;
  gap: 8px;
  }
 
- .menu-producto-detalle-item::before {
- content: '';
- color: #28a745;
- font-weight: bold;
- }
-
  .btn-agregar-carrito {
- width: 100%;
- padding: 10px;
- background: linear-gradient(135deg, #FFD700, #FFA500);
- color: #000;
+ width: 34px;
+ height: 34px;
+ min-width: 34px;
+ padding: 0;
+ background: linear-gradient(135deg, var(--color-primary-h), var(--color-primary));
+ color: var(--color-secondary);
  border: none;
- border-radius: 8px;
- font-weight: bold;
- font-size: 13px;
+ border-radius: 50%;
+ font-weight: 800;
+ font-size: 18px;
+ line-height: 1;
  cursor: pointer;
- transition: all 0.3s;
- margin-top: auto;
+ transition: transform 0.2s;
+ flex-shrink: 0;
+ display: flex;
+ align-items: center;
+ justify-content: center;
  }
 
  .btn-agregar-carrito:hover {
- background: linear-gradient(135deg, #FFA500, #FFD700);
- transform: scale(1.02);
+ transform: scale(1.08);
  }
 
  .carrito-flotante {
@@ -4917,19 +5009,19 @@
  </div>
 
  <!-- Input -->
- <div style="display:flex; gap:8px; padding:12px 14px 20px; border-top:1px solid #333; background:#1e1e1e; flex-shrink:0; position:relative; z-index:1; box-sizing:border-box; width:100%;">
+ <div style="display:flex; gap:10px; padding:12px 14px 20px; border-top:1px solid #333; background:#1e1e1e; flex-shrink:0; position:relative; z-index:1;">
  <input type="file" id="servibot-tab-imagen-input" accept="image/*" style="display:none;" onchange="adjuntarImagenServibotTab(this)" />
- <button id="servibot-foto-btn" onclick="document.getElementById('servibot-tab-imagen-input').click()" title="Adjuntar foto con los datos del destinatario" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:42px; height:42px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:42px; max-width:42px; box-sizing:border-box; transition:background 0.15s;">
- <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+ <button id="servibot-foto-btn" onclick="document.getElementById('servibot-tab-imagen-input').click()" title="Adjuntar foto con los datos del destinatario" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:46px !important; height:46px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
  </button>
  <input type="text" id="servibot-tab-input" placeholder="Escribe tu pregunta..." maxlength="400"
- style="flex:1 1 0%; min-width:0; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:11px 16px; font-size:15px; outline:none; box-sizing:border-box; margin:0;"
+ style="flex:1; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:12px 18px; font-size:15px; outline:none; width:auto; margin:0;"
  onkeydown="if(event.key==='Enter') sendAIMessageTab()">
- <button id="servibot-mic-btn" onclick="iniciarDictadoServiBot()" title="Dictar por voz" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:42px; height:42px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:42px; max-width:42px; box-sizing:border-box; transition:background 0.15s;">
- <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+ <button id="servibot-mic-btn" onclick="iniciarDictadoServiBot()" title="Dictar por voz" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:46px !important; height:46px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
  </button>
- <button onclick="sendAIMessageTab()" style="background:linear-gradient(135deg,#FFD700,#ff9800); border:none; border-radius:50%; width:42px; height:42px; color:#111; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:42px; max-width:42px; box-sizing:border-box;">
- <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+ <button onclick="sendAIMessageTab()" style="background:linear-gradient(135deg,#FFD700,#ff9800); border:none; border-radius:50%; width:46px !important; height:46px; color:#111; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
  </button>
  </div>
  </div>
@@ -7376,7 +7468,12 @@ window._domiPendiente = { nombreEntrega, dirRecogida, telEntrega, zonaRecogida, 
  const reps = repsSnap.val();
  let menosOcupado = null;
  for (const [uid, data] of Object.entries(reps)) {
- if (data.online === true && !_bloqueosConEsteCliente.has(uid)) {
+ // FIX 2026-09-05 (v2): ya no se exige "perfilActivo" (que en la práctica
+ // equivalía a "aprobado manualmente por el admin") — cualquier repartidor
+ // que se conecte hoy cuenta como activo. Solo se descarta al que el admin
+ // bloqueó explícitamente (bloqueado:true); perfilActivo se sigue guardando
+ // en el mismo toggle de bloqueo, pero ya no es lo que se revisa acá.
+ if (data.online === true && data.bloqueado !== true && !_bloqueosConEsteCliente.has(uid)) {
  // Asignar al repartidor con menos pedidos activos
  if (!menosOcupado || (data.pedidosActivos || 0) < (menosOcupado.pedidosActivos || 0)) {
  menosOcupado = { uid, ...data };
@@ -12117,6 +12214,15 @@ if (dentroDeHorario) {
  function crearTarjetaNegocio(negocioId, negocio, esMiTienda) {
  const card = document.createElement('div');
  
+ // Aviso de tienda cerrada, visible para todos los clientes (no solo el dueño).
+ // Se cierra si el dueño la apagó manualmente, O si está fuera del horario
+ // de atención que configuró (antes ese horario se guardaba pero nunca se
+ // usaba para nada). Se calcula ANTES del badge de estado para poder
+ // decidir si mostrar "Aprobada" o no (ver más abajo).
+ const cerradaManual = negocio.tiendaAbierta === false;
+ const cerradaPorHorario = !negocioEstaAbiertoAhora(negocio);
+ const tiendaCerrada = cerradaManual || cerradaPorHorario;
+ 
  // Determinar clase según estado
  let estadoClase = '';
  let badgeHTML = '';
@@ -12148,21 +12254,22 @@ if (dentroDeHorario) {
  badgeClass = 'pending';
  }
  
+ // FIX 2026-09-03: mostrar solo un mensaje de estado a la vez. Si la
+ // tienda está aprobada pero cerrada (por horario o manual), el aviso
+ // de "Cerrada" (más abajo) ya es suficiente — el dueño y los clientes
+ // ya saben que está aprobada, así que se omite ese badge para no
+ // amontonarlo encima del de "Cerrada". Rechazada/Pendiente sí se
+ // siguen mostrando siempre porque son más relevantes que el horario.
+ const ocultarBadgeAprobada = badgeClass === 'approved' && tiendaCerrada;
+ 
  badgeHTML = `
- <span class="store-status-badge ${badgeClass}">${badgeText}</span>
+ ${ocultarBadgeAprobada ? '' : `<span class="store-status-badge ${badgeClass}">${badgeText}</span>`}
  <span class="my-store-indicator">MI TIENDA</span>
  `;
  }
  
  card.className = `store-card ${estadoClase}`;
 
- // Aviso de tienda cerrada, visible para todos los clientes (no solo el dueño).
- // Se cierra si el dueño la apagó manualmente, O si está fuera del horario
- // de atención que configuró (antes ese horario se guardaba pero nunca se
- // usaba para nada).
- const cerradaManual = negocio.tiendaAbierta === false;
- const cerradaPorHorario = !negocioEstaAbiertoAhora(negocio);
- const tiendaCerrada = cerradaManual || cerradaPorHorario;
  const badgeCerradaHTML = tiendaCerrada ? `<span class="store-status-badge rejected" style="position:absolute; top:8px; right:8px;">${cerradaManual ? 'Cerrada' : 'Cerrada (fuera de horario)'}</span>` : '';
  
  const imagenHTML = negocio.imagen ? 
@@ -13925,6 +14032,7 @@ ${motivo}`;
  // Muestra la grilla de secciones de la tienda para el cliente final
  function renderSeccionesClienteTienda(negocioId, nombreTienda, secciones) {
  const listaProductosVer = document.getElementById('lista-productos-ver');
+ listaProductosVer.classList.remove('lista-modo-productos');
  const idsOrdenados = Object.keys(secciones || {}).sort((a, b) => (secciones[a].orden || 0) - (secciones[b].orden || 0));
 
  if (idsOrdenados.length === 0) {
@@ -13960,6 +14068,7 @@ ${motivo}`;
  // Muestra los productos de una sección puntual para que el cliente los agregue al pedido
  window.verSeccionClienteTienda = async function(negocioId, nombreTienda, seccionId, titulo) {
  const listaProductosVer = document.getElementById('lista-productos-ver');
+ listaProductosVer.classList.add('lista-modo-productos');
  listaProductosVer.innerHTML = '<p class="no-products-message">Cargando productos...</p>';
 
  try {
@@ -13978,7 +14087,6 @@ ${motivo}`;
  const encabezado = document.createElement('h4');
  encabezado.style.color = 'var(--color-primary)';
  encabezado.style.marginBottom = '10px';
- encabezado.style.gridColumn = '1 / -1';
  encabezado.textContent = titulo;
  listaProductosVer.appendChild(encabezado);
 
@@ -13992,16 +14100,29 @@ ${motivo}`;
  const productoDiv = document.createElement('div');
  productoDiv.className = 'menu-producto-card';
 
- const fotoHTML = producto.foto ? `<div class="product-images-gallery"><img src="${producto.foto}" alt="${producto.nombre}" onclick="window.open('${producto.foto}', '_blank')"></div>` : '';
+ const thumbHTML = producto.foto
+ ? `<div class="menu-producto-thumb" onclick="window.open('${producto.foto}', '_blank')"><img src="${producto.foto}" alt="${producto.nombre}"></div>`
+ : '';
  const precioHTML = producto.precio ? `<div class="menu-producto-precio">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
 
+ // Descripción con "Ver más" si es larga (se corta a 2 líneas por CSS
+ // hasta que el cliente la despliega tocándola).
+ const descId = `desc-${productoId}`;
+ const descHTML = producto.descripcion
+ ? `<div class="menu-producto-descripcion" id="${descId}">${producto.descripcion}</div>
+ <span class="menu-producto-vermas" onclick="this.previousElementSibling.classList.toggle('expandida'); this.textContent = this.previousElementSibling.classList.contains('expandida') ? 'Ver menos' : 'Ver más...'">Ver más...</span>`
+ : '';
+
  productoDiv.innerHTML = `
- ${fotoHTML}
+ <div class="menu-producto-body">
  <div class="menu-producto-header">
  <div class="menu-producto-nombre">${producto.nombre}</div>
  ${precioHTML}
  </div>
- ${producto.precio ? `<button class="btn-agregar-carrito" onclick="agregarAlCarrito('${productoId}', 'secciones/${seccionId}/productos')"> Agregar al Pedido</button>` : ''}
+ ${descHTML}
+ </div>
+ ${thumbHTML}
+ ${producto.precio ? `<button class="btn-agregar-carrito" onclick="agregarAlCarrito('${productoId}', 'secciones/${seccionId}/productos')" title="Agregar al pedido">+</button>` : ''}
  `;
 
  listaProductosVer.appendChild(productoDiv);
@@ -14362,7 +14483,11 @@ ${motivo}`;
  const reps = repsSnap.val();
  let menosOcupado = null;
  for (const [uid, data] of Object.entries(reps)) {
- if (data.online === true && !_bloqueosConEsteCliente.has(uid)) {
+ // FIX 2026-09-05 (v2): ya no se exige "perfilActivo" (aprobación manual
+ // previa del admin) — cualquier repartidor que se conecte hoy cuenta
+ // como activo. Solo se descarta al que el admin bloqueó explícitamente
+ // (bloqueado:true).
+ if (data.online === true && data.bloqueado !== true && !_bloqueosConEsteCliente.has(uid)) {
  if (!menosOcupado || (data.pedidosActivos || 0) < (menosOcupado.pedidosActivos || 0)) {
  menosOcupado = { uid, ...data };
  }
@@ -22282,7 +22407,7 @@ const NIVELES_ROADMAP = [
  </div>`;
  }
 
- const card = document.createElement('div');
+const card = document.createElement('div');
  card.style.cssText = `
  background:${esActual ? `linear-gradient(135deg,rgba(99,102,241,0.12),rgba(168,85,247,0.12))` : (esAlcanzado ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.2)')};
  border:${esActual ? `2px solid ${nv.color}` : (esAlcanzado ? `1px solid ${nv.color}55` : '1px solid #1F3055')};

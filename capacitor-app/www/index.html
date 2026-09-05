@@ -1,6 +1,42 @@
 <!DOCTYPE html>
 <html lang="es">
-<!-- Índice de secciones: ver /secciones/00-INDICE.md en la carpeta del proyecto (no se mantiene aquí porque se desactualiza cada vez que el archivo crece). -->
+<!--
+================================================================================
+  ÍNDICE DE SECCIONES — index.html (Cliente) · Servi Aliados
+================================================================================
+
+  BLOQUE CSS (dentro de <head>)
+  ─────────────────────────────
+  Línea    51  │ INICIO DEL BLOQUE CSS
+  Línea  2920  │ FIN DEL BLOQUE CSS
+
+  CUERPO HTML (<body>)
+  ─────────────────────────────────────────────────────────────────────────────
+  Línea  2927  │ SECCIÓN  1 · MENÚ HAMBURGUESA, CAMPANITA Y PANEL DE NOTIFICACIONES
+  Línea  3152  │ SECCIÓN  2 · PANTALLAS DE AUTENTICACIÓN, SPLASH Y LOADING
+  Línea  3256  │ SECCIÓN  3 · VISTA CLIENTE (navegación tabs + TAB TIENDA)
+  Línea  3278  │ SECCIÓN  4 · TAB PERFIL
+  Línea  3389  │ SECCIÓN  5 · TAB SERVICIO (formulario de pedido)
+  Línea  4030  │ SECCIÓN  6 · TAB SEGUIMIENTO (TRACKING)
+  Línea  4083  │ SECCIÓN  7 · TAB PREMIOS
+  Línea  4380  │ SECCIÓN  8 · TAB SERVIBOT
+  Línea  4430  │ SECCIÓN  9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
+  Línea  9208  │ SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
+  Línea 13016  │ SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
+  Línea 13108  │ SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
+  Línea 14684  │ SECCIÓN 13 · MODAL SUGERIR NUEVO LUGAR
+  Línea 14772  │ SECCIÓN 13B · MAPEADOR DE UBICACIÓN PARA SUGERENCIAS (pin en mapa)
+  Línea 14892  │ SECCIÓN 14 · SELECTOR DE DESTINO (Armenia / Municipio fuera)
+  Línea 15078  │ SECCIÓN 15 · GEOCODIFICACIÓN Y GPS (Nominatim + ubicación)
+  Línea 15213  │ SECCIÓN 16 · SERVIBOT CHATBOT (motor de respuestas por reglas)
+  Línea 15916  │ SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
+  Línea 16128  │ SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
+  Línea 16404  │ SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO
+  Línea 16564  │ SECCIÓN 19 · MODAL HOJA DE RUTA DE NIVELES
+  Línea 16713  │ SECCIÓN 20 · MODAL VISOR DE IMAGEN
+
+================================================================================
+-->
 <head>
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -3358,7 +3394,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.3.1</small>
+ <small>Versión 1.2.2</small>
  </div>
  </div>
  </div>
@@ -4909,27 +4945,16 @@
  <button class="ai-quick-btn" onclick="document.getElementById('servibot-tab-input').value='¿Hay repartidores disponibles o cuántos pedidos hay en cola?'; sendAIMessageTab()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8Z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Pedidos en cola</button>
  </div>
 
- <!-- Vista previa de la imagen adjunta (foto con datos del destinatario) -->
- <div id="servibot-tab-imagen-preview" style="display:none; align-items:center; gap:10px; padding:8px 14px; background:#1e1e1e; border-top:1px solid #333; flex-shrink:0;">
- <img id="servibot-tab-imagen-preview-thumb" src="" style="width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid #555;" />
- <span style="color:#ccc; font-size:12px; flex:1;"> Foto lista para enviar</span>
- <button type="button" onclick="quitarImagenServibotTab()" style="background:#333; border:none; color:#fff; width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:14px; line-height:1; flex-shrink:0;">✕</button>
- </div>
-
  <!-- Input -->
- <div style="display:flex; gap:8px; padding:12px 14px 20px; border-top:1px solid #333; background:#1e1e1e; flex-shrink:0; position:relative; z-index:1; box-sizing:border-box; width:100%;">
- <input type="file" id="servibot-tab-imagen-input" accept="image/*" style="display:none;" onchange="adjuntarImagenServibotTab(this)" />
- <button id="servibot-foto-btn" onclick="document.getElementById('servibot-tab-imagen-input').click()" title="Adjuntar foto con los datos del destinatario" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:42px; height:42px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:42px; max-width:42px; box-sizing:border-box; transition:background 0.15s;">
- <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
- </button>
+ <div style="display:flex; gap:10px; padding:12px 14px 20px; border-top:1px solid #333; background:#1e1e1e; flex-shrink:0; position:relative; z-index:1;">
  <input type="text" id="servibot-tab-input" placeholder="Escribe tu pregunta..." maxlength="400"
- style="flex:1 1 0%; min-width:0; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:11px 16px; font-size:15px; outline:none; box-sizing:border-box; margin:0;"
+ style="flex:1; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:12px 18px; font-size:15px; outline:none; width:auto; margin:0;"
  onkeydown="if(event.key==='Enter') sendAIMessageTab()">
- <button id="servibot-mic-btn" onclick="iniciarDictadoServiBot()" title="Dictar por voz" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:42px; height:42px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:42px; max-width:42px; box-sizing:border-box; transition:background 0.15s;">
- <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+ <button id="servibot-mic-btn" onclick="iniciarDictadoServiBot()" title="Dictar por voz" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:46px !important; height:46px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
  </button>
- <button onclick="sendAIMessageTab()" style="background:linear-gradient(135deg,#FFD700,#ff9800); border:none; border-radius:50%; width:42px; height:42px; color:#111; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:42px; max-width:42px; box-sizing:border-box;">
- <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+ <button onclick="sendAIMessageTab()" style="background:linear-gradient(135deg,#FFD700,#ff9800); border:none; border-radius:50%; width:46px !important; height:46px; color:#111; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
  </button>
  </div>
  </div>
@@ -8353,27 +8378,22 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  setTimeout(async function() {
  if (!window.db || !window.ref || !window.get || !window.currentUserID) return;
  try {
- // 🔒 SEGURIDAD 2026-09-03: consulta indexada por el propio UID en vez de
- // descargar toda la tabla pedidos_historial y filtrar en el navegador.
- const _strip = (id) => (id || '').replace(/^cliente_auth_/, '');
- const _cidNorm = _strip(window.currentUserID);
- const [snapA, snapB] = await Promise.all([
- window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(_cidNorm))),
- window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(`cliente_auth_${_cidNorm}`))),
- ]);
- if (!snapA.exists() && !snapB.exists()) return;
+ const snap = await window.get(window.ref(window.db, 'pedidos_historial'));
+ if (!snap.exists()) return;
  // Incluir completado/entregado para no perder notificaciones recientes
  const estadosActivos = ['pendiente_confirmacion_tienda','pendiente','aceptado','esperando','esperando pedido','en camino','sin_repartidor','completado','entregado'];
- const _procesarChild = (child) => {
+ // FIX1: normalizar UID (quitar prefijo) antes de comparar
+ const _strip = (id) => (id || '').replace(/^cliente_auth_/, '');
+ const _cidNorm = _strip(window.currentUserID);
+ snap.forEach(child => {
  const p = child.val();
+ if (_strip(p.clienteIdAsignado) !== _cidNorm) return;
  if (!estadosActivos.includes((p.estado || '').toLowerCase())) return;
  const pid = child.key;
  const repN = p.repartidorNombre || '';
  if (typeof window.escucharEstadoPedidoNotif === 'function') window.escucharEstadoPedidoNotif(pid, repN);
  if (typeof window.escucharMensajesRepartidorNotif === 'function') window.escucharMensajesRepartidorNotif(pid, repN);
- };
- if (snapA.exists()) snapA.forEach(_procesarChild);
- if (snapB.exists()) snapB.forEach(_procesarChild);
+ });
  } catch(e) { console.warn('Notif scan error:', e); }
  }, 2000);
 
@@ -9697,24 +9717,11 @@ async function _cargarBarriosFirebaseCliente() {
  try {
  let userUID = null;
  let userName = 'Cliente';
- let pedidosEncontrados = [];
 
  // FIX: Si el usuario ya está logueado, usarlo directamente sin pedir correo
  if (window.currentUserID) {
  userUID = window.currentUserID;
  userName = window.currentUserNombre || 'Cliente';
-
- // 🔒 SEGURIDAD 2026-09-03: consulta indexada por el propio UID en vez de
- // descargar TODO pedidos_historial y filtrar en el navegador — así las
- // reglas de Firebase pueden exigir que la consulta sea sobre uno mismo.
- const cidNorm = String(userUID).replace(/^cliente_auth_/, '');
- const [snapA, snapB] = await Promise.all([
- window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(cidNorm))),
- window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(`cliente_auth_${cidNorm}`))),
- ]);
- [snapA, snapB].forEach(snap => {
- if (snap.exists()) snap.forEach(child => pedidosEncontrados.push({ id: child.key, ...child.val() }));
- });
  } else {
  // Solo pedir correo si NO está logueado
  const formManual = document.getElementById('tracking-form-manual');
@@ -9725,24 +9732,39 @@ async function _cargarBarriosFirebaseCliente() {
  statusDiv.style.color = '#FFD700';
  return;
  }
- // 🔒 SEGURIDAD 2026-09-03: la búsqueda por correo ya no lee las tablas
- // completas "usuarios"/"pedidos_historial" desde el navegador — corre
- // en el servidor (Cloud Function con Admin SDK) y solo devuelve el
- // pedido, no el perfil completo de nadie.
- const resultado = await window.buscarPedidoPorCorreoCallable({ correo: email });
- const datos = resultado && resultado.data;
- if (!datos || !datos.encontrado) {
+ const usuariosSnapshot = await window.get(window.ref(window.db, 'usuarios'));
+ if (usuariosSnapshot.exists()) {
+ usuariosSnapshot.forEach(child => {
+ const u = child.val();
+ if (u.correo && u.correo.toLowerCase() === email.toLowerCase()) {
+ userUID = u.uid || child.key;
+ userName = u.nombre || 'Cliente';
+ }
+ });
+ }
+ if (!userUID) {
  statusDiv.textContent = ' No se encontró ningún usuario con ese correo.';
  statusDiv.style.color = '#dc3545';
  return;
  }
- userUID = datos.clienteUID;
- userName = datos.clienteNombre || 'Cliente';
- pedidosEncontrados = (datos.pedidos || []).map(p => ({ ...p }));
  }
 
  // FIX: clienteIdAsignado se guarda como UID directo en solicitarDomicilio
  const clienteID = userUID;
+
+ const historialSnapshot = await window.get(window.ref(window.db, 'pedidos_historial'));
+ let pedidosEncontrados = [];
+
+ if (historialSnapshot.exists()) {
+ historialSnapshot.forEach(child => {
+ const pedido = child.val();
+ // Compatible con UID directo Y con prefijo "cliente_auth_" (versiones anteriores)
+ if (pedido.clienteIdAsignado === clienteID ||
+ pedido.clienteIdAsignado === `cliente_auth_${clienteID}`) {
+ pedidosEncontrados.push({ id: child.key, ...pedido });
+ }
+ });
+ }
 
  // Filtrar SOLO pedidos activos (excluir completados/entregados/cancelados)
  const estadosActivos = ['pendiente_confirmacion_tienda', 'pendiente', 'aceptado', 'esperando', 'esperando pedido', 'en camino', 'sin_repartidor'];
@@ -10637,7 +10659,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.3.1');
+ console.log(' Sistema del cliente inicializado v1.2.2');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10708,7 +10730,7 @@ if (dentroDeHorario) {
  appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
  };
 
- let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable, guardarContactoLocalConMapaCallable, cotizarPrecioDomicilioCallable, buscarPedidoPorCorreoCallable;
+ let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable, guardarContactoLocalConMapaCallable, cotizarPrecioDomicilioCallable;
  try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
@@ -10728,8 +10750,6 @@ if (dentroDeHorario) {
  borrarContactoLocalUnoCallable = httpsCallable(functions, 'borrarContactoLocalUno');
  guardarContactoLocalConMapaCallable = httpsCallable(functions, 'guardarContactoLocalConMapa');
  cotizarPrecioDomicilioCallable = httpsCallable(functions, 'cotizarPrecioDomicilio');
- buscarPedidoPorCorreoCallable = httpsCallable(functions, 'buscarPedidoPorCorreo');
- window.buscarPedidoPorCorreoCallable = buscarPedidoPorCorreoCallable;
  console.log(' Firebase inicializado correctamente');
  } catch(e) {
  console.error(' Firebase no pudo iniciar:', e.message);
@@ -10738,7 +10758,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.3.1";
+ const APP_VERSION = "1.2.2";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -10872,13 +10892,8 @@ if (dentroDeHorario) {
  window.borrarContactoLocalUnoCallable = borrarContactoLocalUnoCallable;
  window.guardarContactoLocalConMapaCallable = guardarContactoLocalConMapaCallable;
  window.cotizarPrecioDomicilioCallable = cotizarPrecioDomicilioCallable;
- window.consultarServibot = async function(mensaje, historial, imagenAdjunta) {
-   const payload = { mensaje, historial };
-   if (imagenAdjunta && imagenAdjunta.base64) {
-     payload.imagenBase64 = imagenAdjunta.base64;
-     payload.imagenMimeType = imagenAdjunta.mimeType;
-   }
-   const res = await servibotChatCallable(payload);
+ window.consultarServibot = async function(mensaje, historial) {
+   const res = await servibotChatCallable({ mensaje, historial });
    window._sbAccionPendiente = res.data.accion || null;
    window._sbDatosAgendaPendiente = res.data.datosAgenda || null;
    window._sbDatosUbicacionPendiente = res.data.datosUbicacion || null;
@@ -11985,17 +12000,8 @@ if (dentroDeHorario) {
  }
  
  // CARGAR NEGOCIOS (TODOS LOS APROBADOS + EL PROPIO DEL CLIENTE)
- // FIX PERF: antes esto enganchaba un onValue nuevo cada vez que el cliente
- // entraba al tab "Tienda", SIN quitar el anterior. Después de entrar/salir
- // varias veces en la misma sesión quedaban N listeners activos a la vez,
- // y cada actualización de CUALQUIER negocio en toda la plataforma disparaba
- // N reconstrucciones completas del grid (con imágenes) simultáneamente —
- // esto era una causa real de lentitud/trabas que empeoraba con el uso.
- // Ahora se reutiliza un solo listener persistente (se engancha una sola vez).
  window.cargarNegocios = function() {
  const storeGrid = document.getElementById('store-grid');
- if (window._negociosListenerActivo) return; // ya está escuchando, no duplicar
- window._negociosListenerActivo = true;
  const negociosRef = ref(db, 'negocios');
  
  onValue(negociosRef, (snapshot) => {
@@ -13151,7 +13157,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.1');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.2.2');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -13196,7 +13202,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.3.1  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.2.2  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -14036,37 +14042,6 @@ ${motivo}`;
  <div class="carrito-total-texto">Total a pagar:</div>
  <div class="carrito-total-monto" id="carrito-total-monto">$0</div>
  </div>
-
- <!-- ===== CUPÓN / CRÉDITOS DE DESCUENTO (compra en tienda) ===== -->
- <div id="tienda-cupon-section" style="background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(168,85,247,0.1));border:1.5px solid rgba(167,139,250,0.35);border-radius:14px;padding:14px 16px;margin:14px 0;">
- <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
- <span style="color:#a78bfa;font-weight:800;font-size:14px;"> Usar créditos / cupón</span>
- <span id="tienda-cupon-bonos-count" style="background:rgba(167,139,250,0.2);color:#c4b5fd;font-size:11px;padding:3px 10px;border-radius:99px;font-weight:700;">0 disponibles</span>
- </div>
-
- <select id="tienda-cupon-selector" onchange="if(this.value) agregarCuponStack('tienda')" style="width:100%;padding:10px;border:1px solid rgba(167,139,250,0.4);border-radius:8px;background:#1A2845;color:#e0d7ff;font-size:13px;margin-bottom:8px;">
- <option value="">— Sin cupón —</option>
- </select>
-
- <div id="tienda-cupones-stack" style="display:none;margin-bottom:8px;">
- <p style="color:#818cf8;font-size:11px;margin:0 0 6px;">Cupones aplicados:</p>
- <div id="tienda-cupones-stack-list"></div>
- </div>
- <div style="display:flex;gap:8px;">
- <button type="button" onclick="agregarCuponStack('tienda')" style="flex:1;padding:9px;margin:0;font-size:13px;background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;border-radius:8px;">
- Agregar cupón
- </button>
- <button type="button" onclick="limpiarCuponesStack()" style="flex:1;padding:9px;margin:0;font-size:13px;background:#374151;color:#cbd5e1;border-radius:8px;">
- Limpiar
- </button>
- </div>
-
- <div id="tienda-cupon-resumen" style="display:none;margin-top:10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:10px;text-align:center;">
- <p style="color:#34d399;font-size:13px;font-weight:700;margin:0 0 2px;"> Descuento aplicado</p>
- <p id="tienda-cupon-resumen-texto" style="color:#e0d7ff;font-size:15px;font-weight:800;margin:0;"></p>
- </div>
- </div>
-
  <button class="btn-whatsapp-pedido" style="background:linear-gradient(135deg,#28a745,#1e7e34);" onclick="iniciarCompraEnTienda()">
  Comprar y Pagar en la App
  </button>
@@ -14228,7 +14203,6 @@ ${motivo}`;
  // Si no hay pedido pendiente, abrir carrito normal
  document.getElementById('modal-carrito').style.display = 'block';
  actualizarCarritoUI();
- if (typeof window.inicializarCuponSelector === 'function') window.inicializarCuponSelector();
  }
 
  // Cerrar modal del carrito
@@ -14294,41 +14268,18 @@ ${motivo}`;
  const distanciaKm = (await window._distanciaRealEntrePuntos(ubicacionTienda, ubicacionCliente)) || 0;
  const montoDomicilio = window._precioSegunKmArmenia(distanciaKm);
  const montoProductos = carritoTienda.reduce((sum, item) => sum + (item.precio || 0), 0);
- const montoTotalSinDescuento = montoProductos + montoDomicilio;
-
- // Cupones/créditos aplicados en el carrito: el descuento SIEMPRE lo asume
- // el repartidor (se descuenta de su tarifa de domicilio), nunca lo que la
- // tienda recibe por los productos — por eso el descuento nunca supera montoDomicilio.
- const cuponesUsados = window._cuponesAplicados || [];
- let descuentoCupon = 0;
- if (cuponesUsados.length > 0) {
- const calcCupon = window._calcularPrecioConCupones(montoTotalSinDescuento, cuponesUsados);
- descuentoCupon = Math.min(calcCupon.descuento, montoDomicilio);
- }
- const montoDomicilioCliente = montoDomicilio - descuentoCupon;
- const montoTotal = montoProductos + montoDomicilioCliente;
-
- const textoDescuento = descuentoCupon > 0
- ? `Descuento por cupón: −$${descuentoCupon.toLocaleString('es-CO')} (lo asume el repartidor)\n`
- : '';
+ const montoTotal = montoProductos + montoDomicilio;
 
  const confirmar = confirm(
  `Resumen de tu compra en ${tiendaActual.nombre}:\n\n` +
  `Productos: $${montoProductos.toLocaleString('es-CO')}\n` +
  `Domicilio (${(Math.round(distanciaKm * 10) / 10)} km): $${montoDomicilio.toLocaleString('es-CO')}\n` +
- textoDescuento +
  `Total a pagar en la app: $${montoTotal.toLocaleString('es-CO')}\n\n` +
  `Tu compra se enviará a la tienda para que la confirmen; en cuanto la confirmen se asignará un repartidor que pagará la compra en el local y tú le pagas el total al momento de la entrega. ¿Confirmas el pedido?`
  );
  if (!confirmar) return;
 
- await crearCompraPendienteEnTienda({ ubicacionTienda, ubicacionCliente, distanciaKm, montoProductos, montoDomicilio, montoDomicilioCliente, montoTotal, descuentoCupon, cuponesUsados });
-
- // Cupones ya usados: se marcan como redimidos en el servidor y se limpia el stack local
- if (cuponesUsados.length > 0 && typeof window._marcarBonoUsado === 'function') {
- for (const c of cuponesUsados) { await window._marcarBonoUsado(c.codigo); }
- }
- if (typeof window.limpiarCuponesStack === 'function') window.limpiarCuponesStack();
+ await crearCompraPendienteEnTienda({ ubicacionTienda, ubicacionCliente, distanciaKm, montoProductos, montoDomicilio, montoTotal });
 
  } catch (error) {
  console.error('Error al iniciar compra en tienda:', error);
@@ -14375,10 +14326,7 @@ ${motivo}`;
 
  // Crea la compra y la deja PENDIENTE DE CONFIRMACIÓN por parte de la tienda.
  // Todavía no se asigna repartidor: eso ocurre cuando el dueño confirma el pedido.
- async function crearCompraPendienteEnTienda({ ubicacionTienda, ubicacionCliente, distanciaKm, montoProductos, montoDomicilio, montoDomicilioCliente, montoTotal, descuentoCupon, cuponesUsados }) {
- montoDomicilioCliente = (montoDomicilioCliente != null) ? montoDomicilioCliente : montoDomicilio;
- descuentoCupon = descuentoCupon || 0;
- cuponesUsados = cuponesUsados || [];
+ async function crearCompraPendienteEnTienda({ ubicacionTienda, ubicacionCliente, distanciaKm, montoProductos, montoDomicilio, montoTotal }) {
  let clienteNombre = 'Cliente';
  let clienteEmail = '';
  let clienteTelefono = '';
@@ -14436,11 +14384,7 @@ ${motivo}`;
  itemsCarrito,
  montoProductos,
  montoDomicilio,
- montoDomicilioCliente,
  montoTotal,
- descuentoCupon,
- cuponesAplicados: cuponesUsados.map(function(c){ return c.codigo+':'+c.label; }).join(', '),
- descuentoAsumidoPor: descuentoCupon > 0 ? 'repartidor' : null,
  pagoRepartidorAdelantaEnTienda: true,
 
  clienteIdAsignado: window.currentUserID,
@@ -14472,11 +14416,7 @@ ${motivo}`;
  itemsCarrito,
  montoProductos,
  montoDomicilio,
- montoDomicilioCliente,
  montoTotal,
- descuentoCupon,
- cuponesAplicados: cuponesUsados.map(function(c){ return c.codigo+':'+c.label; }).join(', '),
- descuentoAsumidoPor: descuentoCupon > 0 ? 'repartidor' : null,
  distanciaKm: Math.round(distanciaKm * 10) / 10,
  ubicacionTienda,
  ubicacionCliente,
@@ -17063,8 +17003,8 @@ if (window.db) {
  window.actualizarSelectorCupones = function() {
  const yaAplicados = (window._cuponesAplicados || []).map(function(c){ return c.codigo; });
  const disponibles = _bonosCombinados().filter(function(b){ return !b.usado && !yaAplicados.includes(b.codigo); });
- // Actualizar TODOS los selectores (domicilios, favores y compra en tienda)
- ['cupon-selector', 'favor-cupon-selector', 'favor-cupon-selector-pago', 'favor-cupon-selector-recibo', 'tienda-cupon-selector'].forEach(function(selId) {
+ // Actualizar TODOS los selectores (domicilios y favores)
+ ['cupon-selector', 'favor-cupon-selector', 'favor-cupon-selector-pago', 'favor-cupon-selector-recibo'].forEach(function(selId) {
  const sel = document.getElementById(selId);
  if (!sel) return;
  sel.innerHTML = '<option value="">— Sin cupón —</option>';
@@ -17075,15 +17015,15 @@ if (window.db) {
  sel.appendChild(opt);
  });
  });
- ['cupon-bonos-count', 'favor-cupon-bonos-count', 'favor-cupon-bonos-count-pago', 'favor-cupon-bonos-count-recibo', 'tienda-cupon-bonos-count'].forEach(function(id) {
+ ['cupon-bonos-count', 'favor-cupon-bonos-count', 'favor-cupon-bonos-count-pago', 'favor-cupon-bonos-count-recibo'].forEach(function(id) {
  const el = document.getElementById(id);
  if (el) el.textContent = disponibles.length + ' disponibles';
  });
  };
 
  window.agregarCuponStack = function(origen) {
- // origen puede ser 'favor', 'tienda' o undefined (domicilio)
- const selId = (origen === 'favor') ? 'favor-cupon-selector' : (origen === 'tienda') ? 'tienda-cupon-selector' : 'cupon-selector';
+ // origen puede ser 'favor' o undefined (domicilio)
+ const selId = (origen === 'favor') ? 'favor-cupon-selector' : 'cupon-selector';
  const sel = document.getElementById(selId);
  if (!sel || !sel.value) { alert('Selecciona un cupón primero.'); return; }
  if (!window._cuponesAplicados) window._cuponesAplicados = [];
@@ -17116,11 +17056,10 @@ if (window.db) {
  };
 
  function _renderCuponesStack() {
- // Renderizar en TODOS los contextos (domicilio, favor y compra en tienda)
+ // Renderizar en AMBOS contextos (domicilio y favor)
  [
  { stackId: 'cupones-stack', listId: 'cupones-stack-list' },
- { stackId: 'favor-cupones-stack', listId: 'favor-cupones-stack-list' },
- { stackId: 'tienda-cupones-stack', listId: 'tienda-cupones-stack-list' }
+ { stackId: 'favor-cupones-stack', listId: 'favor-cupones-stack-list' }
  ].forEach(function(ids) {
  const stackDiv = document.getElementById(ids.stackId);
  const stackList = document.getElementById(ids.listId);
@@ -17141,11 +17080,10 @@ if (window.db) {
 
  function _actualizarResumenCupon() {
  const calc = _calcDescuentoTotal();
- // Actualizar en TODOS los contextos
+ // Actualizar en AMBOS contextos
  [
  { resumenId: 'cupon-resumen', textoId: 'cupon-resumen-texto', precioId: 'domi-precio-valor' },
- { resumenId: 'favor-cupon-resumen', textoId: 'favor-cupon-resumen-texto', precioId: null },
- { resumenId: 'tienda-cupon-resumen', textoId: 'tienda-cupon-resumen-texto', precioId: null }
+ { resumenId: 'favor-cupon-resumen', textoId: 'favor-cupon-resumen-texto', precioId: null }
  ].forEach(function(ids) {
  const resumen = document.getElementById(ids.resumenId);
  const resumenTxt = document.getElementById(ids.textoId);
@@ -19469,12 +19407,8 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  // (precios, zonas, tiempos, cómo pedir, estado del pedido, charla libre)
  // pasa por servibotChat (Gemini). El motor de reglas viejo (TEMAS /
  // obtenerRespuesta) queda solo como red de seguridad si la IA falla.
- async function obtenerRespuestaAsync(msg, imagenAdjunta) {
- const textoParaReglas = msg || '';
- // Si viene una foto adjunta, se salta el motor de reglas por palabras clave
- // (no aplica sin texto) y se va directo a Gemini, que sí puede leerla.
- if (!imagenAdjunta) {
- const m = textoParaReglas.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+ async function obtenerRespuestaAsync(msg) {
+ const m = msg.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
  if (RE_COLA.test(m)) {
  ultimoTema = 'cola';
  return await respuestaColaRepartidores();
@@ -19482,21 +19416,17 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  if (ultimoTema === 'cola' && RE_COLA_SEGUIMIENTO.test(m)) {
  return await respuestaColaRepartidores();
  }
- }
  if (typeof window.consultarServibot === 'function') {
  try {
- return await window.consultarServibot(textoParaReglas, construirHistorialParaIA(), imagenAdjunta);
+ return await window.consultarServibot(msg, construirHistorialParaIA());
  } catch (e) {
  console.error('[ServiBot] Error consultando servibotChat:', e);
  // Si falla la Cloud Function (sin internet, cuota agotada, etc.),
  // cae a la respuesta genérica de siempre en vez de dejar al cliente sin nada.
- // (Si venía una foto, el motor de reglas no la puede leer, así que se avisa.)
- return imagenAdjunta
- ? ' No pude leer la foto en este momento (sin conexión con el asistente). Intenta de nuevo en un momento o escribe los datos directamente.'
- : obtenerRespuesta(textoParaReglas);
+ return obtenerRespuesta(msg);
  }
  }
- return obtenerRespuesta(textoParaReglas);
+ return obtenerRespuesta(msg);
  }
 
 
@@ -19770,14 +19700,13 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // 
 
  // Renderizar un mensaje en el panel del tab (misma lógica que addBotMessage/addUserMessage)
- function renderMsgEnTab(role, text, id, imagenPreviewUrl) {
+ function renderMsgEnTab(role, text, id) {
  const container = document.getElementById('servibot-tab-messages');
  if (!container) return;
  const div = document.createElement('div');
  div.className = 'ai-msg ' + (role === 'user' ? 'user' : 'bot');
  if (id) div.id = 'tab-msg-' + id;
- const textoHtml = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/\n/g,'<br>');
- div.innerHTML = (imagenPreviewUrl ? '<img src="' + imagenPreviewUrl + '" style="max-width:180px;max-height:220px;border-radius:10px;display:block;margin-bottom:6px;object-fit:cover;" />' : '') + textoHtml;
+ div.innerHTML = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/\n/g,'<br>');
  container.appendChild(div);
  container.scrollTop = container.scrollHeight;
  return div;
@@ -20070,56 +19999,6 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  };
 
  // Enviar mensaje desde el tab de ServiBot
- // ================================================================
- // FOTO CON DATOS DEL DESTINATARIO ADJUNTA AL CHAT DE SERVIBOT
- // El cliente adjunta una foto (nota, captura de WhatsApp, etc.) y
- // ServiBot (Gemini) la lee para sacar nombre/teléfono/dirección/barrio
- // y armar el domicilio con esos datos, sin tener que escribirlos.
- // ================================================================
- window._sbImagenPendiente = null; // { base64, mimeType, previewUrl }
-
- window.adjuntarImagenServibotTab = function(input) {
- const file = input.files && input.files[0];
- if (!file) return;
- if (!file.type.startsWith('image/')) {
- alert(' Por favor selecciona una imagen válida');
- input.value = '';
- return;
- }
- // Límite razonable para no saturar la función (Gemini igual reescala).
- if (file.size > 8 * 1024 * 1024) {
- alert(' La imagen es muy pesada (máx 8MB). Intenta con otra foto o una captura más liviana.');
- input.value = '';
- return;
- }
- const reader = new FileReader();
- reader.onload = function(e) {
- const base64Full = e.target.result; // data:image/jpeg;base64,...
- const partes = base64Full.split(',');
- const mimeMatch = partes[0].match(/data:(.*?);base64/);
- window._sbImagenPendiente = {
- base64: partes[1] || '',
- mimeType: (mimeMatch && mimeMatch[1]) || file.type,
- previewUrl: base64Full,
- };
- const preview = document.getElementById('servibot-tab-imagen-preview');
- const thumb = document.getElementById('servibot-tab-imagen-preview-thumb');
- if (thumb) thumb.src = base64Full;
- if (preview) preview.style.display = 'flex';
- };
- reader.onerror = function() {
- alert(' No se pudo leer la imagen, intenta de nuevo.');
- };
- reader.readAsDataURL(file);
- input.value = ''; // permite volver a elegir la misma foto si la quita y la vuelve a adjuntar
- };
-
- window.quitarImagenServibotTab = function() {
- window._sbImagenPendiente = null;
- const preview = document.getElementById('servibot-tab-imagen-preview');
- if (preview) preview.style.display = 'none';
- };
-
  window.sendAIMessageTab = function() {
  if (aiWorking) return;
  // Si el cliente todavía está dictando por voz, dar clic en enviar corta
@@ -20128,18 +20007,16 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const input = document.getElementById('servibot-tab-input');
  if (!input) return;
  const text = input.value.trim();
- const imagenPendiente = window._sbImagenPendiente;
- if (!text && !imagenPendiente) return;
+ if (!text) return;
  input.value = '';
- window.quitarImagenServibotTab();
 
  // Ocultar botones rápidos del tab
  const qbtns = document.getElementById('servibot-tab-quick-btns');
  if (qbtns) qbtns.style.display = 'none';
 
- // Renderizar mensaje usuario en tab (con la miniatura de la foto si venía una)
- renderMsgEnTab('user', text || ' Foto enviada', null, imagenPendiente ? imagenPendiente.previewUrl : null);
- aiHistory.push({ role: 'user', content: text || ' [Foto con datos del destinatario]' });
+ // Renderizar mensaje usuario en tab
+ renderMsgEnTab('user', text);
+ aiHistory.push({ role: 'user', content: text });
  aiWorking = true;
 
  // Mensaje escribiendo...
@@ -20148,7 +20025,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  setTimeout(async function() {
  try {
- const respuesta = await obtenerRespuestaAsync(text, imagenPendiente);
+ const respuesta = await obtenerRespuestaAsync(text);
 
  const msgLower = text.toLowerCase();
  if (/queja|reclamo|sugerencia|falla|error|problema|mal servicio|mejora/.test(msgLower)) {
@@ -22434,20 +22311,15 @@ window._tiempoRecogidaSeleccionado = { minutos: 0, etiqueta: 'Ya está para reco
   async function clienteTienePedidoActivo() {
     try {
       if (!window.db || !window.ref || !window.get || !window.currentUserID) return false;
-      // 🔒 SEGURIDAD 2026-09-03: consulta indexada por el propio UID en vez de
-      // descargar toda la tabla pedidos_historial y filtrar en el navegador.
+      const snap = await window.get(window.ref(window.db, 'pedidos_historial'));
+      if (!snap.exists()) return false;
       const cidNorm = _stripUid(window.currentUserID);
-      const [snapA, snapB] = await Promise.all([
-        window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(cidNorm))),
-        window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(`cliente_auth_${cidNorm}`))),
-      ]);
       let activo = false;
-      const _revisar = (child) => {
+      snap.forEach(child => {
         const p = child.val();
+        if (_stripUid(p.clienteIdAsignado) !== cidNorm) return;
         if (!ESTADOS_FINALIZADOS.includes((p.estado || '').toLowerCase())) activo = true;
-      };
-      if (snapA.exists()) snapA.forEach(_revisar);
-      if (snapB.exists()) snapB.forEach(_revisar);
+      });
       return activo;
     } catch (e) {
       console.warn('[Auto-logout] No se pudo verificar pedidos activos, se cancela por seguridad:', e);

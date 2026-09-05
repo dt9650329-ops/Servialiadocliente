@@ -1,42 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
-<!--
-================================================================================
-  ÍNDICE DE SECCIONES — index.html (Cliente) · Servi Aliados
-================================================================================
-
-  BLOQUE CSS (dentro de <head>)
-  ─────────────────────────────
-  Línea    51  │ INICIO DEL BLOQUE CSS
-  Línea  2920  │ FIN DEL BLOQUE CSS
-
-  CUERPO HTML (<body>)
-  ─────────────────────────────────────────────────────────────────────────────
-  Línea  2927  │ SECCIÓN  1 · MENÚ HAMBURGUESA, CAMPANITA Y PANEL DE NOTIFICACIONES
-  Línea  3152  │ SECCIÓN  2 · PANTALLAS DE AUTENTICACIÓN, SPLASH Y LOADING
-  Línea  3256  │ SECCIÓN  3 · VISTA CLIENTE (navegación tabs + TAB TIENDA)
-  Línea  3278  │ SECCIÓN  4 · TAB PERFIL
-  Línea  3389  │ SECCIÓN  5 · TAB SERVICIO (formulario de pedido)
-  Línea  4030  │ SECCIÓN  6 · TAB SEGUIMIENTO (TRACKING)
-  Línea  4083  │ SECCIÓN  7 · TAB PREMIOS
-  Línea  4380  │ SECCIÓN  8 · TAB SERVIBOT
-  Línea  4430  │ SECCIÓN  9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
-  Línea  9208  │ SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
-  Línea 13016  │ SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
-  Línea 13108  │ SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
-  Línea 14684  │ SECCIÓN 13 · MODAL SUGERIR NUEVO LUGAR
-  Línea 14772  │ SECCIÓN 13B · MAPEADOR DE UBICACIÓN PARA SUGERENCIAS (pin en mapa)
-  Línea 14892  │ SECCIÓN 14 · SELECTOR DE DESTINO (Armenia / Municipio fuera)
-  Línea 15078  │ SECCIÓN 15 · GEOCODIFICACIÓN Y GPS (Nominatim + ubicación)
-  Línea 15213  │ SECCIÓN 16 · SERVIBOT CHATBOT (motor de respuestas por reglas)
-  Línea 15916  │ SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
-  Línea 16128  │ SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
-  Línea 16404  │ SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO
-  Línea 16564  │ SECCIÓN 19 · MODAL HOJA DE RUTA DE NIVELES
-  Línea 16713  │ SECCIÓN 20 · MODAL VISOR DE IMAGEN
-
-================================================================================
--->
+<!-- Índice de secciones: ver /secciones/00-INDICE.md en la carpeta del proyecto (no se mantiene aquí porque se desactualiza cada vez que el archivo crece). -->
 <head>
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -3394,7 +3358,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.3.0</small>
+ <small>Versión 1.3.1</small>
  </div>
  </div>
  </div>
@@ -4953,19 +4917,19 @@
  </div>
 
  <!-- Input -->
- <div style="display:flex; gap:10px; padding:12px 14px 20px; border-top:1px solid #333; background:#1e1e1e; flex-shrink:0; position:relative; z-index:1;">
+ <div style="display:flex; gap:8px; padding:12px 14px 20px; border-top:1px solid #333; background:#1e1e1e; flex-shrink:0; position:relative; z-index:1; box-sizing:border-box; width:100%;">
  <input type="file" id="servibot-tab-imagen-input" accept="image/*" style="display:none;" onchange="adjuntarImagenServibotTab(this)" />
- <button id="servibot-foto-btn" onclick="document.getElementById('servibot-tab-imagen-input').click()" title="Adjuntar foto con los datos del destinatario" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:46px !important; height:46px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
- <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+ <button id="servibot-foto-btn" onclick="document.getElementById('servibot-tab-imagen-input').click()" title="Adjuntar foto con los datos del destinatario" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:42px; height:42px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:42px; max-width:42px; box-sizing:border-box; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
  </button>
  <input type="text" id="servibot-tab-input" placeholder="Escribe tu pregunta..." maxlength="400"
- style="flex:1; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:12px 18px; font-size:15px; outline:none; width:auto; margin:0;"
+ style="flex:1 1 0%; min-width:0; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:11px 16px; font-size:15px; outline:none; box-sizing:border-box; margin:0;"
  onkeydown="if(event.key==='Enter') sendAIMessageTab()">
- <button id="servibot-mic-btn" onclick="iniciarDictadoServiBot()" title="Dictar por voz" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:46px !important; height:46px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
- <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+ <button id="servibot-mic-btn" onclick="iniciarDictadoServiBot()" title="Dictar por voz" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:42px; height:42px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:42px; max-width:42px; box-sizing:border-box; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
  </button>
- <button onclick="sendAIMessageTab()" style="background:linear-gradient(135deg,#FFD700,#ff9800); border:none; border-radius:50%; width:46px !important; height:46px; color:#111; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset;">
- <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+ <button onclick="sendAIMessageTab()" style="background:linear-gradient(135deg,#FFD700,#ff9800); border:none; border-radius:50%; width:42px; height:42px; color:#111; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:42px; max-width:42px; box-sizing:border-box;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
  </button>
  </div>
  </div>
@@ -8389,22 +8353,27 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  setTimeout(async function() {
  if (!window.db || !window.ref || !window.get || !window.currentUserID) return;
  try {
- const snap = await window.get(window.ref(window.db, 'pedidos_historial'));
- if (!snap.exists()) return;
- // Incluir completado/entregado para no perder notificaciones recientes
- const estadosActivos = ['pendiente_confirmacion_tienda','pendiente','aceptado','esperando','esperando pedido','en camino','sin_repartidor','completado','entregado'];
- // FIX1: normalizar UID (quitar prefijo) antes de comparar
+ // 🔒 SEGURIDAD 2026-09-03: consulta indexada por el propio UID en vez de
+ // descargar toda la tabla pedidos_historial y filtrar en el navegador.
  const _strip = (id) => (id || '').replace(/^cliente_auth_/, '');
  const _cidNorm = _strip(window.currentUserID);
- snap.forEach(child => {
+ const [snapA, snapB] = await Promise.all([
+ window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(_cidNorm))),
+ window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(`cliente_auth_${_cidNorm}`))),
+ ]);
+ if (!snapA.exists() && !snapB.exists()) return;
+ // Incluir completado/entregado para no perder notificaciones recientes
+ const estadosActivos = ['pendiente_confirmacion_tienda','pendiente','aceptado','esperando','esperando pedido','en camino','sin_repartidor','completado','entregado'];
+ const _procesarChild = (child) => {
  const p = child.val();
- if (_strip(p.clienteIdAsignado) !== _cidNorm) return;
  if (!estadosActivos.includes((p.estado || '').toLowerCase())) return;
  const pid = child.key;
  const repN = p.repartidorNombre || '';
  if (typeof window.escucharEstadoPedidoNotif === 'function') window.escucharEstadoPedidoNotif(pid, repN);
  if (typeof window.escucharMensajesRepartidorNotif === 'function') window.escucharMensajesRepartidorNotif(pid, repN);
- });
+ };
+ if (snapA.exists()) snapA.forEach(_procesarChild);
+ if (snapB.exists()) snapB.forEach(_procesarChild);
  } catch(e) { console.warn('Notif scan error:', e); }
  }, 2000);
 
@@ -9728,11 +9697,24 @@ async function _cargarBarriosFirebaseCliente() {
  try {
  let userUID = null;
  let userName = 'Cliente';
+ let pedidosEncontrados = [];
 
  // FIX: Si el usuario ya está logueado, usarlo directamente sin pedir correo
  if (window.currentUserID) {
  userUID = window.currentUserID;
  userName = window.currentUserNombre || 'Cliente';
+
+ // 🔒 SEGURIDAD 2026-09-03: consulta indexada por el propio UID en vez de
+ // descargar TODO pedidos_historial y filtrar en el navegador — así las
+ // reglas de Firebase pueden exigir que la consulta sea sobre uno mismo.
+ const cidNorm = String(userUID).replace(/^cliente_auth_/, '');
+ const [snapA, snapB] = await Promise.all([
+ window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(cidNorm))),
+ window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(`cliente_auth_${cidNorm}`))),
+ ]);
+ [snapA, snapB].forEach(snap => {
+ if (snap.exists()) snap.forEach(child => pedidosEncontrados.push({ id: child.key, ...child.val() }));
+ });
  } else {
  // Solo pedir correo si NO está logueado
  const formManual = document.getElementById('tracking-form-manual');
@@ -9743,39 +9725,24 @@ async function _cargarBarriosFirebaseCliente() {
  statusDiv.style.color = '#FFD700';
  return;
  }
- const usuariosSnapshot = await window.get(window.ref(window.db, 'usuarios'));
- if (usuariosSnapshot.exists()) {
- usuariosSnapshot.forEach(child => {
- const u = child.val();
- if (u.correo && u.correo.toLowerCase() === email.toLowerCase()) {
- userUID = u.uid || child.key;
- userName = u.nombre || 'Cliente';
- }
- });
- }
- if (!userUID) {
+ // 🔒 SEGURIDAD 2026-09-03: la búsqueda por correo ya no lee las tablas
+ // completas "usuarios"/"pedidos_historial" desde el navegador — corre
+ // en el servidor (Cloud Function con Admin SDK) y solo devuelve el
+ // pedido, no el perfil completo de nadie.
+ const resultado = await window.buscarPedidoPorCorreoCallable({ correo: email });
+ const datos = resultado && resultado.data;
+ if (!datos || !datos.encontrado) {
  statusDiv.textContent = ' No se encontró ningún usuario con ese correo.';
  statusDiv.style.color = '#dc3545';
  return;
  }
+ userUID = datos.clienteUID;
+ userName = datos.clienteNombre || 'Cliente';
+ pedidosEncontrados = (datos.pedidos || []).map(p => ({ ...p }));
  }
 
  // FIX: clienteIdAsignado se guarda como UID directo en solicitarDomicilio
  const clienteID = userUID;
-
- const historialSnapshot = await window.get(window.ref(window.db, 'pedidos_historial'));
- let pedidosEncontrados = [];
-
- if (historialSnapshot.exists()) {
- historialSnapshot.forEach(child => {
- const pedido = child.val();
- // Compatible con UID directo Y con prefijo "cliente_auth_" (versiones anteriores)
- if (pedido.clienteIdAsignado === clienteID ||
- pedido.clienteIdAsignado === `cliente_auth_${clienteID}`) {
- pedidosEncontrados.push({ id: child.key, ...pedido });
- }
- });
- }
 
  // Filtrar SOLO pedidos activos (excluir completados/entregados/cancelados)
  const estadosActivos = ['pendiente_confirmacion_tienda', 'pendiente', 'aceptado', 'esperando', 'esperando pedido', 'en camino', 'sin_repartidor'];
@@ -10670,7 +10637,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.3.0');
+ console.log(' Sistema del cliente inicializado v1.3.1');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10741,7 +10708,7 @@ if (dentroDeHorario) {
  appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
  };
 
- let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable, guardarContactoLocalConMapaCallable, cotizarPrecioDomicilioCallable;
+ let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable, guardarContactoLocalConMapaCallable, cotizarPrecioDomicilioCallable, buscarPedidoPorCorreoCallable;
  try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
@@ -10761,6 +10728,8 @@ if (dentroDeHorario) {
  borrarContactoLocalUnoCallable = httpsCallable(functions, 'borrarContactoLocalUno');
  guardarContactoLocalConMapaCallable = httpsCallable(functions, 'guardarContactoLocalConMapa');
  cotizarPrecioDomicilioCallable = httpsCallable(functions, 'cotizarPrecioDomicilio');
+ buscarPedidoPorCorreoCallable = httpsCallable(functions, 'buscarPedidoPorCorreo');
+ window.buscarPedidoPorCorreoCallable = buscarPedidoPorCorreoCallable;
  console.log(' Firebase inicializado correctamente');
  } catch(e) {
  console.error(' Firebase no pudo iniciar:', e.message);
@@ -10769,7 +10738,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.3.0";
+ const APP_VERSION = "1.3.1";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -13182,7 +13151,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.0');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.1');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -13227,7 +13196,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.3.0  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.3.1  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -22465,15 +22434,20 @@ window._tiempoRecogidaSeleccionado = { minutos: 0, etiqueta: 'Ya está para reco
   async function clienteTienePedidoActivo() {
     try {
       if (!window.db || !window.ref || !window.get || !window.currentUserID) return false;
-      const snap = await window.get(window.ref(window.db, 'pedidos_historial'));
-      if (!snap.exists()) return false;
+      // 🔒 SEGURIDAD 2026-09-03: consulta indexada por el propio UID en vez de
+      // descargar toda la tabla pedidos_historial y filtrar en el navegador.
       const cidNorm = _stripUid(window.currentUserID);
+      const [snapA, snapB] = await Promise.all([
+        window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(cidNorm))),
+        window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(`cliente_auth_${cidNorm}`))),
+      ]);
       let activo = false;
-      snap.forEach(child => {
+      const _revisar = (child) => {
         const p = child.val();
-        if (_stripUid(p.clienteIdAsignado) !== cidNorm) return;
         if (!ESTADOS_FINALIZADOS.includes((p.estado || '').toLowerCase())) activo = true;
-      });
+      };
+      if (snapA.exists()) snapA.forEach(_revisar);
+      if (snapB.exists()) snapB.forEach(_revisar);
       return activo;
     } catch (e) {
       console.warn('[Auto-logout] No se pudo verificar pedidos activos, se cancela por seguridad:', e);

@@ -3456,7 +3456,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.3.2</small>
+ <small>Versión 1.3.3</small>
  </div>
  </div>
  </div>
@@ -10740,7 +10740,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.3.2');
+ console.log(' Sistema del cliente inicializado v1.3.3');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10841,7 +10841,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.3.2";
+ const APP_VERSION = "1.3.3";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -13264,7 +13264,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.2');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.3');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -13309,7 +13309,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.3.2  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.3.3  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -14762,8 +14762,14 @@ ${motivo}`;
 
  await update(ref(db, `pedidos_historial/${pedidoId}`), actualizacionPedido);
 
- const pedidoSnap = await get(ref(db, `pedidos_historial/${pedidoId}`));
- const pedidoData = pedidoSnap.exists() ? pedidoSnap.val() : { ...compra, ...actualizacionPedido };
+ // FIX 2026-09-06: antes se hacía un get() de vuelta a pedidos_historial para
+ // armar pedidoData, pero la regla de lectura de ese nodo no permite al dueño
+ // de la tienda (solo al comprador, al repartidor asignado o al admin). Ese
+ // get() tronaba con Permission denied y cortaba la función ANTES de crear el
+ // pedido en pedidos_pendientes — el cliente ya veía "confirmado" (porque el
+ // update de arriba sí pasa) pero el admin nunca recibía el pedido. Se usa
+ // directo el merge compra+actualizacion, que ya traía todos los datos.
+ const pedidoData = { ...compra, ...actualizacionPedido };
  // FIX: nunca escribir 'undefined' en telefonoCliente (rompe el set() del repartidor al aceptar)
  if (pedidoData.telefonoCliente === undefined) pedidoData.telefonoCliente = '';
 
@@ -22635,4 +22641,3 @@ window._tiempoRecogidaSeleccionado = { minutos: 0, etiqueta: 'Ya está para reco
 
 </body>
 </html>
-   

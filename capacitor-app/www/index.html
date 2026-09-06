@@ -3456,7 +3456,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.3.3</small>
+ <small>Versión 1.3.6</small>
  </div>
  </div>
  </div>
@@ -10740,7 +10740,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.3.3');
+ console.log(' Sistema del cliente inicializado v1.3.6');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10841,7 +10841,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.3.3";
+ const APP_VERSION = "1.3.6";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -13264,7 +13264,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.3');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.6');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -13309,7 +13309,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.3.3  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.3.6  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -14767,11 +14767,48 @@ ${motivo}`;
  // de la tienda (solo al comprador, al repartidor asignado o al admin). Ese
  // get() tronaba con Permission denied y cortaba la función ANTES de crear el
  // pedido en pedidos_pendientes — el cliente ya veía "confirmado" (porque el
- // update de arriba sí pasa) pero el admin nunca recibía el pedido. Se usa
- // directo el merge compra+actualizacion, que ya traía todos los datos.
- const pedidoData = { ...compra, ...actualizacionPedido };
+ // update de arriba sí pasa) pero el admin nunca recibía el pedido.
+ //
+ // FIX 2026-09-06 (2): el objeto 'compra' (compras_tienda) NO trae el nombre/
+ // dirección/teléfono de la tienda, y nombra los datos del cliente distinto
+ // a como los lee el Panel Repartidor (clienteTelefono/clienteDireccion en vez
+ // de telefonoCliente/direccionCliente, y no trae nombreEntrega/dirRecogida/
+ // telEntrega en absoluto). Por eso al repartidor le llegaban guiones "—" en
+ // Punto A y Punto B. Se trae el negocio (lectura pública, no requiere ser el
+ // dueño) para completar esos campos con los mismos nombres que usa
+ // crearCompraPendienteEnTienda() al crear el pedido original.
+ let negocio = {};
+ try {
+ const negocioSnap = await get(ref(db, `negocios/${negocioId}`));
+ if (negocioSnap.exists()) negocio = negocioSnap.val();
+ } catch (e) { console.warn('No se pudo leer el negocio para completar el pedido:', e); }
+
+ const pedidoData = {
+ ...compra,
+ ...actualizacionPedido,
+ tipo: 'compra_tienda',
+ negocioId,
+ nombreEntrega: negocio.nombre || compra.nombreEntrega || 'Tienda',
+ dirRecogida: compra.dirRecogida || `Tienda: ${negocio.nombre || 'Tienda'} (ver ubicación exacta en el mapa)`,
+ telEntrega: negocio.telefono || compra.telEntrega || '',
+ telefonoCliente: compra.telefonoCliente || compra.clienteTelefono || '',
+ direccionCliente: compra.direccionCliente || compra.clienteDireccion || '',
+ gpsRecogida: compra.gpsRecogida || compra.ubicacionTienda || null,
+ gpsDestino: compra.gpsDestino || compra.ubicacionCliente || null,
+ // FIX 2026-09-06: 'compra' (compras_tienda) guarda el id del comprador como
+ // 'clienteId', pero el resto del sistema (pedidos_historial, el Panel
+ // Repartidor al aceptar) espera 'clienteIdAsignado'. Sin este campo, el
+ // repartidor no podía aceptar el pedido (set() con clienteUID undefined).
+ clienteIdAsignado: compra.clienteIdAsignado || compra.clienteId || null
+ };
  // FIX: nunca escribir 'undefined' en telefonoCliente (rompe el set() del repartidor al aceptar)
  if (pedidoData.telefonoCliente === undefined) pedidoData.telefonoCliente = '';
+ // FIX 2026-09-06: la regla de repartidores_pedidos exige que el pedido tenga
+ // 'timestampCreacion'. El objeto 'compra' (guardado en compras_tienda) usa el
+ // campo 'fecha', no 'timestampCreacion', así que sin este respaldo la escritura
+ // de abajo a repartidores_pedidos fallaba la validación (Firebase lo reporta
+ // como permission_denied aunque en realidad es un rechazo de .validate).
+ if (!pedidoData.timestampCreacion) pedidoData.timestampCreacion = compra.timestampCreacion || compra.fecha || timestamp;
 
  await update(ref(db, `pedidos_pendientes/${pedidoId}`), { ...pedidoData, pedidoId, historialId: pedidoId });
 

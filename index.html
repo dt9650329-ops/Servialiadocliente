@@ -480,7 +480,7 @@
     z-index 10200), el que este despues en el DOM (Panel Administrativo)
     ganaba el apilamiento y tapaba el formulario. Se sube este modal por
     encima de los demas .modal para que siempre quede al frente. */
- #modal-producto-seccion {
+ #modal-producto-seccion, #modal-editar-producto-seccion {
  z-index: 10210;
  }
 
@@ -1870,6 +1870,22 @@
  
  .btn-eliminar-producto:hover {
  background: #c82333;
+ }
+
+ .btn-editar-producto {
+ padding: 6px 12px;
+ background: var(--color-primary);
+ color: #1a1a1a;
+ border: none;
+ border-radius: 6px;
+ font-size: 12px;
+ font-weight: bold;
+ cursor: pointer;
+ transition: all 0.3s;
+ }
+
+ .btn-editar-producto:hover {
+ background: #d97f06;
  }
  
  .btn-agregar-producto-mi-tienda {
@@ -13268,6 +13284,7 @@ ${motivo}`;
  const modalNegocio = document.getElementById('modal-negocio');
  const modalVerTienda = document.getElementById('modal-ver-tienda');
  const modalProductoSeccion = document.getElementById('modal-producto-seccion');
+ const modalEditarProductoSeccion = document.getElementById('modal-editar-producto-seccion');
  
  if (event.target === modalNegocio) {
  cerrarModalNegocio();
@@ -13277,6 +13294,9 @@ ${motivo}`;
  }
  if (event.target === modalProductoSeccion) {
  cerrarModalProductoSeccion();
+ }
+ if (event.target === modalEditarProductoSeccion) {
+ cerrarModalEditarProducto();
  }
  }
  
@@ -13416,14 +13436,24 @@ ${motivo}`;
  <p style="color: ${ubicacionOK ? '#28a745' : '#ffa500'}; margin: 8px 0 5px; font-size: 13px;">
  ${ubicacionOK ? ' Ubicación de la tienda configurada' : ' Ubicación de la tienda sin configurar (necesaria para la compra directa en la app)'}
  </p>
- <button type="button" class="btn-agregar-producto-mi-tienda" style="margin-top:5px;" onclick="actualizarUbicacionMiTienda('${negocioId}')">
- ${ubicacionOK ? 'Actualizar ubicación de mi tienda' : 'Configurar ubicación de mi tienda'}
- </button>
- <button type="button" id="btn-toggle-apertura-tienda" class="btn-agregar-producto-mi-tienda" style="margin-top:8px; background:${tiendaAbierta ? 'linear-gradient(135deg,#dc3545,#a71d2a)' : 'linear-gradient(135deg,#28a745,#1e7e34)'};" onclick="alternarAperturaMiTienda('${negocioId}')">
- ${tiendaAbierta ? '🔴 Cerrar Tienda' : '🟢 Abrir Tienda'}
- </button>
  </div>
  `;
+
+ // Los botones de "Actualizar ubicación" y "Cerrar/Abrir Tienda" ahora viven en el menú
+ // hamburguesa (☰) en vez de la pantalla principal, para dejar más espacio a las secciones
+ // y productos de la tienda. Se actualizan aquí porque son elementos fijos del menú lateral
+ // (no se recrean cada vez), así que su texto/estilo se sincroniza manualmente.
+ const btnUbicacionMenu = document.getElementById('btn-menu-ubicacion-tienda');
+ if (btnUbicacionMenu) {
+ btnUbicacionMenu.textContent = ubicacionOK ? '📍 Actualizar ubicación de mi tienda' : '📍 Configurar ubicación de mi tienda';
+ btnUbicacionMenu.setAttribute('onclick', `cerrarMenuLateralPanelAdmin(); actualizarUbicacionMiTienda('${negocioId}')`);
+ }
+ const btnAperturaMenu = document.getElementById('btn-toggle-apertura-tienda');
+ if (btnAperturaMenu) {
+ btnAperturaMenu.textContent = tiendaAbierta ? '🔴 Cerrar Tienda' : '🟢 Abrir Tienda';
+ btnAperturaMenu.style.background = tiendaAbierta ? 'linear-gradient(135deg,#dc3545,#a71d2a)' : 'linear-gradient(135deg,#28a745,#1e7e34)';
+ btnAperturaMenu.setAttribute('onclick', `cerrarMenuLateralPanelAdmin(); alternarAperturaMiTienda('${negocioId}')`);
+ }
  
  // Asegurar que existan las secciones (migrando si es una tienda vieja sin secciones),
  // pero sin mostrarlas todavía: se ven desde el menú ☰ para dejar más espacio a la info.
@@ -13512,11 +13542,14 @@ ${motivo}`;
  }
  }
 
- // Muestra la grilla de secciones (tarjetas) de la tienda del dueño
+ // Muestra TODAS las secciones de la tienda ya expandidas, con todas sus tarjetas
+ // de producto visibles de una vez (en vez de tarjetas resumen que hay que abrir
+ // una por una), para poder editar más rápido.
  function renderSeccionesMiTienda(negocioId, secciones) {
  const listaProductos = document.getElementById('lista-productos-mi-tienda');
  document.getElementById('btn-agregar-producto-seccion-wrapper')?.remove();
  seccionActualId = null;
+ seccionActualTitulo = null;
 
  const idsOrdenados = Object.keys(secciones || {}).sort((a, b) => (secciones[a].orden || 0) - (secciones[b].orden || 0));
 
@@ -13526,21 +13559,86 @@ ${motivo}`;
  }
 
  listaProductos.innerHTML = '';
+
  idsOrdenados.forEach(seccionId => {
  const seccion = secciones[seccionId];
- const cantidad = seccion.productos ? Object.keys(seccion.productos).length : 0;
+ const productos = seccion.productos || {};
+ const cantidad = Object.keys(productos).length;
 
- const card = document.createElement('div');
- card.className = 'product-item-edit';
- card.style.cursor = 'pointer';
- card.onclick = () => abrirGestionSeccion(negocioId, seccionId, seccion.titulo);
- card.innerHTML = `
+ const encabezadoSeccion = document.createElement('h4');
+ encabezadoSeccion.style.color = 'var(--color-primary)';
+ encabezadoSeccion.style.margin = '18px 0 10px';
+ encabezadoSeccion.textContent = `${seccion.titulo} (${cantidad}/${MAX_PRODUCTOS_POR_SECCION})`;
+ listaProductos.appendChild(encabezadoSeccion);
+
+ if (cantidad === 0) {
+ const vacio = document.createElement('p');
+ vacio.className = 'no-products-message';
+ vacio.textContent = 'Esta sección aún no tiene productos.';
+ listaProductos.appendChild(vacio);
+ }
+
+ for (let productoId in productos) {
+ const producto = productos[productoId];
+ const disponible = producto.disponible !== false;
+
+ const productoDiv = document.createElement('div');
+ productoDiv.className = 'product-item-edit';
+
+ const fotoHTML = producto.foto ? `<div class="product-images-gallery"><img src="${producto.foto}" alt="${producto.nombre}" onclick="window.open('${producto.foto}', '_blank')"></div>` : '';
+ const precioHTML = producto.precio ? `<div style="color: var(--color-primary); font-size: 14px;">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
+ const descripcionHTML = producto.descripcion ? `<div style="color: var(--color-text-dark); font-size: 12px; margin-top:4px;">${producto.descripcion}</div>` : '';
+
+ const tieneStock = typeof producto.stock === 'number';
+ const stockBajoHTML = (tieneStock && producto.stock <= 5)
+ ? `<div class="product-status-edit ${producto.stock > 0 ? 'no-disponible' : 'no-disponible'}" style="background:#dc2626; color:#fff;">${producto.stock > 0 ? '¡Últimos ' + producto.stock + '!' : 'Agotado'}</div>`
+ : '';
+ const btnVendiUnoHTML = (tieneStock && producto.stock > 0)
+ ? `<button class="btn-toggle-disponibilidad disponible" onclick="descontarStockProducto('${negocioId}', '${productoId}', 'secciones/${seccionId}/productos')">Vendí uno (quedan ${producto.stock})</button>`
+ : '';
+
+ productoDiv.innerHTML = `
  <div class="product-info-edit">
- <div class="product-name-edit">${seccion.titulo}</div>
- <div class="section-card-count">${cantidad}/${MAX_PRODUCTOS_POR_SECCION} productos</div>
+ <div class="product-name-edit">${producto.nombre}</div>
+ ${precioHTML}
+ ${descripcionHTML}
+ ${fotoHTML}
+ <div class="product-status-edit ${disponible ? 'disponible' : 'no-disponible'}">
+ ${disponible ? ' Disponible' : ' No disponible'}
+ </div>
+ ${stockBajoHTML}
+ </div>
+ <div class="product-actions-edit">
+ ${btnVendiUnoHTML}
+ <button class="btn-toggle-disponibilidad ${disponible ? 'disponible' : 'no-disponible'}" 
+ onclick="toggleDisponibilidadProducto('${negocioId}', '${productoId}', ${!disponible}, 'secciones/${seccionId}/productos')">
+ ${disponible ? 'Marcar No Disponible' : 'Marcar Disponible'}
+ </button>
+ <button class="btn-editar-producto" onclick="abrirModalEditarProducto('${negocioId}', '${productoId}', 'secciones/${seccionId}/productos')">
+ ✏️ Editar
+ </button>
  </div>
  `;
- listaProductos.appendChild(card);
+
+ listaProductos.appendChild(productoDiv);
+ }
+
+ const wrapperSeccion = document.createElement('div');
+ wrapperSeccion.style.marginBottom = '10px';
+ if (cantidad >= MAX_PRODUCTOS_POR_SECCION) {
+ wrapperSeccion.innerHTML = `<p class="section-cap-msg">Esta sección ya tiene el máximo de ${MAX_PRODUCTOS_POR_SECCION} productos.</p>`;
+ } else {
+ const btnAgregar = document.createElement('button');
+ btnAgregar.className = 'btn-agregar-producto-mi-tienda';
+ btnAgregar.textContent = `Agregar producto a "${seccion.titulo}"`;
+ btnAgregar.onclick = () => {
+ seccionActualId = seccionId;
+ seccionActualTitulo = seccion.titulo;
+ window.abrirModalAgregarProducto();
+ };
+ wrapperSeccion.appendChild(btnAgregar);
+ }
+ listaProductos.appendChild(wrapperSeccion);
  });
  }
 
@@ -13730,6 +13828,7 @@ ${motivo}`;
 
  const fotoHTML = producto.foto ? `<div class="product-images-gallery"><img src="${producto.foto}" alt="${producto.nombre}" onclick="window.open('${producto.foto}', '_blank')"></div>` : '';
  const precioHTML = producto.precio ? `<div style="color: var(--color-primary); font-size: 14px;">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
+ const descripcionHTML = producto.descripcion ? `<div style="color: var(--color-text-dark); font-size: 12px; margin-top:4px;">${producto.descripcion}</div>` : '';
 
  // Badge de "últimos X": solo se muestra si el producto tiene stock definido (numero >=0) y quedan 5 o menos
  const tieneStock = typeof producto.stock === 'number';
@@ -13744,6 +13843,7 @@ ${motivo}`;
  <div class="product-info-edit">
  <div class="product-name-edit">${producto.nombre}</div>
  ${precioHTML}
+ ${descripcionHTML}
  ${fotoHTML}
  <div class="product-status-edit ${disponible ? 'disponible' : 'no-disponible'}">
  ${disponible ? ' Disponible' : ' No disponible'}
@@ -13756,8 +13856,8 @@ ${motivo}`;
  onclick="toggleDisponibilidadProducto('${negocioId}', '${productoId}', ${!disponible}, 'secciones/${seccionId}/productos')">
  ${disponible ? 'Marcar No Disponible' : 'Marcar Disponible'}
  </button>
- <button class="btn-eliminar-producto" onclick="eliminarProductoMiTienda('${negocioId}', '${productoId}', '${producto.nombre.replace(/'/g, "\\'")}', 'secciones/${seccionId}/productos')">
- 
+ <button class="btn-editar-producto" onclick="abrirModalEditarProducto('${negocioId}', '${productoId}', 'secciones/${seccionId}/productos')">
+ ✏️ Editar
  </button>
  </div>
  `;
@@ -13795,7 +13895,7 @@ ${motivo}`;
  });
  
  // Recargar la sección actual
- if (seccionActualId) await cargarProductosDeSeccionMiTienda(negocioId, seccionActualId, seccionActualTitulo || '');
+ await volverASeccionesMiTienda();
  
  } catch (error) {
  console.error('Error al cambiar disponibilidad:', error);
@@ -13820,7 +13920,7 @@ ${motivo}`;
  await update(ref(db, rutaCompleta), { disponible: false });
  }
 
- if (recargarUI && seccionActualId) await cargarProductosDeSeccionMiTienda(negocioId, seccionActualId, seccionActualTitulo || '');
+ if (recargarUI) await volverASeccionesMiTienda();
 
  } catch (error) {
  console.error('Error al descontar stock:', error);
@@ -13841,7 +13941,7 @@ ${motivo}`;
  alert('Producto eliminado exitosamente');
  
  // Recargar la sección actual
- if (seccionActualId) await cargarProductosDeSeccionMiTienda(negocioId, seccionActualId, seccionActualTitulo || '');
+ await volverASeccionesMiTienda();
  
  } catch (error) {
  console.error('Error al eliminar producto:', error);
@@ -13865,6 +13965,8 @@ ${motivo}`;
  document.getElementById('titulo-producto-seccion').value = '';
  document.getElementById('precio-producto-seccion').value = '';
  document.getElementById('foto-producto-seccion').value = '';
+ document.getElementById('descripcion-producto-seccion').value = '';
+ document.getElementById('contador-descripcion-producto-seccion').textContent = '0';
 
  document.getElementById('modal-producto-seccion').style.display = 'block';
  }
@@ -13904,6 +14006,7 @@ ${motivo}`;
  const fotoFile = document.getElementById('foto-producto-seccion').files[0];
  const stockInput = document.getElementById('stock-producto-seccion').value;
  const stock = stockInput !== '' ? parseInt(stockInput, 10) : null; // null = sin control de stock
+ const descripcion = document.getElementById('descripcion-producto-seccion').value.trim().slice(0, 300);
 
  if (!nombre) {
  alert('Por favor ingresa el título del producto.');
@@ -13939,11 +14042,14 @@ ${motivo}`;
  if (stock !== null && !isNaN(stock) && stock >= 0) {
  nuevoProducto.stock = stock;
  }
+ if (descripcion) {
+ nuevoProducto.descripcion = descripcion;
+ }
 
  await push(ref(db, `negocios/${miTiendaIdActual}/secciones/${seccionActualId}/productos`), nuevoProducto);
 
  cerrarModalProductoSeccion();
- await cargarProductosDeSeccionMiTienda(miTiendaIdActual, seccionActualId, seccionActualTitulo || '');
+ await volverASeccionesMiTienda();
 
  } catch (error) {
  console.error('Error al guardar el producto:', error);
@@ -13956,6 +14062,123 @@ ${motivo}`;
  }
  }
  
+ // Guarda el producto que se está editando actualmente (negocioId, productoId, ruta en Firebase)
+ let productoEditandoActual = null;
+
+ // Abre el modal de edición y precarga los datos actuales del producto
+ window.abrirModalEditarProducto = async function(negocioId, productoId, rutaProducto = 'productos') {
+ try {
+ const snap = await get(ref(db, `negocios/${negocioId}/${rutaProducto}/${productoId}`));
+ if (!snap.exists()) {
+ alert('Error: no se encontró el producto.');
+ return;
+ }
+ const producto = snap.val();
+ productoEditandoActual = { negocioId, productoId, rutaProducto };
+
+ document.getElementById('titulo-editar-producto').value = producto.nombre || '';
+ document.getElementById('precio-editar-producto').value = producto.precio || '';
+ document.getElementById('foto-editar-producto').value = '';
+ document.getElementById('descripcion-editar-producto').value = producto.descripcion || '';
+ document.getElementById('contador-descripcion-editar-producto').textContent = (producto.descripcion || '').length;
+ document.getElementById('stock-editar-producto').value = (typeof producto.stock === 'number') ? producto.stock : '';
+
+ document.getElementById('modal-editar-producto-seccion').style.display = 'block';
+ } catch (error) {
+ console.error('Error al abrir edición de producto:', error);
+ alert('Error al cargar el producto para editar');
+ }
+ }
+
+ window.cerrarModalEditarProducto = function() {
+ document.getElementById('modal-editar-producto-seccion').style.display = 'none';
+ productoEditandoActual = null;
+ }
+
+ // Guarda los cambios del producto (título, precio, descripción, stock y, si se eligió una nueva, la foto)
+ window.guardarEdicionProducto = async function(event) {
+ event.preventDefault();
+
+ if (!productoEditandoActual) {
+ alert('Error: no hay un producto seleccionado para editar.');
+ return;
+ }
+
+ const btnGuardar = document.getElementById('btn-guardar-edicion-producto');
+ if (btnGuardar) {
+ if (btnGuardar.disabled) return;
+ btnGuardar.disabled = true;
+ btnGuardar.textContent = 'Guardando...';
+ }
+
+ try {
+ const { negocioId, productoId, rutaProducto } = productoEditandoActual;
+
+ const nombre = document.getElementById('titulo-editar-producto').value.trim();
+ const precio = document.getElementById('precio-editar-producto').value;
+ const fotoFile = document.getElementById('foto-editar-producto').files[0];
+ const descripcion = document.getElementById('descripcion-editar-producto').value.trim().slice(0, 300);
+ const stockInput = document.getElementById('stock-editar-producto').value;
+ const stock = stockInput !== '' ? parseInt(stockInput, 10) : null;
+
+ if (!nombre) {
+ alert('Por favor ingresa el título del producto.');
+ return;
+ }
+ if (!precio || precio <= 0) {
+ alert('Por favor ingresa un precio válido.');
+ return;
+ }
+
+ const cambios = {
+ nombre,
+ precio: parseFloat(precio),
+ descripcion: descripcion || null
+ };
+
+ if (stock !== null && !isNaN(stock) && stock >= 0) {
+ cambios.stock = stock;
+ } else if (stockInput === '') {
+ cambios.stock = null; // deja el campo vacío para quitar el control de stock
+ }
+
+ if (fotoFile) {
+ try {
+ const imageRef = storageRef(storage, `negocios/${negocioId}/${rutaProducto}/${Date.now()}_${fotoFile.name}`);
+ await uploadBytesResumable(imageRef, fotoFile);
+ cambios.foto = await getDownloadURL(imageRef);
+ } catch (error) {
+ console.error('Error al subir la nueva foto del producto:', error.code, error.message, error);
+ alert('No se pudo subir la nueva foto (' + (error.code || error.message || 'error desconocido') + '). Se guardarán los demás cambios.');
+ }
+ }
+
+ await update(ref(db, `negocios/${negocioId}/${rutaProducto}/${productoId}`), cambios);
+
+ cerrarModalEditarProducto();
+ await volverASeccionesMiTienda();
+
+ } catch (error) {
+ console.error('Error al guardar la edición del producto:', error);
+ alert('Error al guardar los cambios: ' + error.message);
+ } finally {
+ if (btnGuardar) {
+ btnGuardar.disabled = false;
+ btnGuardar.textContent = 'Guardar Cambios';
+ }
+ }
+ }
+
+ // Permite eliminar el producto directamente desde el modal de edición (reutiliza la
+ // función existente de eliminación, que ya pide confirmación al dueño)
+ window.eliminarProductoDesdeEdicion = function() {
+ if (!productoEditandoActual) return;
+ const { negocioId, productoId, rutaProducto } = productoEditandoActual;
+ const nombreProducto = document.getElementById('titulo-editar-producto').value || 'este producto';
+ cerrarModalEditarProducto();
+ eliminarProductoMiTienda(negocioId, productoId, nombreProducto, rutaProducto);
+ }
+
  // VER PRODUCTOS DE OTRAS TIENDAS
  window.verProductosTienda = async function(negocioId, nombreTienda) {
  try {
@@ -15671,7 +15894,7 @@ Tu menú ya está visible para los clientes.`);
  }, 300);
  
  // Recargar productos
- if (seccionActualId) await cargarProductosDeSeccionMiTienda(miTiendaIdActual, seccionActualId, seccionActualTitulo || '');
+ if (seccionActualId) await volverASeccionesMiTienda();
  
  } catch (error) {
  console.error(' Error al guardar:', error);
@@ -15839,7 +16062,7 @@ Tu menú ya está visible para los clientes en tu tienda.`);
  
  // Recargar productos
  try {
- if (seccionActualId) await cargarProductosDeSeccionMiTienda(miTiendaIdActual, seccionActualId, seccionActualTitulo || '');
+ if (seccionActualId) await volverASeccionesMiTienda();
  console.log('Productos recargados exitosamente');
  } catch (reloadError) {
  console.error('Error al recargar productos:', reloadError);
@@ -16514,11 +16737,44 @@ Detalles técnicos en la consola (F12)`;
  <label for="foto-producto-seccion">Foto del Producto (opcional):</label>
  <input type="file" id="foto-producto-seccion" accept="image/*" />
 
+ <label for="descripcion-producto-seccion">Descripción (opcional, máx. 300 caracteres):</label>
+ <textarea id="descripcion-producto-seccion" maxlength="300" rows="3" placeholder="Ej: Camisa 100% algodón, disponible en varias tallas" style="width:100%; box-sizing:border-box; resize:vertical;" oninput="document.getElementById('contador-descripcion-producto-seccion').textContent = this.value.length"></textarea>
+ <div style="text-align:right; font-size:11px; color:var(--color-text-dark); margin:-8px 0 8px;"><span id="contador-descripcion-producto-seccion">0</span>/300</div>
+
  <label for="stock-producto-seccion">Cantidad disponible (opcional):</label>
  <input type="number" id="stock-producto-seccion" placeholder="Déjalo vacío si no quieres controlar el stock" min="0" />
 
  <button type="submit" id="btn-guardar-producto-seccion">Guardar Producto</button>
  </form>
+ </div>
+</div>
+
+<!-- ==================== MODAL: EDITAR PRODUCTO DE UNA SECCIÓN ==================== -->
+<div id="modal-editar-producto-seccion" class="modal">
+ <div class="modal-content">
+ <span class="close-modal" onclick="cerrarModalEditarProducto()">&times;</span>
+ <h3>✏️ Editar Producto</h3>
+
+ <form id="form-editar-producto-seccion" onsubmit="guardarEdicionProducto(event)">
+ <label for="titulo-editar-producto">Título del Producto:</label>
+ <input type="text" id="titulo-editar-producto" required />
+
+ <label for="precio-editar-producto">Precio:</label>
+ <input type="number" id="precio-editar-producto" min="0" required />
+
+ <label for="foto-editar-producto">Cambiar foto (opcional, deja vacío para conservar la actual):</label>
+ <input type="file" id="foto-editar-producto" accept="image/*" />
+
+ <label for="descripcion-editar-producto">Descripción (opcional, máx. 300 caracteres):</label>
+ <textarea id="descripcion-editar-producto" maxlength="300" rows="3" placeholder="Ej: Camisa 100% algodón, disponible en varias tallas" style="width:100%; box-sizing:border-box; resize:vertical;" oninput="document.getElementById('contador-descripcion-editar-producto').textContent = this.value.length"></textarea>
+ <div style="text-align:right; font-size:11px; color:var(--color-text-dark); margin:-8px 0 8px;"><span id="contador-descripcion-editar-producto">0</span>/300</div>
+
+ <label for="stock-editar-producto">Cantidad disponible (opcional):</label>
+ <input type="number" id="stock-editar-producto" placeholder="Déjalo vacío si no quieres controlar el stock" min="0" />
+
+ <button type="submit" id="btn-guardar-edicion-producto">Guardar Cambios</button>
+ </form>
+ <button type="button" class="btn-eliminar-producto" style="width:100%; margin-top:10px;" onclick="eliminarProductoDesdeEdicion()">🗑 Eliminar este producto</button>
  </div>
 </div>
 
@@ -16555,6 +16811,12 @@ Detalles técnicos en la consola (F12)`;
  </button>
  <button type="button" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin(); if(window.miTiendaIdActual) abrirHorarioMiTienda(window.miTiendaIdActual);">
  <span>🕐 Horario de Atención</span>
+ </button>
+ <button type="button" id="btn-menu-ubicacion-tienda" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin();">
+ 📍 Configurar ubicación de mi tienda
+ </button>
+ <button type="button" id="btn-toggle-apertura-tienda" class="menu-lateral-item" style="background:linear-gradient(135deg,#dc3545,#a71d2a);" onclick="cerrarMenuLateralPanelAdmin();">
+ 🔴 Cerrar Tienda
  </button>
  </div>
 </div>
@@ -22234,7 +22496,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  });
  }
 
- _suscribirPath(pathConPrefijo);
+_suscribirPath(pathConPrefijo);
  if (pathConPrefijo !== pathSinPrefijo) _suscribirPath(pathSinPrefijo);
  }
  };

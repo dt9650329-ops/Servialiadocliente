@@ -3456,7 +3456,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.3.3</small>
+ <small>Versión 1.3.7</small>
  </div>
  </div>
  </div>
@@ -8466,10 +8466,11 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  ]);
  if (!snapA.exists() && !snapB.exists()) return;
  // Incluir completado/entregado para no perder notificaciones recientes
- const estadosActivos = ['pendiente_confirmacion_tienda','pendiente','aceptado','esperando','esperando pedido','en camino','sin_repartidor','completado','entregado'];
+ // FIX: mismo hueco que en buscarPedidoPorCorreo — faltaba 'esperando_asignacion'
+ const estadosActivos = ['pendiente_confirmacion_tienda','pendiente','aceptado','esperando','esperando pedido','esperando_asignacion','en camino','sin_repartidor','completado','entregado'];
  const _procesarChild = (child) => {
  const p = child.val();
- if (!estadosActivos.includes((p.estado || '').toLowerCase())) return;
+ if (!estadosActivos.includes((p.estado || '').trim().toLowerCase())) return;
  const pid = child.key;
  const repN = p.repartidorNombre || '';
  if (typeof window.escucharEstadoPedidoNotif === 'function') window.escucharEstadoPedidoNotif(pid, repN);
@@ -9816,7 +9817,14 @@ async function _cargarBarriosFirebaseCliente() {
  window.get(window.query(window.ref(window.db, 'pedidos_historial'), window.orderByChild('clienteIdAsignado'), window.equalTo(`cliente_auth_${cidNorm}`))),
  ]);
  [snapA, snapB].forEach(snap => {
- if (snap.exists()) snap.forEach(child => pedidosEncontrados.push({ id: child.key, ...child.val() }));
+ // FIX 2026-09-07: snap.forEach() de Firebase corta la iteración si el
+ // callback devuelve un valor "truthy". Array.push() devuelve la nueva
+ // longitud (1, 2, 3...) que SIEMPRE es truthy, así que con
+ // `child => pedidosEncontrados.push(...)` solo se agregaba el primer
+ // pedido de cada snapshot y el resto (incluido el pedido activo real)
+ // se perdía en silencio. Envolver el push en llaves hace que el
+ // callback no devuelva nada y se recorran todos los hijos.
+ if (snap.exists()) snap.forEach(child => { pedidosEncontrados.push({ id: child.key, ...child.val() }); });
  });
  } else {
  // Solo pedir correo si NO está logueado
@@ -9848,9 +9856,13 @@ async function _cargarBarriosFirebaseCliente() {
  const clienteID = userUID;
 
  // Filtrar SOLO pedidos activos (excluir completados/entregados/cancelados)
- const estadosActivos = ['pendiente_confirmacion_tienda', 'pendiente', 'aceptado', 'esperando', 'esperando pedido', 'en camino', 'sin_repartidor'];
+ // FIX: faltaba 'esperando_asignacion' — es el estado que queda en
+ // pedidos_historial mientras una compra de tienda espera su asignación
+ // automática programada (ver _confirmarTiendaConTiempo), y sin este
+ // estado el pedido desaparecía del buscador justo en esa ventana.
+ const estadosActivos = ['pendiente_confirmacion_tienda', 'pendiente', 'aceptado', 'esperando', 'esperando pedido', 'esperando_asignacion', 'en camino', 'sin_repartidor'];
  const pedidosActivos = pedidosEncontrados.filter(p =>
- estadosActivos.includes((p.estado || '').toLowerCase())
+ estadosActivos.includes((p.estado || '').trim().toLowerCase())
  );
 
  // Ordenar por fecha más reciente
@@ -9903,7 +9915,7 @@ async function _cargarBarriosFirebaseCliente() {
  }
  
  const estado = pedido.estado || pedido.estadoHistorial || 'Desconocido';
- const estadoClass = `estado-${estado.toLowerCase().replace(/ /g, '-')}`;
+ const estadoClass = `estado-${estado.trim().toLowerCase().replace(/ /g, '-')}`;
  
  const timestamp = pedido.timestampAsignacion || pedido.timestampCreacion || Date.now();
  const fechaCreacion = new Date(timestamp).toLocaleString('es-ES', {
@@ -9915,7 +9927,7 @@ async function _cargarBarriosFirebaseCliente() {
  });
 
  let estadoDescripcion = '';
- switch(estado.toLowerCase()) {
+ switch(estado.trim().toLowerCase()) {
  case 'pendiente_confirmacion_tienda':
  estadoDescripcion = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg><strong>Pendiente por confirmar en la tienda.</strong><br><span style="font-size:12px;color:#aaa;">Todavía no se asigna repartidor. Si tarda mucho, puedes llamar a la tienda para que te confirmen.</span>';
  break;
@@ -10042,7 +10054,7 @@ if (dentroDeHorario) {
  ` : ''}
 
  <!-- CHAT P2P POR PEDIDO -->
- ${(['aceptado','esperando','esperando pedido','en camino'].includes(estado.toLowerCase())) ? `
+ ${(['aceptado','esperando','esperando pedido','en camino'].includes(estado.trim().toLowerCase())) ? `
  <div id="chat-repartidor-container-${pedido.id}" style="margin-top:16px;">
  <div style="background:#1a1a2e; border:1px solid #4A9EFF; border-radius:12px; overflow:hidden;">
  <div style="background:#16213e; padding:12px 16px; display:flex; align-items:center; justify-content:space-between;">
@@ -10080,7 +10092,7 @@ if (dentroDeHorario) {
  </div>
  </div>` : ''}
 
- ${(['pendiente','aceptado','esperando','esperando pedido','sin_repartidor','cola','en cola'].includes(estado.toLowerCase())) ? `
+ ${(['pendiente','aceptado','esperando','esperando pedido','sin_repartidor','cola','en cola'].includes(estado.trim().toLowerCase())) ? `
  <button onclick="cancelarPedidoCliente('${pedido.id}')" style="
  width: 100%;
  padding: 12px;
@@ -10099,7 +10111,7 @@ if (dentroDeHorario) {
  <p style="text-align: center; color: #aaa; font-size: 12px; margin-top: 8px;">
  Solo puedes cancelar antes de que el repartidor esté en camino
  </p>
- ` : (['en camino','recogido'].includes(estado.toLowerCase())) ? `
+ ` : (['en camino','recogido'].includes(estado.trim().toLowerCase())) ? `
  <div style="background: #2a1a1a; border: 1px solid #dc3545; border-radius: 10px; padding: 12px; margin-top: 16px; text-align: center;">
  <p style="color: #dc3545; font-weight: bold; margin: 0 0 6px 0;"> No se puede cancelar</p>
  <p style="color: #aaa; font-size: 13px; margin: 0;">
@@ -10310,24 +10322,30 @@ if (dentroDeHorario) {
  console.log(' repartidorNombre:', pedido.repartidorNombre || 'N/A');
  console.log(' repartidorUID:', pedido.repartidorUID || 'N/A');
  console.log('?? Campos disponibles:', Object.keys(pedido));
- console.log(' Estado en estadosActivos?', ['pendiente', 'aceptado', 'esperando pedido', 'en camino', 'completado', 'entregado'].includes(estado.toLowerCase()));
+ console.log(' Estado en estadosActivos?', ['pendiente', 'aceptado', 'esperando pedido', 'en camino', 'completado', 'entregado'].includes(estado.trim().toLowerCase()));
  console.log(' Tiene repartidorIdAsignado?', !!pedido.repartidorIdAsignado);
  console.log('');
  console.log('');
  
  // MOSTRAR MAPA SOLO PARA PEDIDOS ACTIVOS (NO COMPLETADOS/CANCELADOS)
- const estadosActivos = ['pendiente', 'aceptado', 'esperando', 'esperando pedido', 'en camino'];
+ // FIX: faltaban 'sin_repartidor', 'pendiente_confirmacion_tienda' y
+ // 'esperando_asignacion' — los estados por los que pasa una compra de
+ // tienda ANTES de tener repartidor asignado. Como gpsRecogida/gpsDestino
+ // ya se guardan desde que se crea el pedido, los pines de recogida y
+ // entrega pueden mostrarse aunque todavía no haya repartidor (igual que
+ // ya pasa con un domicilio normal en estado 'pendiente').
+ const estadosActivos = ['pendiente', 'aceptado', 'esperando', 'esperando pedido', 'en camino', 'sin_repartidor', 'pendiente_confirmacion_tienda', 'esperando_asignacion'];
  const estadosFinalizados = ['completado', 'entregado', 'cancelado'];
  const tieneRepartidor = pedido.repartidorIdAsignado || pedido.repartidorUID || pedido.repartidorId;
  
  // NO MOSTRAR MAPA SI EL PEDIDO YA ESTÁ FINALIZADO
- if (estadosFinalizados.includes(estado.toLowerCase())) {
+ if (estadosFinalizados.includes(estado.trim().toLowerCase())) {
  console.log('');
  console.log('');
  console.log('ℹ PEDIDO FINALIZADO - MAPA NO DISPONIBLE');
  console.log('');
  console.log('Estado:', estado);
- console.log('Razón: El pedido ya fue', estado.toLowerCase());
+ console.log('Razón: El pedido ya fue', estado.trim().toLowerCase());
  console.log('');
  console.log('');
  
@@ -10341,7 +10359,7 @@ if (dentroDeHorario) {
  return; // IMPORTANTE: Salir de la función aquí
  }
  
- if (estadosActivos.includes(estado.toLowerCase())) {
+ if (estadosActivos.includes(estado.trim().toLowerCase())) {
  console.log(` Pedido activo ${pidKey} — agregando al mapa`);
  
  mapContainer.style.display = 'block';
@@ -10424,7 +10442,7 @@ if (dentroDeHorario) {
  const estadosFinalizados = ['completado', 'entregado', 'cancelado'];
  
  if (!pedido.repartidorIdAsignado && !pedido.repartidorUID && !pedido.repartidorId && 
- !estadosFinalizados.includes(estado.toLowerCase())) {
+ !estadosFinalizados.includes(estado.trim().toLowerCase())) {
  // Solo mostrar mensaje de "esperando repartidor" si NO está finalizado
  mapInfoElement.innerHTML = '<p style="text-align: center; color: var(--color-primary); padding: 15px;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg><strong>Esperando asignación de repartidor...</strong><br><small>El mapa se mostrará cuando un repartidor acepte tu pedido</small></p>';
  mapInfoElement.style.display = 'block';
@@ -10740,7 +10758,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.3.3');
+ console.log(' Sistema del cliente inicializado v1.3.7');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10841,7 +10859,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.3.3";
+ const APP_VERSION = "1.3.7";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -13264,7 +13282,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.3');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.7');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -13309,7 +13327,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.3.3  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.3.7  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -14708,6 +14726,15 @@ ${motivo}`;
  estadoHTML = `<div class="product-status-edit disponible"> Confirmado · listo aprox. ${horaListo} · repartidor se asigna solo ~${horaAsig}</div>`;
  } else if (compra.estado === 'confirmado') {
  estadoHTML = `<div class="product-status-edit disponible"> Confirmado, en camino un repartidor</div>`;
+ } else if (compra.estado === 'esperando_en_local') {
+ // 🆕 FIX 2026-09-06: antes el estado se quedaba congelado en "Confirmado,
+ // en camino un repartidor" para siempre — ahora el repartidor sí reporta
+ // cuando llega a recoger.
+ estadoHTML = `<div class="product-status-edit disponible" style="color:#F59E0B;"> El repartidor está esperando en tu local, entrégale el pedido</div>`;
+ } else if (compra.estado === 'en_camino') {
+ estadoHTML = `<div class="product-status-edit disponible" style="color:#7c3aed;"> El repartidor ya salió, en camino a entregar</div>`;
+ } else if (compra.estado === 'entregado') {
+ estadoHTML = `<div class="product-status-edit disponible" style="color:#27ae60;"> Pedido entregado ✅</div>`;
  } else if (compra.estado === 'rechazado') {
  estadoHTML = `<div class="product-status-edit no-disponible"> Rechazado</div>`;
  }
@@ -14767,11 +14794,48 @@ ${motivo}`;
  // de la tienda (solo al comprador, al repartidor asignado o al admin). Ese
  // get() tronaba con Permission denied y cortaba la función ANTES de crear el
  // pedido en pedidos_pendientes — el cliente ya veía "confirmado" (porque el
- // update de arriba sí pasa) pero el admin nunca recibía el pedido. Se usa
- // directo el merge compra+actualizacion, que ya traía todos los datos.
- const pedidoData = { ...compra, ...actualizacionPedido };
+ // update de arriba sí pasa) pero el admin nunca recibía el pedido.
+ //
+ // FIX 2026-09-06 (2): el objeto 'compra' (compras_tienda) NO trae el nombre/
+ // dirección/teléfono de la tienda, y nombra los datos del cliente distinto
+ // a como los lee el Panel Repartidor (clienteTelefono/clienteDireccion en vez
+ // de telefonoCliente/direccionCliente, y no trae nombreEntrega/dirRecogida/
+ // telEntrega en absoluto). Por eso al repartidor le llegaban guiones "—" en
+ // Punto A y Punto B. Se trae el negocio (lectura pública, no requiere ser el
+ // dueño) para completar esos campos con los mismos nombres que usa
+ // crearCompraPendienteEnTienda() al crear el pedido original.
+ let negocio = {};
+ try {
+ const negocioSnap = await get(ref(db, `negocios/${negocioId}`));
+ if (negocioSnap.exists()) negocio = negocioSnap.val();
+ } catch (e) { console.warn('No se pudo leer el negocio para completar el pedido:', e); }
+
+ const pedidoData = {
+ ...compra,
+ ...actualizacionPedido,
+ tipo: 'compra_tienda',
+ negocioId,
+ nombreEntrega: negocio.nombre || compra.nombreEntrega || 'Tienda',
+ dirRecogida: compra.dirRecogida || `Tienda: ${negocio.nombre || 'Tienda'} (ver ubicación exacta en el mapa)`,
+ telEntrega: negocio.telefono || compra.telEntrega || '',
+ telefonoCliente: compra.telefonoCliente || compra.clienteTelefono || '',
+ direccionCliente: compra.direccionCliente || compra.clienteDireccion || '',
+ gpsRecogida: compra.gpsRecogida || compra.ubicacionTienda || null,
+ gpsDestino: compra.gpsDestino || compra.ubicacionCliente || null,
+ // FIX 2026-09-06: 'compra' (compras_tienda) guarda el id del comprador como
+ // 'clienteId', pero el resto del sistema (pedidos_historial, el Panel
+ // Repartidor al aceptar) espera 'clienteIdAsignado'. Sin este campo, el
+ // repartidor no podía aceptar el pedido (set() con clienteUID undefined).
+ clienteIdAsignado: compra.clienteIdAsignado || compra.clienteId || null
+ };
  // FIX: nunca escribir 'undefined' en telefonoCliente (rompe el set() del repartidor al aceptar)
  if (pedidoData.telefonoCliente === undefined) pedidoData.telefonoCliente = '';
+ // FIX 2026-09-06: la regla de repartidores_pedidos exige que el pedido tenga
+ // 'timestampCreacion'. El objeto 'compra' (guardado en compras_tienda) usa el
+ // campo 'fecha', no 'timestampCreacion', así que sin este respaldo la escritura
+ // de abajo a repartidores_pedidos fallaba la validación (Firebase lo reporta
+ // como permission_denied aunque en realidad es un rechazo de .validate).
+ if (!pedidoData.timestampCreacion) pedidoData.timestampCreacion = compra.timestampCreacion || compra.fecha || timestamp;
 
  await update(ref(db, `pedidos_pendientes/${pedidoId}`), { ...pedidoData, pedidoId, historialId: pedidoId });
 
@@ -20538,7 +20602,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  const mapId = 'sb-ubicacion-mapa-' + Date.now();
  const repNombre = datosUbicacion.repartidorNombre || 'Tu repartidor';
- const estadoTxt = (datosUbicacion.estado || '').toLowerCase();
+ const estadoTxt = (datosUbicacion.estado || '').trim().toLowerCase();
  const estadoLabel = {
  'aceptado': 'va en camino a recoger tu pedido',
  'esperando': 'está en el punto de recogida',
@@ -22581,7 +22645,7 @@ window._tiempoRecogidaSeleccionado = { minutos: 0, etiqueta: 'Ya está para reco
       let activo = false;
       const _revisar = (child) => {
         const p = child.val();
-        if (!ESTADOS_FINALIZADOS.includes((p.estado || '').toLowerCase())) activo = true;
+        if (!ESTADOS_FINALIZADOS.includes((p.estado || '').trim().toLowerCase())) activo = true;
       };
       if (snapA.exists()) snapA.forEach(_revisar);
       if (snapB.exists()) snapB.forEach(_revisar);

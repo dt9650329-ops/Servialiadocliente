@@ -7,33 +7,34 @@
 
   BLOQUE CSS (dentro de <head>)
   ─────────────────────────────
-  Línea    51  │ INICIO DEL BLOQUE CSS
-  Línea  2920  │ FIN DEL BLOQUE CSS
+  Línea    59  │ INICIO DEL BLOQUE CSS
+  Línea  3263  │ FIN DEL BLOQUE CSS
 
   CUERPO HTML (<body>)
   ─────────────────────────────────────────────────────────────────────────────
-  Línea  2927  │ SECCIÓN  1 · MENÚ HAMBURGUESA, CAMPANITA Y PANEL DE NOTIFICACIONES
-  Línea  3152  │ SECCIÓN  2 · PANTALLAS DE AUTENTICACIÓN, SPLASH Y LOADING
-  Línea  3256  │ SECCIÓN  3 · VISTA CLIENTE (navegación tabs + TAB TIENDA)
-  Línea  3278  │ SECCIÓN  4 · TAB PERFIL
-  Línea  3389  │ SECCIÓN  5 · TAB SERVICIO (formulario de pedido)
-  Línea  4030  │ SECCIÓN  6 · TAB SEGUIMIENTO (TRACKING)
-  Línea  4083  │ SECCIÓN  7 · TAB PREMIOS
-  Línea  4380  │ SECCIÓN  8 · TAB SERVIBOT
-  Línea  4430  │ SECCIÓN  9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
-  Línea  9208  │ SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
-  Línea 13016  │ SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
-  Línea 13108  │ SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
-  Línea 14684  │ SECCIÓN 13 · MODAL SUGERIR NUEVO LUGAR
-  Línea 14772  │ SECCIÓN 13B · MAPEADOR DE UBICACIÓN PARA SUGERENCIAS (pin en mapa)
-  Línea 14892  │ SECCIÓN 14 · SELECTOR DE DESTINO (Armenia / Municipio fuera)
-  Línea 15078  │ SECCIÓN 15 · GEOCODIFICACIÓN Y GPS (Nominatim + ubicación)
-  Línea 15213  │ SECCIÓN 16 · SERVIBOT CHATBOT (motor de respuestas por reglas)
-  Línea 15916  │ SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
-  Línea 16128  │ SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
-  Línea 16404  │ SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO
-  Línea 16564  │ SECCIÓN 19 · MODAL HOJA DE RUTA DE NIVELES
-  Línea 16713  │ SECCIÓN 20 · MODAL VISOR DE IMAGEN
+  Línea  3270  │ SECCIÓN  1 · MENÚ HAMBURGUESA, CAMPANITA Y PANEL DE NOTIFICACIONES
+  Línea  3507  │ SECCIÓN  2 · PANTALLAS DE AUTENTICACIÓN, SPLASH Y LOADING
+  Línea  3651  │ SECCIÓN  3 · VISTA CLIENTE (navegación tabs + TAB TIENDA)
+  Línea  3673  │ SECCIÓN  4 · TAB PERFIL
+  Línea  3894  │ SECCIÓN  5 · TAB SERVICIO (formulario de pedido)
+  Línea  4633  │ SECCIÓN  6 · TAB SEGUIMIENTO (TRACKING)
+  Línea  4686  │ SECCIÓN  7 · TAB PREMIOS
+  Línea  4995  │ SECCIÓN  8 · TAB SERVIBOT
+  Línea  5061  │ SECCIÓN  9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
+  Línea 10788  │ SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
+  Línea 16684  │ SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
+  Línea 16858  │ SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
+  Línea 19171  │ SECCIÓN 13 · MODAL SUGERIR NUEVO LUGAR
+  Línea 19259  │ SECCIÓN 13B · MAPEADOR DE UBICACIÓN PARA SUGERENCIAS (pin en mapa)
+  Línea 19379  │ SECCIÓN 14 · SELECTOR DE DESTINO (Armenia / Municipio fuera)
+  Línea 19569  │ SECCIÓN 15 · GEOCODIFICACIÓN Y GPS (Nominatim + ubicación)
+  Línea 19705  │ SECCIÓN 16 · SERVIBOT CHATBOT (motor de respuestas por reglas)
+  Línea 21784  │ SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
+  Línea 21996  │ SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
+  Línea 22507  │ SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO
+  Línea 22668  │ SECCIÓN 19 · MODAL HOJA DE RUTA DE NIVELES
+  Línea 22817  │ SECCIÓN 20 · MODAL VISOR DE IMAGEN
+  Línea 22825  │ SECCIÓN 21 · INICIALIZACIÓN FINAL (lucide icons + auto-cierre de sesión)
 
 ================================================================================
 -->
@@ -10784,7 +10785,7 @@ if (dentroDeHorario) {
  </script>
 
 <!-- ============================================================
-     SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
+          SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
 ============================================================ -->
  <script type="module">
  import { 
@@ -11606,6 +11607,37 @@ if (dentroDeHorario) {
  }
  });
 
+ // Resuelve un código de referido de la URL (?ref=xxx) al id real del negocio en
+ // Firebase. Primero busca el código como slug (slugsTiendas/{codigo}); si no
+ // existe, prueba tratarlo como un id de negocio directo (compatibilidad con
+ // links viejos generados antes de tener slugs).
+ async function resolverIdTiendaPorCodigoReferido(codigo) {
+ try {
+ const slugSnap = await get(ref(db, `slugsTiendas/${codigo}`));
+ if (slugSnap.exists()) return slugSnap.val();
+ const negocioSnap = await get(ref(db, `negocios/${codigo}`));
+ if (negocioSnap.exists()) return codigo;
+ } catch (e) {
+ console.warn('Error resolviendo código de referido:', e);
+ }
+ return null;
+ }
+
+ // Captura el código de tienda referida (?ref=idNegocio) apenas carga la app y lo
+ // guarda en localStorage hasta que el usuario termine su registro. Así funciona
+ // aunque el registro con Google/correo pase por una redirección de por medio.
+ (function capturarCodigoReferidoTienda() {
+ try {
+ const params = new URLSearchParams(window.location.search);
+ const refTienda = params.get('ref');
+ if (refTienda) {
+ localStorage.setItem('servi_ref_tienda', refTienda);
+ }
+ } catch (e) {
+ console.warn('No se pudo leer el código de referido de la URL:', e);
+ }
+ })();
+
  window.guardarUsuarioEnFirebase = function() {
  const authUser = window.currentAuthUser; 
 
@@ -11687,7 +11719,27 @@ if (dentroDeHorario) {
  .then(() => {
  console.log(' Usuario guardado exitosamente en Firebase');
  localStorage.setItem("usuarioDomicilios", JSON.stringify({...infoFijaUsuario, uid: authUser.uid})); 
- 
+
+ // Si este usuario llegó desde el link de referido de una tienda, se registra
+ // en negocios/{idTienda}/referidos para que el dueño lo vea en su panel.
+ // El código de la URL puede ser el slug bonito (ej. "papitas") o, en links
+ // viejos, el id largo de Firebase directamente — se prueban los dos.
+ const refTienda = localStorage.getItem('servi_ref_tienda');
+ if (refTienda) {
+ resolverIdTiendaPorCodigoReferido(refTienda).then(idTiendaReal => {
+ if (idTiendaReal) {
+ set(ref(db, `negocios/${idTiendaReal}/referidos/${usuarioID}`), {
+ nombre: nombre,
+ direccion: direccion,
+ tel1: tel1,
+ fecha: ahora,
+ fechaLegible: fechaLegible
+ }).catch(e => console.warn('No se pudo guardar el referido:', e));
+ }
+ localStorage.removeItem('servi_ref_tienda');
+ }).catch(e => console.warn('No se pudo verificar la tienda referida:', e));
+ }
+
  window.mostrarPerfil(infoFijaUsuario);
  // 🔧 FIX: el nodo usuarios/{id} ya quedó completo (set() con todos los campos),
  // ahora sí es seguro guardar el token push sin riesgo de crear un registro vacío.
@@ -13241,6 +13293,8 @@ ${motivo}`;
  }
  }
 
+ const slugTienda = await generarSlugUnico(nombre);
+
  const nuevoNegocio = {
  nombre,
  descripcion,
@@ -13252,11 +13306,13 @@ ${motivo}`;
  fecha: Date.now(),
  estado: 'pendiente',
  secciones,
- ubicacion: ubicacionNegocio
+ ubicacion: ubicacionNegocio,
+ slug: slugTienda
  };
 
  const nuevoNegocioRef = push(ref(db, 'negocios'));
  await set(nuevoNegocioRef, nuevoNegocio);
+ await set(ref(db, `slugsTiendas/${slugTienda}`), nuevoNegocioRef.key);
 
  clienteTieneTienda = true;
  miTiendaId = nuevoNegocioRef.key;
@@ -13360,6 +13416,26 @@ ${motivo}`;
 
  // Migra tiendas viejas (sin `secciones`) al modelo nuevo, una sola vez, y devuelve
  // el objeto de secciones ya sea el existente o el recién migrado.
+ // Genera un código de referido único usando el NOMBRE REAL de la tienda tal
+ // cual (ej. "Papitas al aire"), solo quitando los caracteres que Firebase no
+ // permite en una key (. # $ [ ] /). Si el nombre ya está tomado por otra
+ // tienda, le agrega un número al final ("Papitas al aire 2").
+ async function generarSlugUnico(nombreBase) {
+ let base = (nombreBase || 'Tienda')
+ .toString()
+ .trim()
+ .replace(/[.#$\[\]\/]/g, ''); // caracteres no válidos como key de Firebase
+ if (!base) base = 'Tienda';
+ let slug = base;
+ let intento = 1;
+ while (true) {
+ const snap = await get(ref(db, `slugsTiendas/${slug}`));
+ if (!snap.exists()) return slug;
+ intento++;
+ slug = `${base} ${intento}`;
+ }
+ }
+
  async function migrarTiendaASeccionesSiNecesario(negocioId, negocioData) {
  if (negocioData.secciones && Object.keys(negocioData.secciones).length > 0) {
  return negocioData.secciones;
@@ -13654,6 +13730,184 @@ ${motivo}`;
  if (!negocioSnapshot.exists()) return;
  const negocio = negocioSnapshot.val();
  renderSeccionesMiTienda(miTiendaIdActual, negocio.secciones || {});
+ }
+
+ // ==================== SISTEMA DE REFERIDOS DE TIENDA ====================
+ // Muestra la barra con el link de referido de la tienda y la lista de
+ // clientes que se registraron usando ese link (negocios/{id}/referidos).
+ // El link SIEMPRE debe apuntar a la app pública del cliente final (no al
+ // panel administrativo, que puede estar corriendo en otro dominio/local).
+ const URL_APP_CLIENTE_REFERIDOS = 'https://dt9650329-ops.github.io/Servialiadocliente/';
+ window.abrirReferidosMiTienda = async function(negocioId) {
+ const listaProductos = document.getElementById('lista-productos-mi-tienda');
+ document.getElementById('btn-agregar-producto-seccion-wrapper')?.remove();
+ seccionActualId = null;
+ listaProductos.innerHTML = '<p class="no-products-message">Cargando referidos...</p>';
+
+ document.getElementById('modal-mi-tienda-productos').style.display = 'block';
+
+ if (!negocioId) {
+ listaProductos.innerHTML = '<p class="no-products-message">No se pudo identificar tu tienda. Cierra este panel, entra de nuevo a "Mi tienda" y vuelve a intentar.</p>';
+ return;
+ }
+
+ listaProductos.innerHTML = '';
+
+ const backBtn = document.createElement('button');
+ backBtn.type = 'button';
+ backBtn.className = 'section-back-btn';
+ backBtn.textContent = '← Volver a secciones';
+ backBtn.onclick = () => volverASeccionesMiTienda();
+ listaProductos.appendChild(backBtn);
+
+ const encabezado = document.createElement('h4');
+ encabezado.style.color = 'var(--color-primary)';
+ encabezado.style.marginBottom = '6px';
+ encabezado.textContent = '🎁 Referidos';
+ listaProductos.appendChild(encabezado);
+
+ const descripcion = document.createElement('p');
+ descripcion.style.fontSize = '13px';
+ descripcion.style.color = 'var(--color-text-dark)';
+ descripcion.style.margin = '0 0 12px';
+ descripcion.textContent = 'Comparte este link. Cuando alguien se registre desde él, va a aparecer aquí abajo.';
+ listaProductos.appendChild(descripcion);
+
+ // ==== Barra para generar/copiar el link de registro de clientes ====
+ // Se construye y se muestra SIEMPRE, incluso si más abajo falla la carga
+ // de la lista de referidos o la generación del slug: por eso vive en su
+ // propio bloque, separado de la lista.
+ const barraContenedor = document.createElement('div');
+ barraContenedor.style.display = 'flex';
+ barraContenedor.style.alignItems = 'center';
+ barraContenedor.style.gap = '8px';
+ barraContenedor.style.marginBottom = '18px';
+ barraContenedor.style.background = '#2a2a2a';
+ barraContenedor.style.border = '2px solid #555';
+ barraContenedor.style.borderRadius = '10px';
+ barraContenedor.style.padding = '4px 4px 4px 12px';
+
+ const iconoLink = document.createElement('span');
+ iconoLink.textContent = '🔗';
+ iconoLink.style.fontSize = '15px';
+ iconoLink.style.flexShrink = '0';
+ barraContenedor.appendChild(iconoLink);
+
+ const inputUrl = document.createElement('input');
+ inputUrl.type = 'text';
+ inputUrl.id = 'input-url-referido';
+ inputUrl.readOnly = true;
+ inputUrl.value = 'Generando link de registro...';
+ inputUrl.style.flex = '1';
+ inputUrl.style.minWidth = '0';
+ inputUrl.style.padding = '10px 0';
+ inputUrl.style.background = 'transparent';
+ inputUrl.style.color = '#fff';
+ inputUrl.style.border = 'none';
+ inputUrl.style.outline = 'none';
+ inputUrl.style.fontSize = '12px';
+ inputUrl.onclick = () => inputUrl.select();
+ barraContenedor.appendChild(inputUrl);
+
+ const btnCopiar = document.createElement('button');
+ btnCopiar.type = 'button';
+ btnCopiar.className = 'btn-agregar-producto-mi-tienda';
+ btnCopiar.style.width = 'auto';
+ btnCopiar.style.padding = '0 16px';
+ btnCopiar.style.whiteSpace = 'nowrap';
+ btnCopiar.disabled = true;
+ btnCopiar.textContent = 'Copiar';
+ barraContenedor.appendChild(btnCopiar);
+
+ listaProductos.appendChild(barraContenedor);
+
+ const activarBotonCopiar = (urlReferido) => {
+ btnCopiar.disabled = false;
+ btnCopiar.onclick = async () => {
+ try {
+ await navigator.clipboard.writeText(urlReferido);
+ btnCopiar.textContent = '¡Copiado!';
+ } catch (e) {
+ inputUrl.select();
+ document.execCommand('copy');
+ btnCopiar.textContent = '¡Copiado!';
+ }
+ setTimeout(() => { btnCopiar.textContent = 'Copiar'; }, 1800);
+ };
+ };
+
+ // Genera (o recupera) el slug de la tienda para armar el link. Si falla
+ // guardar el slug (p. ej. por permisos), se usa el ID de la tienda como
+ // código del link: sigue funcionando igual porque resolverIdTiendaPorCodigoReferido
+ // acepta tanto un slug como un ID de negocio directo.
+ try {
+ const negocioSnapshot = await get(ref(db, 'negocios/' + negocioId));
+ const negocio = negocioSnapshot.exists() ? negocioSnapshot.val() : {};
+
+ let slugTienda = negocio.slug;
+ if (!slugTienda) {
+ try {
+ slugTienda = await generarSlugUnico(negocio.nombre);
+ await set(ref(db, `negocios/${negocioId}/slug`), slugTienda);
+ await set(ref(db, `slugsTiendas/${slugTienda}`), negocioId);
+ } catch (errorSlug) {
+ console.error('No se pudo generar/guardar el slug de referido, se usa el ID de la tienda como respaldo:', errorSlug);
+ slugTienda = negocioId;
+ }
+ }
+
+ const urlReferido = `${URL_APP_CLIENTE_REFERIDOS}?ref=${encodeURIComponent(slugTienda)}`;
+ inputUrl.value = urlReferido;
+ activarBotonCopiar(urlReferido);
+ } catch (errorUrl) {
+ console.error('Error generando el link de referido, se usa un link de respaldo con el ID de la tienda:', errorUrl);
+ const urlRespaldo = `${URL_APP_CLIENTE_REFERIDOS}?ref=${encodeURIComponent(negocioId)}`;
+ inputUrl.value = urlRespaldo;
+ activarBotonCopiar(urlRespaldo);
+ }
+
+ // ==== Lista de personas que se registraron con el link ====
+ // Vive en su propio try/catch: si esta parte falla, la barra de arriba
+ // sigue funcionando y solo se muestra el error aquí abajo.
+ const encabezadoLista = document.createElement('h4');
+ encabezadoLista.style.color = 'var(--color-primary)';
+ encabezadoLista.style.marginBottom = '10px';
+ encabezadoLista.textContent = 'Personas registradas con tu link';
+ listaProductos.appendChild(encabezadoLista);
+
+ const contenedorLista = document.createElement('div');
+ contenedorLista.id = 'lista-referidos-tienda';
+ contenedorLista.innerHTML = '<p class="no-products-message">Cargando...</p>';
+ listaProductos.appendChild(contenedorLista);
+
+ try {
+ const referidosSnapshot = await get(ref(db, `negocios/${negocioId}/referidos`));
+ if (!referidosSnapshot.exists()) {
+ contenedorLista.innerHTML = '<p class="no-products-message">Todavía no tienes referidos. Comparte tu link para empezar a sumar.</p>';
+ return;
+ }
+
+ const referidos = referidosSnapshot.val();
+ const filas = Object.values(referidos).sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
+
+ contenedorLista.innerHTML = '';
+ filas.forEach(r => {
+ const fila = document.createElement('div');
+ fila.className = 'product-item-edit';
+ fila.style.flexDirection = 'column';
+ fila.style.alignItems = 'stretch';
+ fila.innerHTML = `
+ <strong style="color:var(--color-text-light);">${r.nombre || 'Sin nombre'}</strong>
+ <span style="font-size:12px; color:var(--color-text-dark); margin-top:2px;">${r.direccion || 'Sin dirección'}</span>
+ <span style="font-size:11px; color:var(--color-text-dark); margin-top:4px;">${r.fechaLegible || ''}</span>
+ `;
+ contenedorLista.appendChild(fila);
+ });
+
+ } catch (errorLista) {
+ console.error('Error al cargar la lista de referidos de la tienda:', errorLista);
+ contenedorLista.innerHTML = '<p class="no-products-message">No se pudo cargar la lista de personas registradas (el link para compartir de arriba sí funciona).</p>';
+ }
  }
 
  // Editor de horario de atención al público (días de la semana + hora de apertura/cierre)
@@ -16678,7 +16932,6 @@ Detalles técnicos en la consola (F12)`;
 
 </script>
 
-
 <!-- ============================================================
      SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
 ============================================================ -->
@@ -16812,6 +17065,9 @@ Detalles técnicos en la consola (F12)`;
  <button type="button" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin(); if(window.miTiendaIdActual) abrirHorarioMiTienda(window.miTiendaIdActual);">
  <span>🕐 Horario de Atención</span>
  </button>
+ <button type="button" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin(); if(window.miTiendaIdActual) abrirReferidosMiTienda(window.miTiendaIdActual);">
+ <span>🎁 Referidos</span>
+ </button>
  <button type="button" id="btn-menu-ubicacion-tienda" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin();">
  📍 Configurar ubicación de mi tienda
  </button>
@@ -16852,6 +17108,9 @@ Detalles técnicos en la consola (F12)`;
  </button>
  </div>
 </div>
+
+<!-- ============================================================
+
 
 <!-- ============================================================
      SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
@@ -22077,7 +22336,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  });
  }
 
- window.agregarNotificacion = function(title, body, type, action, extra) {
+window.agregarNotificacion = function(title, body, type, action, extra) {
  const n = { id: Date.now() + Math.random(), title, body, type: type||'pedido', action: action||null, ts: Date.now(), read: false, ...extra };
  _notifs.push(n);
  _save();
@@ -22134,7 +22393,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  img.src = url;
  modal.classList.add('activo');
  };
- window.cerrarVisorImg = function() {
+window.cerrarVisorImg = function() {
  const modal = document.getElementById('img-visor-modal');
  if (modal) modal.classList.remove('activo');
  const img = document.getElementById('img-visor-src');
@@ -22820,6 +23079,9 @@ window._tiempoRecogidaSeleccionado = { minutos: 0, etiqueta: 'Ya está para reco
  <button id="img-visor-cerrar" onclick="cerrarVisorImg()"></button>
  <img id="img-visor-src" src="" alt="Imagen" onclick="event.stopPropagation()">
 </div>
+<!-- ============================================================
+     SECCIÓN 21 · INICIALIZACIÓN FINAL (lucide icons + auto-cierre de sesión)
+============================================================ -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>
  document.addEventListener('DOMContentLoaded', function() {

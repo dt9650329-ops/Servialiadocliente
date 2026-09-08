@@ -11725,8 +11725,9 @@ if (dentroDeHorario) {
  // El código de la URL puede ser el slug bonito (ej. "papitas") o, en links
  // viejos, el id largo de Firebase directamente — se prueban los dos.
  const refTienda = localStorage.getItem('servi_ref_tienda');
- if (refTienda) {
- resolverIdTiendaPorCodigoReferido(refTienda).then(idTiendaReal => {
+if (refTienda) {
+ resolverIdTiendaPorCodigoReferido(refTienda).then(async idTiendaReal => {
+ localStorage.removeItem('servi_ref_tienda');
  if (idTiendaReal) {
  set(ref(db, `negocios/${idTiendaReal}/referidos/${usuarioID}`), {
  nombre: nombre,
@@ -11735,19 +11736,40 @@ if (dentroDeHorario) {
  fecha: ahora,
  fechaLegible: fechaLegible
  }).catch(e => console.warn('No se pudo guardar el referido:', e));
+
+ // 🆕 Vino por link de una tienda: se salta el tutorial y lo mandamos
+ // directo a esa tienda, ya que si se registró así es porque quiere comprar ahí.
+ try {
+ const negocioSnap = await get(ref(db, `negocios/${idTiendaReal}`));
+ const nombreTiendaReferida = negocioSnap.exists() ? (negocioSnap.val().nombre || 'Tienda') : 'Tienda';
+ setTimeout(() => {
+ if (typeof window.verProductosTienda === 'function') {
+ window.verProductosTienda(idTiendaReal, nombreTiendaReferida);
  }
+ }, 800);
+ } catch (e) {
+ console.warn('No se pudo abrir la tienda referida automáticamente:', e);
+ if (typeof window.mostrarTutorialNuevoUsuario === 'function') window.mostrarTutorialNuevoUsuario();
+ }
+ } else {
+ // El código de referido no resolvió a ninguna tienda: comportamiento normal
+ if (typeof window.mostrarTutorialNuevoUsuario === 'function') window.mostrarTutorialNuevoUsuario();
+ }
+ }).catch(e => {
+ console.warn('No se pudo verificar la tienda referida:', e);
  localStorage.removeItem('servi_ref_tienda');
- }).catch(e => console.warn('No se pudo verificar la tienda referida:', e));
+ if (typeof window.mostrarTutorialNuevoUsuario === 'function') window.mostrarTutorialNuevoUsuario();
+ });
+ } else {
+ setTimeout(function() {
+ if (typeof window.mostrarTutorialNuevoUsuario === 'function') window.mostrarTutorialNuevoUsuario();
+ }, 800);
  }
 
  window.mostrarPerfil(infoFijaUsuario);
  // 🔧 FIX: el nodo usuarios/{id} ya quedó completo (set() con todos los campos),
  // ahora sí es seguro guardar el token push sin riesgo de crear un registro vacío.
  if (window._inicializarPushFCM) window._inicializarPushFCM();
- // Mostrar tutorial de bienvenida al usuario nuevo
- setTimeout(function() {
- if (typeof window.mostrarTutorialNuevoUsuario === 'function') window.mostrarTutorialNuevoUsuario();
- }, 800);
  })
  .catch((error) => {
  alert("Error al guardar en Firebase: " + error.message);

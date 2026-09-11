@@ -8775,11 +8775,13 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  btnMenu.classList.remove('active');
  document.body.style.overflow = '';
  document.getElementById('menu-hamburguesa').style.display = 'block';
- // Restaurar campanita al cerrar el menú
- if (window._bellEnabled) {
- const _bellR = document.getElementById('notif-bell-container');
- if (_bellR) _bellR.style.display = 'block';
- }
+// Restaurar campanita al cerrar el menú (pero no si sigues dentro
+        // de la tienda: ese modal ya la esconde y la restaura por su cuenta)
+        const _modalTiendaAbierto = document.getElementById('modal-ver-tienda')?.style.display === 'block';
+        if (window._bellEnabled && !_modalTiendaAbierto) {
+            const _bellR = document.getElementById('notif-bell-container');
+            if (_bellR) _bellR.style.display = 'block';
+        }
  }
  }
 
@@ -13499,11 +13501,22 @@ ${motivo}`;
  crearSeccion(negocioData.categoria || 'Productos', productosSnap.exists() ? productosSnap.val() : {});
  }
 
- await update(ref(db, `negocios/${negocioId}`), { secciones });
- return secciones;
- }
+    // FIX 2026-09-08: este guardado solo debe bloquear si falla por una
+    // razon real. Si quien abre la tienda no es el dueno/admin, Firebase
+    // rechaza el update por permisos (esperado) - antes ese error tumbaba
+    // toda la carga y la tienda se quedaba en "Cargando secciones..." para
+    // cualquier cliente que la visitara. Ahora, si el guardado falla, igual
+    // se devuelven las secciones ya armadas en memoria para que se puedan
+    // mostrar; solo el dueno/admin lograra persistir la migracion real.
+    try {
+      await update(ref(db, `negocios/${negocioId}`), { secciones });
+    } catch (e) {
+      console.warn('No se pudo guardar la migracion de secciones (probablemente no eres el dueno de esta tienda):', e);
+    }
+    return secciones;
+  }
 
- window.abrirModalEditarMiTienda = async function(negocioId) {
+  window.abrirModalEditarMiTienda = async function(negocioId) {
  miTiendaIdActual = negocioId;
  window.miTiendaIdActual = negocioId; // espejo global: lo necesitan otros bloques <script> (ej. la alarma de ventas y el menú lateral)
  seccionActualId = null;

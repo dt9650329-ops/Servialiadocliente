@@ -10785,8 +10785,7 @@ if (dentroDeHorario) {
  console.log(' Sistema de routing corregido con validaciones robustas');
  console.log(' Sistema de tiendas: 1 tienda por cliente + aprobación admin');
  </script>
-
-<!-- ============================================================
+============================================================ -->
           SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
 ============================================================ -->
  <script type="module">
@@ -13317,7 +13316,16 @@ ${motivo}`;
  }
  }
 
- const slugTienda = await generarSlugUnico(nombre);
+ // 🔧 FIX 2026-09-11: generarSlugUnico() y el registro del slug dependen
+ // del nodo slugsTiendas en Firebase (ver reglas_1.txt); si por lo que sea
+ // esa escritura falla, no debe tumbar la creación de la tienda completa
+ // (antes sí lo hacía, porque estaba fuera de un try/catch propio).
+ let slugTienda = null;
+ try {
+ slugTienda = await generarSlugUnico(nombre);
+ } catch (errorSlug) {
+ console.warn('⚠️ No se pudo generar el slug de la tienda (no crítico):', errorSlug);
+ }
 
  const nuevoNegocio = {
  nombre,
@@ -13336,7 +13344,13 @@ ${motivo}`;
 
  const nuevoNegocioRef = push(ref(db, 'negocios'));
  await set(nuevoNegocioRef, nuevoNegocio);
+ if (slugTienda) {
+ try {
  await set(ref(db, `slugsTiendas/${slugTienda}`), nuevoNegocioRef.key);
+ } catch (errorSlug2) {
+ console.warn('⚠️ No se pudo registrar el slug de la tienda (no crítico):', errorSlug2);
+ }
+ }
 
  clienteTieneTienda = true;
  miTiendaId = nuevoNegocioRef.key;
@@ -13501,22 +13515,11 @@ ${motivo}`;
  crearSeccion(negocioData.categoria || 'Productos', productosSnap.exists() ? productosSnap.val() : {});
  }
 
-    // FIX 2026-09-08: este guardado solo debe bloquear si falla por una
-    // razon real. Si quien abre la tienda no es el dueno/admin, Firebase
-    // rechaza el update por permisos (esperado) - antes ese error tumbaba
-    // toda la carga y la tienda se quedaba en "Cargando secciones..." para
-    // cualquier cliente que la visitara. Ahora, si el guardado falla, igual
-    // se devuelven las secciones ya armadas en memoria para que se puedan
-    // mostrar; solo el dueno/admin lograra persistir la migracion real.
-    try {
-      await update(ref(db, `negocios/${negocioId}`), { secciones });
-    } catch (e) {
-      console.warn('No se pudo guardar la migracion de secciones (probablemente no eres el dueno de esta tienda):', e);
-    }
-    return secciones;
-  }
+ await update(ref(db, `negocios/${negocioId}`), { secciones });
+ return secciones;
+ }
 
-  window.abrirModalEditarMiTienda = async function(negocioId) {
+ window.abrirModalEditarMiTienda = async function(negocioId) {
  miTiendaIdActual = negocioId;
  window.miTiendaIdActual = negocioId; // espejo global: lo necesitan otros bloques <script> (ej. la alarma de ventas y el menú lateral)
  seccionActualId = null;
@@ -16968,6 +16971,7 @@ Detalles técnicos en la consola (F12)`;
 </script>
 
 <!-- ============================================================
+
      SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
 ============================================================ -->
 <!-- ==================== MODAL: AGREGAR PRODUCTO AL MENÚ (DUEÑO) ==================== -->

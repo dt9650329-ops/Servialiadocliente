@@ -5057,7 +5057,6 @@
  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
  <script>eruda.init();</script>
 
-<!-- ============================================================
      SECCIÓN 9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
 ============================================================ -->
  <script>
@@ -5363,6 +5362,7 @@ const TONOS_NOTIFICACION = [
  },
  (error) => {
  console.error(' Error GPS Cliente:', error.message);
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('ubicacion', 'iniciarEnvioUbicacionCliente', error, { codigo: error.code });
  
  if (error.code === error.PERMISSION_DENIED) {
  console.error(' Permiso de ubicación denegado');
@@ -5415,6 +5415,7 @@ const TONOS_NOTIFICACION = [
  
  } catch (error) {
  console.error(' Error al enviar ubicación del cliente:', error);
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('ubicacion', 'enviarUbicacionClienteAFirebase', error, {});
  }
  }
  
@@ -5835,6 +5836,33 @@ const TONOS_NOTIFICACION = [
  if (hdr) hdr.style.display = 'flex';
  };
 
+ window._repClienteInicializado = window._repClienteInicializado || false;
+
+ // 🩺 MONITOREO DEL CLIENTE — función central de reporte de errores.
+ // Mismo patrón que ya usa la app del repartidor: cada sección (pedidos,
+ // chat, ubicación, notificaciones, sesión) llama a esto cuando algo real
+ // le falla al usuario. El admin lo ve en vivo en su panel, sin depender
+ // de que el cliente reporte el problema manualmente por soporte.
+ window.reportarErrorMonitoreo = function(seccion, funcion, error, extra = {}) {
+   try {
+     if (!window.db || !window.ref || !window.push || !window.update) return;
+     const detalle = {
+       funcion,
+       mensaje: (error && error.message) ? error.message : String(error),
+       codigo: (error && error.code) ? error.code : null,
+       clienteId: window.currentUserID || 'desconocido',
+       clienteNombre: (window._clienteNombreActual || null),
+       ts: Date.now(),
+       fecha: new Date().toISOString(),
+       ...extra
+     };
+     window.push(window.ref(window.db, `monitoreo_cliente_log/${seccion}`), detalle).catch(() => {});
+     window.update(window.ref(window.db, `monitoreo_cliente/${seccion}`), { ultimoError: detalle }).catch(() => {});
+   } catch (e) {
+     console.warn('[monitoreo] no se pudo reportar el error:', e);
+   }
+ };
+
  window.enviarFavor = async function(tipo) {
  // Verificar sesión 
  if (!window.currentUserID) {
@@ -5965,6 +5993,7 @@ const TONOS_NOTIFICACION = [
 
  if (!pedidoData) return;
 
+ try {
  // Intentar asignar repartidor disponible (igual que domicilios) 
  let repartidorAsignado = null;
  try {
@@ -6101,6 +6130,17 @@ const TONOS_NOTIFICACION = [
  // Volver al selector de servicio
  if (typeof window.volverAlSelectorServicio === 'function') {
  window.volverAlSelectorServicio();
+ }
+ } catch (errorEnvio) {
+   // 🩺 Este catch cubre TODO el flujo de guardado del pedido (Firebase
+   // historial/pendientes/repartidor). Antes, si algo fallaba aquí (ej.
+   // sin internet a mitad de camino), el usuario se quedaba sin saber
+   // qué pasó y sin registro alguno del problema.
+   console.error('Error enviando favor:', errorEnvio);
+   window.reportarErrorMonitoreo('pedidos', 'enviarFavor', errorEnvio, { tipo });
+   alert(' No se pudo enviar tu solicitud. Revisa tu conexión a internet e intenta de nuevo.\n\nSi el problema sigue, contáctanos por soporte.');
+   const btnReintentar = document.getElementById(tipo === 'compra' ? 'favor-compra-btn' : tipo === 'pago' ? 'favor-pago-btn' : 'favor-recibo-btn');
+   if (btnReintentar) { btnReintentar.disabled = false; }
  }
  };
 
@@ -9546,12 +9586,15 @@ async function _cargarBarriosFirebaseCliente() {
  console.log('');
  console.log(' INICIANDO SEGUIMIENTO DEL REPARTIDOR', esAdicional ? '(pedido adicional)' : '(principal)');
  console.log('');
+ window._pedidoEnSeguimientoActivo = pedidoId || window._pedidoEnSeguimientoActivo;
  
  if (!clienteCoords || !clienteCoords.lat || !clienteCoords.lng) {
  console.error('');
  console.error(' ERROR CRÍTICO: clienteCoords no está disponible');
  console.error('clienteCoords actual:', clienteCoords);
  console.error('');
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('ubicacion', 'iniciarSeguimientoUbicacion',
+   new Error('clienteCoords no disponible al iniciar seguimiento'), { pedidoId });
  alert(' Error: No se pudo obtener tu ubicación.\n\nPor favor:\n1. Verifica que el permiso de ubicación esté activado\n2. Recarga la página\n3. Intenta de nuevo');
  return;
  }
@@ -9686,6 +9729,7 @@ async function _cargarBarriosFirebaseCliente() {
 
  function detenerSeguimientoUbicacion() {
  console.log(' Deteniendo seguimiento de ubicación...');
+ window._pedidoEnSeguimientoActivo = null;
  
  if (repartidorUbicacionListener && currentRepartidorUID && window.off && window.ref && window.db) {
  const repartidorRef = window.ref(window.db, `repartidores_info/${currentRepartidorUID}`);
@@ -11181,6 +11225,7 @@ if (dentroDeHorario) {
  
  off(ref(db, `chats/${window.currentUserID}`));
  
+ window._logoutManualClienteEnCurso = true;
  signOut(auth).then(() => {
  window.currentUserID = null;
  if (typeof window.mostrarCampanita === 'function') window.mostrarCampanita(false);
@@ -11483,6 +11528,10 @@ if (dentroDeHorario) {
  }
  if (permiso.receive !== 'granted') {
  console.warn('🔴 DEBUG PUSH: Permiso de notificaciones push denegado');
+ // 🩺 Monitoreo: sin este permiso, el cliente nunca se entera de que su
+ // pedido avanzó (aceptado/en camino/entregado) salvo que abra la app.
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('notificaciones', 'permisosFCM',
+   new Error('Cliente no otorgó permiso de notificaciones push'), {});
  return;
  }
 
@@ -11493,14 +11542,34 @@ if (dentroDeHorario) {
  await window._guardarTokenFCM(resultado.token);
  } else {
  console.warn('🔴 DEBUG PUSH: getToken no devolvió token');
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('notificaciones', 'tokenFCM',
+   new Error('getToken no devolvió token'), { momento: 'inicial' });
  }
 
  // Si el token cambia (reinstalación, limpieza de caché, etc.) se vuelve a guardar
  fm.addListener('tokenReceived', async (event) => {
  if (event && event.token) await window._guardarTokenFCM(event.token);
  });
+
+ // 🩺 Push recibido con la app abierta (primer plano): si el backend
+ // incluye data.ts (marca de tiempo de envío), medimos cuánto tardó en
+ // llegar. Si el backend todavía no manda ese campo, esto no hace nada.
+ fm.addListener('notificationReceived', (event) => {
+   try {
+     const n = event.notification || {};
+     const data = n.data || {};
+     if (data.ts) {
+       const _segsRetraso = Math.round((Date.now() - Number(data.ts)) / 1000);
+       if (_segsRetraso > 60 && window.reportarErrorMonitoreo) {
+         window.reportarErrorMonitoreo('notificaciones', 'retrasoPush',
+           new Error(`Push tardó ${_segsRetraso}s en llegar`), { tipo: data.tipo || null, segundos: _segsRetraso });
+       }
+     }
+   } catch (e) { console.warn('Error midiendo retraso de push:', e); }
+ });
  } catch (e) {
  console.warn('🔴 DEBUG PUSH: Error inicializando push FCM:', e.message, e.stack);
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('notificaciones', 'inicializarPushFCM', e, {});
  }
  };
 
@@ -11515,10 +11584,21 @@ if (dentroDeHorario) {
  console.warn('🟢 DEBUG PUSH: ✅ Token FCM guardado exitosamente');
  } catch (e) {
  console.warn('🔴 DEBUG PUSH: Error guardando token FCM:', e.message, e.stack);
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('notificaciones', 'tokenFCM', e, { momento: 'guardado' });
  }
  };
 
+ // 🩺 Monitoreo de sesión: si el cliente tenía un pedido activo (en curso,
+ // rastreándolo) y la sesión se cae de golpe (no por logout manual), vale
+ // la pena que quede registrado — puede indicar token expirado u otro
+ // problema de Auth que le corta el tracking a mitad de camino.
+ window._logoutManualClienteEnCurso = window._logoutManualClienteEnCurso || false;
+
  onAuthStateChanged(auth, async (user) => {
+ if (!user && window._pedidoEnSeguimientoActivo && !window._logoutManualClienteEnCurso && window.reportarErrorMonitoreo) {
+   window.reportarErrorMonitoreo('sesion', 'onAuthStateChanged',
+     new Error('Sesión cerrada inesperadamente con un pedido en seguimiento'), { pedidoId: window._pedidoEnSeguimientoActivo || null });
+ }
  setTimeout(() => {
  if (typeof window.hideSplashScreen === 'function') {
  window.hideSplashScreen();
@@ -16970,6 +17050,7 @@ Detalles técnicos en la consola (F12)`;
 
 </script>
 
+
 <!-- ============================================================
 
      SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
@@ -17150,8 +17231,6 @@ Detalles técnicos en la consola (F12)`;
 
 <!-- ============================================================
 
-
-<!-- ============================================================
      SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
 ============================================================ -->
 <script>
@@ -18695,7 +18774,8 @@ window.enviarMensajeP2P = function(pedidoId) {
  if (!txt) return;
  inp.value = '';
  const msgRef = window.push(window.ref(window.db, 'chat_p2p/' + pid));
- window.set(msgRef, { tipo:'texto', texto: txt, remitente:'cliente', ts: Date.now(), leido: false, clienteNombre: window.currentUserNombre||'Cliente' });
+ window.set(msgRef, { tipo:'texto', texto: txt, remitente:'cliente', ts: Date.now(), leido: false, clienteNombre: window.currentUserNombre||'Cliente' })
+   .catch(e => { if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('chats', 'enviarMensajeP2P', e, { pedidoId: pid }); });
  if (contieneMalaPalabra(txt)) {
  reportarLenguajeInapropiado(pid, 'cliente', txt, window.currentUserNombre || 'Cliente');
  }
@@ -18719,7 +18799,7 @@ window.enviarFotoP2P = async function(input, pedidoId) {
  const url = await getDownloadURL(snap.ref);
  const msgRef = window.push(window.ref(window.db, 'chat_p2p/' + pid));
  window.set(msgRef, { tipo:'imagen', url, remitente:'cliente', ts: Date.now(), leido: false });
- } catch(e) { alert('Error al subir foto: ' + e.message); }
+ } catch(e) { alert('Error al subir foto: ' + e.message); if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('chats', 'enviarFotoP2P', e, { pedidoId: pid }); }
  input.value = '';
 };
 
@@ -18735,7 +18815,7 @@ window.toggleGrabarAudioP2P = async function(pedidoId) {
  estado.sesion = await window._audioUnifIniciar();
  estado.recording = true;
  if (btn) { btn.textContent = '[■] Detener'; btn.style.background = '#c0392b'; }
- } catch(e) { alert('Error al acceder al micrófono: ' + e.message); }
+ } catch(e) { alert('Error al acceder al micrófono: ' + e.message); if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('chats', 'toggleGrabarAudioP2P', e, { pedidoId: pid, etapa: 'iniciar' }); }
  } else {
  try {
  estado.recording = false;
@@ -18748,7 +18828,7 @@ window.toggleGrabarAudioP2P = async function(pedidoId) {
  if (prev) prev.src = url;
  if (prevCont) prevCont.style.display = 'block';
  estado.audio = { _blob: blob };
- } catch(e) { alert('Error al procesar el audio: ' + e.message); }
+ } catch(e) { alert('Error al procesar el audio: ' + e.message); if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('chats', 'toggleGrabarAudioP2P', e, { pedidoId: pid, etapa: 'detener' }); }
  }
 };
 
@@ -18765,7 +18845,7 @@ window.enviarAudioP2P = async function(pedidoId) {
  const msgRef = window.push(window.ref(window.db, 'chat_p2p/' + pid));
  window.set(msgRef, { tipo:'audio', url, remitente:'cliente', ts: Date.now(), leido: false });
  cancelarAudioP2P(pid);
- } catch(e) { alert('Error al subir audio: ' + e.message); }
+ } catch(e) { alert('Error al subir audio: ' + e.message); if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('chats', 'enviarAudioP2P', e, { pedidoId: pid }); }
 };
 
 window.cancelarAudioP2P = function(pedidoId) {
@@ -22289,7 +22369,6 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  <!-- ===== SISTEMA DE NOTIFICACIONES (CAMPANITA) ===== -->
 
-<!-- ============================================================
      SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
 ============================================================ -->
  <script>
@@ -22512,6 +22591,13 @@ window.cerrarVisorImg = function() {
  }
  }
  }
+ }, (error) => {
+ // 🩺 Monitoreo: si este listener se cae, el cliente deja de enterarse
+ // de cualquier cambio de estado de su pedido (aceptado/en camino/
+ // entregado) sin saber que algo falló — vale la pena que quede
+ // registrado, porque desde su lado todo se ve "normal" (silencio).
+ console.error('Error en listener de estado de pedido:', error);
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('pedidos', 'escucharEstadoPedidoNotif', error, { pedidoId });
  });
  };
  // FIX3: leer estado actual primero para inicializar el baseline.
@@ -22522,7 +22608,10 @@ window.cerrarVisorImg = function() {
  _lastPedidoEstado[pedidoId] = (dInit.estado || dInit.estadoHistorial || '').toLowerCase();
  }
  _registrarOnValue();
- }).catch(() => _registrarOnValue());
+ }).catch((error) => {
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('pedidos', 'escucharEstadoPedidoNotif', error, { pedidoId, etapa: 'lectura_inicial' });
+ _registrarOnValue();
+ });
  };
 
  // Escuchar mensajes del repartidor
@@ -22800,6 +22889,8 @@ _suscribirPath(pathConPrefijo);
  };
 
  _updateBadge();
+
+
 
  // ── SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO ──────────────────
  // Escucha sos_alertas en Firebase y filtra las que corresponden

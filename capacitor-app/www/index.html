@@ -7,33 +7,34 @@
 
   BLOQUE CSS (dentro de <head>)
   ─────────────────────────────
-  Línea    51  │ INICIO DEL BLOQUE CSS
-  Línea  2920  │ FIN DEL BLOQUE CSS
+  Línea    59  │ INICIO DEL BLOQUE CSS
+  Línea  3263  │ FIN DEL BLOQUE CSS
 
   CUERPO HTML (<body>)
   ─────────────────────────────────────────────────────────────────────────────
-  Línea  2927  │ SECCIÓN  1 · MENÚ HAMBURGUESA, CAMPANITA Y PANEL DE NOTIFICACIONES
-  Línea  3152  │ SECCIÓN  2 · PANTALLAS DE AUTENTICACIÓN, SPLASH Y LOADING
-  Línea  3256  │ SECCIÓN  3 · VISTA CLIENTE (navegación tabs + TAB TIENDA)
-  Línea  3278  │ SECCIÓN  4 · TAB PERFIL
-  Línea  3389  │ SECCIÓN  5 · TAB SERVICIO (formulario de pedido)
-  Línea  4030  │ SECCIÓN  6 · TAB SEGUIMIENTO (TRACKING)
-  Línea  4083  │ SECCIÓN  7 · TAB PREMIOS
-  Línea  4380  │ SECCIÓN  8 · TAB SERVIBOT
-  Línea  4430  │ SECCIÓN  9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
-  Línea  9208  │ SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
-  Línea 13016  │ SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
-  Línea 13108  │ SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
-  Línea 14684  │ SECCIÓN 13 · MODAL SUGERIR NUEVO LUGAR
-  Línea 14772  │ SECCIÓN 13B · MAPEADOR DE UBICACIÓN PARA SUGERENCIAS (pin en mapa)
-  Línea 14892  │ SECCIÓN 14 · SELECTOR DE DESTINO (Armenia / Municipio fuera)
-  Línea 15078  │ SECCIÓN 15 · GEOCODIFICACIÓN Y GPS (Nominatim + ubicación)
-  Línea 15213  │ SECCIÓN 16 · SERVIBOT CHATBOT (motor de respuestas por reglas)
-  Línea 15916  │ SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
-  Línea 16128  │ SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
-  Línea 16404  │ SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO
-  Línea 16564  │ SECCIÓN 19 · MODAL HOJA DE RUTA DE NIVELES
-  Línea 16713  │ SECCIÓN 20 · MODAL VISOR DE IMAGEN
+  Línea  3270  │ SECCIÓN  1 · MENÚ HAMBURGUESA, CAMPANITA Y PANEL DE NOTIFICACIONES
+  Línea  3507  │ SECCIÓN  2 · PANTALLAS DE AUTENTICACIÓN, SPLASH Y LOADING
+  Línea  3651  │ SECCIÓN  3 · VISTA CLIENTE (navegación tabs + TAB TIENDA)
+  Línea  3673  │ SECCIÓN  4 · TAB PERFIL
+  Línea  3894  │ SECCIÓN  5 · TAB SERVICIO (formulario de pedido)
+  Línea  4633  │ SECCIÓN  6 · TAB SEGUIMIENTO (TRACKING)
+  Línea  4686  │ SECCIÓN  7 · TAB PREMIOS
+  Línea  4995  │ SECCIÓN  8 · TAB SERVIBOT
+  Línea  5061  │ SECCIÓN  9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
+  Línea 10788  │ SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
+  Línea 16684  │ SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
+  Línea 16858  │ SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
+  Línea 19171  │ SECCIÓN 13 · MODAL SUGERIR NUEVO LUGAR
+  Línea 19259  │ SECCIÓN 13B · MAPEADOR DE UBICACIÓN PARA SUGERENCIAS (pin en mapa)
+  Línea 19379  │ SECCIÓN 14 · SELECTOR DE DESTINO (Armenia / Municipio fuera)
+  Línea 19569  │ SECCIÓN 15 · GEOCODIFICACIÓN Y GPS (Nominatim + ubicación)
+  Línea 19705  │ SECCIÓN 16 · SERVIBOT CHATBOT (motor de respuestas por reglas)
+  Línea 21784  │ SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
+  Línea 21996  │ SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
+  Línea 22507  │ SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO
+  Línea 22668  │ SECCIÓN 19 · MODAL HOJA DE RUTA DE NIVELES
+  Línea 22817  │ SECCIÓN 20 · MODAL VISOR DE IMAGEN
+  Línea 22825  │ SECCIÓN 21 · INICIALIZACIÓN FINAL (lucide icons + auto-cierre de sesión)
 
 ================================================================================
 -->
@@ -480,7 +481,7 @@
     z-index 10200), el que este despues en el DOM (Panel Administrativo)
     ganaba el apilamiento y tapaba el formulario. Se sube este modal por
     encima de los demas .modal para que siempre quede al frente. */
- #modal-producto-seccion {
+ #modal-producto-seccion, #modal-editar-producto-seccion {
  z-index: 10210;
  }
 
@@ -1870,6 +1871,22 @@
  
  .btn-eliminar-producto:hover {
  background: #c82333;
+ }
+
+ .btn-editar-producto {
+ padding: 6px 12px;
+ background: var(--color-primary);
+ color: #1a1a1a;
+ border: none;
+ border-radius: 6px;
+ font-size: 12px;
+ font-weight: bold;
+ cursor: pointer;
+ transition: all 0.3s;
+ }
+
+ .btn-editar-producto:hover {
+ background: #d97f06;
  }
  
  .btn-agregar-producto-mi-tienda {
@@ -5040,7 +5057,6 @@
  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
  <script>eruda.init();</script>
 
-<!-- ============================================================
      SECCIÓN 9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
 ============================================================ -->
  <script>
@@ -5346,6 +5362,7 @@ const TONOS_NOTIFICACION = [
  },
  (error) => {
  console.error(' Error GPS Cliente:', error.message);
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('ubicacion', 'iniciarEnvioUbicacionCliente', error, { codigo: error.code });
  
  if (error.code === error.PERMISSION_DENIED) {
  console.error(' Permiso de ubicación denegado');
@@ -5398,6 +5415,7 @@ const TONOS_NOTIFICACION = [
  
  } catch (error) {
  console.error(' Error al enviar ubicación del cliente:', error);
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('ubicacion', 'enviarUbicacionClienteAFirebase', error, {});
  }
  }
  
@@ -5818,6 +5836,33 @@ const TONOS_NOTIFICACION = [
  if (hdr) hdr.style.display = 'flex';
  };
 
+ window._repClienteInicializado = window._repClienteInicializado || false;
+
+ // 🩺 MONITOREO DEL CLIENTE — función central de reporte de errores.
+ // Mismo patrón que ya usa la app del repartidor: cada sección (pedidos,
+ // chat, ubicación, notificaciones, sesión) llama a esto cuando algo real
+ // le falla al usuario. El admin lo ve en vivo en su panel, sin depender
+ // de que el cliente reporte el problema manualmente por soporte.
+ window.reportarErrorMonitoreo = function(seccion, funcion, error, extra = {}) {
+   try {
+     if (!window.db || !window.ref || !window.push || !window.update) return;
+     const detalle = {
+       funcion,
+       mensaje: (error && error.message) ? error.message : String(error),
+       codigo: (error && error.code) ? error.code : null,
+       clienteId: window.currentUserID || 'desconocido',
+       clienteNombre: (window._clienteNombreActual || null),
+       ts: Date.now(),
+       fecha: new Date().toISOString(),
+       ...extra
+     };
+     window.push(window.ref(window.db, `monitoreo_cliente_log/${seccion}`), detalle).catch(() => {});
+     window.update(window.ref(window.db, `monitoreo_cliente/${seccion}`), { ultimoError: detalle }).catch(() => {});
+   } catch (e) {
+     console.warn('[monitoreo] no se pudo reportar el error:', e);
+   }
+ };
+
  window.enviarFavor = async function(tipo) {
  // Verificar sesión 
  if (!window.currentUserID) {
@@ -5948,6 +5993,7 @@ const TONOS_NOTIFICACION = [
 
  if (!pedidoData) return;
 
+ try {
  // Intentar asignar repartidor disponible (igual que domicilios) 
  let repartidorAsignado = null;
  try {
@@ -6084,6 +6130,17 @@ const TONOS_NOTIFICACION = [
  // Volver al selector de servicio
  if (typeof window.volverAlSelectorServicio === 'function') {
  window.volverAlSelectorServicio();
+ }
+ } catch (errorEnvio) {
+   // 🩺 Este catch cubre TODO el flujo de guardado del pedido (Firebase
+   // historial/pendientes/repartidor). Antes, si algo fallaba aquí (ej.
+   // sin internet a mitad de camino), el usuario se quedaba sin saber
+   // qué pasó y sin registro alguno del problema.
+   console.error('Error enviando favor:', errorEnvio);
+   window.reportarErrorMonitoreo('pedidos', 'enviarFavor', errorEnvio, { tipo });
+   alert(' No se pudo enviar tu solicitud. Revisa tu conexión a internet e intenta de nuevo.\n\nSi el problema sigue, contáctanos por soporte.');
+   const btnReintentar = document.getElementById(tipo === 'compra' ? 'favor-compra-btn' : tipo === 'pago' ? 'favor-pago-btn' : 'favor-recibo-btn');
+   if (btnReintentar) { btnReintentar.disabled = false; }
  }
  };
 
@@ -8758,11 +8815,13 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  btnMenu.classList.remove('active');
  document.body.style.overflow = '';
  document.getElementById('menu-hamburguesa').style.display = 'block';
- // Restaurar campanita al cerrar el menú
- if (window._bellEnabled) {
- const _bellR = document.getElementById('notif-bell-container');
- if (_bellR) _bellR.style.display = 'block';
- }
+// Restaurar campanita al cerrar el menú (pero no si sigues dentro
+        // de la tienda: ese modal ya la esconde y la restaura por su cuenta)
+        const _modalTiendaAbierto = document.getElementById('modal-ver-tienda')?.style.display === 'block';
+        if (window._bellEnabled && !_modalTiendaAbierto) {
+            const _bellR = document.getElementById('notif-bell-container');
+            if (_bellR) _bellR.style.display = 'block';
+        }
  }
  }
 
@@ -9527,12 +9586,15 @@ async function _cargarBarriosFirebaseCliente() {
  console.log('');
  console.log(' INICIANDO SEGUIMIENTO DEL REPARTIDOR', esAdicional ? '(pedido adicional)' : '(principal)');
  console.log('');
+ window._pedidoEnSeguimientoActivo = pedidoId || window._pedidoEnSeguimientoActivo;
  
  if (!clienteCoords || !clienteCoords.lat || !clienteCoords.lng) {
  console.error('');
  console.error(' ERROR CRÍTICO: clienteCoords no está disponible');
  console.error('clienteCoords actual:', clienteCoords);
  console.error('');
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('ubicacion', 'iniciarSeguimientoUbicacion',
+   new Error('clienteCoords no disponible al iniciar seguimiento'), { pedidoId });
  alert(' Error: No se pudo obtener tu ubicación.\n\nPor favor:\n1. Verifica que el permiso de ubicación esté activado\n2. Recarga la página\n3. Intenta de nuevo');
  return;
  }
@@ -9667,6 +9729,7 @@ async function _cargarBarriosFirebaseCliente() {
 
  function detenerSeguimientoUbicacion() {
  console.log(' Deteniendo seguimiento de ubicación...');
+ window._pedidoEnSeguimientoActivo = null;
  
  if (repartidorUbicacionListener && currentRepartidorUID && window.off && window.ref && window.db) {
  const repartidorRef = window.ref(window.db, `repartidores_info/${currentRepartidorUID}`);
@@ -10766,9 +10829,8 @@ if (dentroDeHorario) {
  console.log(' Sistema de routing corregido con validaciones robustas');
  console.log(' Sistema de tiendas: 1 tienda por cliente + aprobación admin');
  </script>
-
-<!-- ============================================================
-     SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
+============================================================ -->
+          SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
 ============================================================ -->
  <script type="module">
  import { 
@@ -11163,6 +11225,7 @@ if (dentroDeHorario) {
  
  off(ref(db, `chats/${window.currentUserID}`));
  
+ window._logoutManualClienteEnCurso = true;
  signOut(auth).then(() => {
  window.currentUserID = null;
  if (typeof window.mostrarCampanita === 'function') window.mostrarCampanita(false);
@@ -11465,6 +11528,10 @@ if (dentroDeHorario) {
  }
  if (permiso.receive !== 'granted') {
  console.warn('🔴 DEBUG PUSH: Permiso de notificaciones push denegado');
+ // 🩺 Monitoreo: sin este permiso, el cliente nunca se entera de que su
+ // pedido avanzó (aceptado/en camino/entregado) salvo que abra la app.
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('notificaciones', 'permisosFCM',
+   new Error('Cliente no otorgó permiso de notificaciones push'), {});
  return;
  }
 
@@ -11475,14 +11542,34 @@ if (dentroDeHorario) {
  await window._guardarTokenFCM(resultado.token);
  } else {
  console.warn('🔴 DEBUG PUSH: getToken no devolvió token');
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('notificaciones', 'tokenFCM',
+   new Error('getToken no devolvió token'), { momento: 'inicial' });
  }
 
  // Si el token cambia (reinstalación, limpieza de caché, etc.) se vuelve a guardar
  fm.addListener('tokenReceived', async (event) => {
  if (event && event.token) await window._guardarTokenFCM(event.token);
  });
+
+ // 🩺 Push recibido con la app abierta (primer plano): si el backend
+ // incluye data.ts (marca de tiempo de envío), medimos cuánto tardó en
+ // llegar. Si el backend todavía no manda ese campo, esto no hace nada.
+ fm.addListener('notificationReceived', (event) => {
+   try {
+     const n = event.notification || {};
+     const data = n.data || {};
+     if (data.ts) {
+       const _segsRetraso = Math.round((Date.now() - Number(data.ts)) / 1000);
+       if (_segsRetraso > 60 && window.reportarErrorMonitoreo) {
+         window.reportarErrorMonitoreo('notificaciones', 'retrasoPush',
+           new Error(`Push tardó ${_segsRetraso}s en llegar`), { tipo: data.tipo || null, segundos: _segsRetraso });
+       }
+     }
+   } catch (e) { console.warn('Error midiendo retraso de push:', e); }
+ });
  } catch (e) {
  console.warn('🔴 DEBUG PUSH: Error inicializando push FCM:', e.message, e.stack);
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('notificaciones', 'inicializarPushFCM', e, {});
  }
  };
 
@@ -11497,10 +11584,21 @@ if (dentroDeHorario) {
  console.warn('🟢 DEBUG PUSH: ✅ Token FCM guardado exitosamente');
  } catch (e) {
  console.warn('🔴 DEBUG PUSH: Error guardando token FCM:', e.message, e.stack);
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('notificaciones', 'tokenFCM', e, { momento: 'guardado' });
  }
  };
 
+ // 🩺 Monitoreo de sesión: si el cliente tenía un pedido activo (en curso,
+ // rastreándolo) y la sesión se cae de golpe (no por logout manual), vale
+ // la pena que quede registrado — puede indicar token expirado u otro
+ // problema de Auth que le corta el tracking a mitad de camino.
+ window._logoutManualClienteEnCurso = window._logoutManualClienteEnCurso || false;
+
  onAuthStateChanged(auth, async (user) => {
+ if (!user && window._pedidoEnSeguimientoActivo && !window._logoutManualClienteEnCurso && window.reportarErrorMonitoreo) {
+   window.reportarErrorMonitoreo('sesion', 'onAuthStateChanged',
+     new Error('Sesión cerrada inesperadamente con un pedido en seguimiento'), { pedidoId: window._pedidoEnSeguimientoActivo || null });
+ }
  setTimeout(() => {
  if (typeof window.hideSplashScreen === 'function') {
  window.hideSplashScreen();
@@ -11590,6 +11688,37 @@ if (dentroDeHorario) {
  }
  });
 
+ // Resuelve un código de referido de la URL (?ref=xxx) al id real del negocio en
+ // Firebase. Primero busca el código como slug (slugsTiendas/{codigo}); si no
+ // existe, prueba tratarlo como un id de negocio directo (compatibilidad con
+ // links viejos generados antes de tener slugs).
+ async function resolverIdTiendaPorCodigoReferido(codigo) {
+ try {
+ const slugSnap = await get(ref(db, `slugsTiendas/${codigo}`));
+ if (slugSnap.exists()) return slugSnap.val();
+ const negocioSnap = await get(ref(db, `negocios/${codigo}`));
+ if (negocioSnap.exists()) return codigo;
+ } catch (e) {
+ console.warn('Error resolviendo código de referido:', e);
+ }
+ return null;
+ }
+
+ // Captura el código de tienda referida (?ref=idNegocio) apenas carga la app y lo
+ // guarda en localStorage hasta que el usuario termine su registro. Así funciona
+ // aunque el registro con Google/correo pase por una redirección de por medio.
+ (function capturarCodigoReferidoTienda() {
+ try {
+ const params = new URLSearchParams(window.location.search);
+ const refTienda = params.get('ref');
+ if (refTienda) {
+ localStorage.setItem('servi_ref_tienda', refTienda);
+ }
+ } catch (e) {
+ console.warn('No se pudo leer el código de referido de la URL:', e);
+ }
+ })();
+
  window.guardarUsuarioEnFirebase = function() {
  const authUser = window.currentAuthUser; 
 
@@ -11671,15 +11800,57 @@ if (dentroDeHorario) {
  .then(() => {
  console.log(' Usuario guardado exitosamente en Firebase');
  localStorage.setItem("usuarioDomicilios", JSON.stringify({...infoFijaUsuario, uid: authUser.uid})); 
- 
+
+ // Si este usuario llegó desde el link de referido de una tienda, se registra
+ // en negocios/{idTienda}/referidos para que el dueño lo vea en su panel.
+ // El código de la URL puede ser el slug bonito (ej. "papitas") o, en links
+ // viejos, el id largo de Firebase directamente — se prueban los dos.
+ const refTienda = localStorage.getItem('servi_ref_tienda');
+if (refTienda) {
+ resolverIdTiendaPorCodigoReferido(refTienda).then(async idTiendaReal => {
+ localStorage.removeItem('servi_ref_tienda');
+ if (idTiendaReal) {
+ set(ref(db, `negocios/${idTiendaReal}/referidos/${usuarioID}`), {
+ nombre: nombre,
+ direccion: direccion,
+ tel1: tel1,
+ fecha: ahora,
+ fechaLegible: fechaLegible
+ }).catch(e => console.warn('No se pudo guardar el referido:', e));
+
+ // 🆕 Vino por link de una tienda: se salta el tutorial y lo mandamos
+ // directo a esa tienda, ya que si se registró así es porque quiere comprar ahí.
+ try {
+ const negocioSnap = await get(ref(db, `negocios/${idTiendaReal}`));
+ const nombreTiendaReferida = negocioSnap.exists() ? (negocioSnap.val().nombre || 'Tienda') : 'Tienda';
+ setTimeout(() => {
+ if (typeof window.verProductosTienda === 'function') {
+ window.verProductosTienda(idTiendaReal, nombreTiendaReferida);
+ }
+ }, 800);
+ } catch (e) {
+ console.warn('No se pudo abrir la tienda referida automáticamente:', e);
+ if (typeof window.mostrarTutorialNuevoUsuario === 'function') window.mostrarTutorialNuevoUsuario();
+ }
+ } else {
+ // El código de referido no resolvió a ninguna tienda: comportamiento normal
+ if (typeof window.mostrarTutorialNuevoUsuario === 'function') window.mostrarTutorialNuevoUsuario();
+ }
+ }).catch(e => {
+ console.warn('No se pudo verificar la tienda referida:', e);
+ localStorage.removeItem('servi_ref_tienda');
+ if (typeof window.mostrarTutorialNuevoUsuario === 'function') window.mostrarTutorialNuevoUsuario();
+ });
+ } else {
+ setTimeout(function() {
+ if (typeof window.mostrarTutorialNuevoUsuario === 'function') window.mostrarTutorialNuevoUsuario();
+ }, 800);
+ }
+
  window.mostrarPerfil(infoFijaUsuario);
  // 🔧 FIX: el nodo usuarios/{id} ya quedó completo (set() con todos los campos),
  // ahora sí es seguro guardar el token push sin riesgo de crear un registro vacío.
  if (window._inicializarPushFCM) window._inicializarPushFCM();
- // Mostrar tutorial de bienvenida al usuario nuevo
- setTimeout(function() {
- if (typeof window.mostrarTutorialNuevoUsuario === 'function') window.mostrarTutorialNuevoUsuario();
- }, 800);
  })
  .catch((error) => {
  alert("Error al guardar en Firebase: " + error.message);
@@ -13225,6 +13396,17 @@ ${motivo}`;
  }
  }
 
+ // 🔧 FIX 2026-09-11: generarSlugUnico() y el registro del slug dependen
+ // del nodo slugsTiendas en Firebase (ver reglas_1.txt); si por lo que sea
+ // esa escritura falla, no debe tumbar la creación de la tienda completa
+ // (antes sí lo hacía, porque estaba fuera de un try/catch propio).
+ let slugTienda = null;
+ try {
+ slugTienda = await generarSlugUnico(nombre);
+ } catch (errorSlug) {
+ console.warn('⚠️ No se pudo generar el slug de la tienda (no crítico):', errorSlug);
+ }
+
  const nuevoNegocio = {
  nombre,
  descripcion,
@@ -13236,11 +13418,19 @@ ${motivo}`;
  fecha: Date.now(),
  estado: 'pendiente',
  secciones,
- ubicacion: ubicacionNegocio
+ ubicacion: ubicacionNegocio,
+ slug: slugTienda
  };
 
  const nuevoNegocioRef = push(ref(db, 'negocios'));
  await set(nuevoNegocioRef, nuevoNegocio);
+ if (slugTienda) {
+ try {
+ await set(ref(db, `slugsTiendas/${slugTienda}`), nuevoNegocioRef.key);
+ } catch (errorSlug2) {
+ console.warn('⚠️ No se pudo registrar el slug de la tienda (no crítico):', errorSlug2);
+ }
+ }
 
  clienteTieneTienda = true;
  miTiendaId = nuevoNegocioRef.key;
@@ -13268,6 +13458,7 @@ ${motivo}`;
  const modalNegocio = document.getElementById('modal-negocio');
  const modalVerTienda = document.getElementById('modal-ver-tienda');
  const modalProductoSeccion = document.getElementById('modal-producto-seccion');
+ const modalEditarProductoSeccion = document.getElementById('modal-editar-producto-seccion');
  
  if (event.target === modalNegocio) {
  cerrarModalNegocio();
@@ -13277,6 +13468,9 @@ ${motivo}`;
  }
  if (event.target === modalProductoSeccion) {
  cerrarModalProductoSeccion();
+ }
+ if (event.target === modalEditarProductoSeccion) {
+ cerrarModalEditarProducto();
  }
  }
  
@@ -13340,6 +13534,26 @@ ${motivo}`;
 
  // Migra tiendas viejas (sin `secciones`) al modelo nuevo, una sola vez, y devuelve
  // el objeto de secciones ya sea el existente o el recién migrado.
+ // Genera un código de referido único usando el NOMBRE REAL de la tienda tal
+ // cual (ej. "Papitas al aire"), solo quitando los caracteres que Firebase no
+ // permite en una key (. # $ [ ] /). Si el nombre ya está tomado por otra
+ // tienda, le agrega un número al final ("Papitas al aire 2").
+ async function generarSlugUnico(nombreBase) {
+ let base = (nombreBase || 'Tienda')
+ .toString()
+ .trim()
+ .replace(/[.#$\[\]\/]/g, ''); // caracteres no válidos como key de Firebase
+ if (!base) base = 'Tienda';
+ let slug = base;
+ let intento = 1;
+ while (true) {
+ const snap = await get(ref(db, `slugsTiendas/${slug}`));
+ if (!snap.exists()) return slug;
+ intento++;
+ slug = `${base} ${intento}`;
+ }
+ }
+
  async function migrarTiendaASeccionesSiNecesario(negocioId, negocioData) {
  if (negocioData.secciones && Object.keys(negocioData.secciones).length > 0) {
  return negocioData.secciones;
@@ -13416,14 +13630,24 @@ ${motivo}`;
  <p style="color: ${ubicacionOK ? '#28a745' : '#ffa500'}; margin: 8px 0 5px; font-size: 13px;">
  ${ubicacionOK ? ' Ubicación de la tienda configurada' : ' Ubicación de la tienda sin configurar (necesaria para la compra directa en la app)'}
  </p>
- <button type="button" class="btn-agregar-producto-mi-tienda" style="margin-top:5px;" onclick="actualizarUbicacionMiTienda('${negocioId}')">
- ${ubicacionOK ? 'Actualizar ubicación de mi tienda' : 'Configurar ubicación de mi tienda'}
- </button>
- <button type="button" id="btn-toggle-apertura-tienda" class="btn-agregar-producto-mi-tienda" style="margin-top:8px; background:${tiendaAbierta ? 'linear-gradient(135deg,#dc3545,#a71d2a)' : 'linear-gradient(135deg,#28a745,#1e7e34)'};" onclick="alternarAperturaMiTienda('${negocioId}')">
- ${tiendaAbierta ? '🔴 Cerrar Tienda' : '🟢 Abrir Tienda'}
- </button>
  </div>
  `;
+
+ // Los botones de "Actualizar ubicación" y "Cerrar/Abrir Tienda" ahora viven en el menú
+ // hamburguesa (☰) en vez de la pantalla principal, para dejar más espacio a las secciones
+ // y productos de la tienda. Se actualizan aquí porque son elementos fijos del menú lateral
+ // (no se recrean cada vez), así que su texto/estilo se sincroniza manualmente.
+ const btnUbicacionMenu = document.getElementById('btn-menu-ubicacion-tienda');
+ if (btnUbicacionMenu) {
+ btnUbicacionMenu.textContent = ubicacionOK ? '📍 Actualizar ubicación de mi tienda' : '📍 Configurar ubicación de mi tienda';
+ btnUbicacionMenu.setAttribute('onclick', `cerrarMenuLateralPanelAdmin(); actualizarUbicacionMiTienda('${negocioId}')`);
+ }
+ const btnAperturaMenu = document.getElementById('btn-toggle-apertura-tienda');
+ if (btnAperturaMenu) {
+ btnAperturaMenu.textContent = tiendaAbierta ? '🔴 Cerrar Tienda' : '🟢 Abrir Tienda';
+ btnAperturaMenu.style.background = tiendaAbierta ? 'linear-gradient(135deg,#dc3545,#a71d2a)' : 'linear-gradient(135deg,#28a745,#1e7e34)';
+ btnAperturaMenu.setAttribute('onclick', `cerrarMenuLateralPanelAdmin(); alternarAperturaMiTienda('${negocioId}')`);
+ }
  
  // Asegurar que existan las secciones (migrando si es una tienda vieja sin secciones),
  // pero sin mostrarlas todavía: se ven desde el menú ☰ para dejar más espacio a la info.
@@ -13512,11 +13736,14 @@ ${motivo}`;
  }
  }
 
- // Muestra la grilla de secciones (tarjetas) de la tienda del dueño
+ // Muestra TODAS las secciones de la tienda ya expandidas, con todas sus tarjetas
+ // de producto visibles de una vez (en vez de tarjetas resumen que hay que abrir
+ // una por una), para poder editar más rápido.
  function renderSeccionesMiTienda(negocioId, secciones) {
  const listaProductos = document.getElementById('lista-productos-mi-tienda');
  document.getElementById('btn-agregar-producto-seccion-wrapper')?.remove();
  seccionActualId = null;
+ seccionActualTitulo = null;
 
  const idsOrdenados = Object.keys(secciones || {}).sort((a, b) => (secciones[a].orden || 0) - (secciones[b].orden || 0));
 
@@ -13526,21 +13753,86 @@ ${motivo}`;
  }
 
  listaProductos.innerHTML = '';
+
  idsOrdenados.forEach(seccionId => {
  const seccion = secciones[seccionId];
- const cantidad = seccion.productos ? Object.keys(seccion.productos).length : 0;
+ const productos = seccion.productos || {};
+ const cantidad = Object.keys(productos).length;
 
- const card = document.createElement('div');
- card.className = 'product-item-edit';
- card.style.cursor = 'pointer';
- card.onclick = () => abrirGestionSeccion(negocioId, seccionId, seccion.titulo);
- card.innerHTML = `
+ const encabezadoSeccion = document.createElement('h4');
+ encabezadoSeccion.style.color = 'var(--color-primary)';
+ encabezadoSeccion.style.margin = '18px 0 10px';
+ encabezadoSeccion.textContent = `${seccion.titulo} (${cantidad}/${MAX_PRODUCTOS_POR_SECCION})`;
+ listaProductos.appendChild(encabezadoSeccion);
+
+ if (cantidad === 0) {
+ const vacio = document.createElement('p');
+ vacio.className = 'no-products-message';
+ vacio.textContent = 'Esta sección aún no tiene productos.';
+ listaProductos.appendChild(vacio);
+ }
+
+ for (let productoId in productos) {
+ const producto = productos[productoId];
+ const disponible = producto.disponible !== false;
+
+ const productoDiv = document.createElement('div');
+ productoDiv.className = 'product-item-edit';
+
+ const fotoHTML = producto.foto ? `<div class="product-images-gallery"><img src="${producto.foto}" alt="${producto.nombre}" onclick="window.open('${producto.foto}', '_blank')"></div>` : '';
+ const precioHTML = producto.precio ? `<div style="color: var(--color-primary); font-size: 14px;">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
+ const descripcionHTML = producto.descripcion ? `<div style="color: var(--color-text-dark); font-size: 12px; margin-top:4px;">${producto.descripcion}</div>` : '';
+
+ const tieneStock = typeof producto.stock === 'number';
+ const stockBajoHTML = (tieneStock && producto.stock <= 5)
+ ? `<div class="product-status-edit ${producto.stock > 0 ? 'no-disponible' : 'no-disponible'}" style="background:#dc2626; color:#fff;">${producto.stock > 0 ? '¡Últimos ' + producto.stock + '!' : 'Agotado'}</div>`
+ : '';
+ const btnVendiUnoHTML = (tieneStock && producto.stock > 0)
+ ? `<button class="btn-toggle-disponibilidad disponible" onclick="descontarStockProducto('${negocioId}', '${productoId}', 'secciones/${seccionId}/productos')">Vendí uno (quedan ${producto.stock})</button>`
+ : '';
+
+ productoDiv.innerHTML = `
  <div class="product-info-edit">
- <div class="product-name-edit">${seccion.titulo}</div>
- <div class="section-card-count">${cantidad}/${MAX_PRODUCTOS_POR_SECCION} productos</div>
+ <div class="product-name-edit">${producto.nombre}</div>
+ ${precioHTML}
+ ${descripcionHTML}
+ ${fotoHTML}
+ <div class="product-status-edit ${disponible ? 'disponible' : 'no-disponible'}">
+ ${disponible ? ' Disponible' : ' No disponible'}
+ </div>
+ ${stockBajoHTML}
+ </div>
+ <div class="product-actions-edit">
+ ${btnVendiUnoHTML}
+ <button class="btn-toggle-disponibilidad ${disponible ? 'disponible' : 'no-disponible'}" 
+ onclick="toggleDisponibilidadProducto('${negocioId}', '${productoId}', ${!disponible}, 'secciones/${seccionId}/productos')">
+ ${disponible ? 'Marcar No Disponible' : 'Marcar Disponible'}
+ </button>
+ <button class="btn-editar-producto" onclick="abrirModalEditarProducto('${negocioId}', '${productoId}', 'secciones/${seccionId}/productos')">
+ ✏️ Editar
+ </button>
  </div>
  `;
- listaProductos.appendChild(card);
+
+ listaProductos.appendChild(productoDiv);
+ }
+
+ const wrapperSeccion = document.createElement('div');
+ wrapperSeccion.style.marginBottom = '10px';
+ if (cantidad >= MAX_PRODUCTOS_POR_SECCION) {
+ wrapperSeccion.innerHTML = `<p class="section-cap-msg">Esta sección ya tiene el máximo de ${MAX_PRODUCTOS_POR_SECCION} productos.</p>`;
+ } else {
+ const btnAgregar = document.createElement('button');
+ btnAgregar.className = 'btn-agregar-producto-mi-tienda';
+ btnAgregar.textContent = `Agregar producto a "${seccion.titulo}"`;
+ btnAgregar.onclick = () => {
+ seccionActualId = seccionId;
+ seccionActualTitulo = seccion.titulo;
+ window.abrirModalAgregarProducto();
+ };
+ wrapperSeccion.appendChild(btnAgregar);
+ }
+ listaProductos.appendChild(wrapperSeccion);
  });
  }
 
@@ -13556,6 +13848,184 @@ ${motivo}`;
  if (!negocioSnapshot.exists()) return;
  const negocio = negocioSnapshot.val();
  renderSeccionesMiTienda(miTiendaIdActual, negocio.secciones || {});
+ }
+
+ // ==================== SISTEMA DE REFERIDOS DE TIENDA ====================
+ // Muestra la barra con el link de referido de la tienda y la lista de
+ // clientes que se registraron usando ese link (negocios/{id}/referidos).
+ // El link SIEMPRE debe apuntar a la app pública del cliente final (no al
+ // panel administrativo, que puede estar corriendo en otro dominio/local).
+ const URL_APP_CLIENTE_REFERIDOS = 'https://dt9650329-ops.github.io/Servialiadocliente/';
+ window.abrirReferidosMiTienda = async function(negocioId) {
+ const listaProductos = document.getElementById('lista-productos-mi-tienda');
+ document.getElementById('btn-agregar-producto-seccion-wrapper')?.remove();
+ seccionActualId = null;
+ listaProductos.innerHTML = '<p class="no-products-message">Cargando referidos...</p>';
+
+ document.getElementById('modal-mi-tienda-productos').style.display = 'block';
+
+ if (!negocioId) {
+ listaProductos.innerHTML = '<p class="no-products-message">No se pudo identificar tu tienda. Cierra este panel, entra de nuevo a "Mi tienda" y vuelve a intentar.</p>';
+ return;
+ }
+
+ listaProductos.innerHTML = '';
+
+ const backBtn = document.createElement('button');
+ backBtn.type = 'button';
+ backBtn.className = 'section-back-btn';
+ backBtn.textContent = '← Volver a secciones';
+ backBtn.onclick = () => volverASeccionesMiTienda();
+ listaProductos.appendChild(backBtn);
+
+ const encabezado = document.createElement('h4');
+ encabezado.style.color = 'var(--color-primary)';
+ encabezado.style.marginBottom = '6px';
+ encabezado.textContent = '🎁 Referidos';
+ listaProductos.appendChild(encabezado);
+
+ const descripcion = document.createElement('p');
+ descripcion.style.fontSize = '13px';
+ descripcion.style.color = 'var(--color-text-dark)';
+ descripcion.style.margin = '0 0 12px';
+ descripcion.textContent = 'Comparte este link. Cuando alguien se registre desde él, va a aparecer aquí abajo.';
+ listaProductos.appendChild(descripcion);
+
+ // ==== Barra para generar/copiar el link de registro de clientes ====
+ // Se construye y se muestra SIEMPRE, incluso si más abajo falla la carga
+ // de la lista de referidos o la generación del slug: por eso vive en su
+ // propio bloque, separado de la lista.
+ const barraContenedor = document.createElement('div');
+ barraContenedor.style.display = 'flex';
+ barraContenedor.style.alignItems = 'center';
+ barraContenedor.style.gap = '8px';
+ barraContenedor.style.marginBottom = '18px';
+ barraContenedor.style.background = '#2a2a2a';
+ barraContenedor.style.border = '2px solid #555';
+ barraContenedor.style.borderRadius = '10px';
+ barraContenedor.style.padding = '4px 4px 4px 12px';
+
+ const iconoLink = document.createElement('span');
+ iconoLink.textContent = '🔗';
+ iconoLink.style.fontSize = '15px';
+ iconoLink.style.flexShrink = '0';
+ barraContenedor.appendChild(iconoLink);
+
+ const inputUrl = document.createElement('input');
+ inputUrl.type = 'text';
+ inputUrl.id = 'input-url-referido';
+ inputUrl.readOnly = true;
+ inputUrl.value = 'Generando link de registro...';
+ inputUrl.style.flex = '1';
+ inputUrl.style.minWidth = '0';
+ inputUrl.style.padding = '10px 0';
+ inputUrl.style.background = 'transparent';
+ inputUrl.style.color = '#fff';
+ inputUrl.style.border = 'none';
+ inputUrl.style.outline = 'none';
+ inputUrl.style.fontSize = '12px';
+ inputUrl.onclick = () => inputUrl.select();
+ barraContenedor.appendChild(inputUrl);
+
+ const btnCopiar = document.createElement('button');
+ btnCopiar.type = 'button';
+ btnCopiar.className = 'btn-agregar-producto-mi-tienda';
+ btnCopiar.style.width = 'auto';
+ btnCopiar.style.padding = '0 16px';
+ btnCopiar.style.whiteSpace = 'nowrap';
+ btnCopiar.disabled = true;
+ btnCopiar.textContent = 'Copiar';
+ barraContenedor.appendChild(btnCopiar);
+
+ listaProductos.appendChild(barraContenedor);
+
+ const activarBotonCopiar = (urlReferido) => {
+ btnCopiar.disabled = false;
+ btnCopiar.onclick = async () => {
+ try {
+ await navigator.clipboard.writeText(urlReferido);
+ btnCopiar.textContent = '¡Copiado!';
+ } catch (e) {
+ inputUrl.select();
+ document.execCommand('copy');
+ btnCopiar.textContent = '¡Copiado!';
+ }
+ setTimeout(() => { btnCopiar.textContent = 'Copiar'; }, 1800);
+ };
+ };
+
+ // Genera (o recupera) el slug de la tienda para armar el link. Si falla
+ // guardar el slug (p. ej. por permisos), se usa el ID de la tienda como
+ // código del link: sigue funcionando igual porque resolverIdTiendaPorCodigoReferido
+ // acepta tanto un slug como un ID de negocio directo.
+ try {
+ const negocioSnapshot = await get(ref(db, 'negocios/' + negocioId));
+ const negocio = negocioSnapshot.exists() ? negocioSnapshot.val() : {};
+
+ let slugTienda = negocio.slug;
+ if (!slugTienda) {
+ try {
+ slugTienda = await generarSlugUnico(negocio.nombre);
+ await set(ref(db, `negocios/${negocioId}/slug`), slugTienda);
+ await set(ref(db, `slugsTiendas/${slugTienda}`), negocioId);
+ } catch (errorSlug) {
+ console.error('No se pudo generar/guardar el slug de referido, se usa el ID de la tienda como respaldo:', errorSlug);
+ slugTienda = negocioId;
+ }
+ }
+
+ const urlReferido = `${URL_APP_CLIENTE_REFERIDOS}?ref=${encodeURIComponent(slugTienda)}`;
+ inputUrl.value = urlReferido;
+ activarBotonCopiar(urlReferido);
+ } catch (errorUrl) {
+ console.error('Error generando el link de referido, se usa un link de respaldo con el ID de la tienda:', errorUrl);
+ const urlRespaldo = `${URL_APP_CLIENTE_REFERIDOS}?ref=${encodeURIComponent(negocioId)}`;
+ inputUrl.value = urlRespaldo;
+ activarBotonCopiar(urlRespaldo);
+ }
+
+ // ==== Lista de personas que se registraron con el link ====
+ // Vive en su propio try/catch: si esta parte falla, la barra de arriba
+ // sigue funcionando y solo se muestra el error aquí abajo.
+ const encabezadoLista = document.createElement('h4');
+ encabezadoLista.style.color = 'var(--color-primary)';
+ encabezadoLista.style.marginBottom = '10px';
+ encabezadoLista.textContent = 'Personas registradas con tu link';
+ listaProductos.appendChild(encabezadoLista);
+
+ const contenedorLista = document.createElement('div');
+ contenedorLista.id = 'lista-referidos-tienda';
+ contenedorLista.innerHTML = '<p class="no-products-message">Cargando...</p>';
+ listaProductos.appendChild(contenedorLista);
+
+ try {
+ const referidosSnapshot = await get(ref(db, `negocios/${negocioId}/referidos`));
+ if (!referidosSnapshot.exists()) {
+ contenedorLista.innerHTML = '<p class="no-products-message">Todavía no tienes referidos. Comparte tu link para empezar a sumar.</p>';
+ return;
+ }
+
+ const referidos = referidosSnapshot.val();
+ const filas = Object.values(referidos).sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
+
+ contenedorLista.innerHTML = '';
+ filas.forEach(r => {
+ const fila = document.createElement('div');
+ fila.className = 'product-item-edit';
+ fila.style.flexDirection = 'column';
+ fila.style.alignItems = 'stretch';
+ fila.innerHTML = `
+ <strong style="color:var(--color-text-light);">${r.nombre || 'Sin nombre'}</strong>
+ <span style="font-size:12px; color:var(--color-text-dark); margin-top:2px;">${r.direccion || 'Sin dirección'}</span>
+ <span style="font-size:11px; color:var(--color-text-dark); margin-top:4px;">${r.fechaLegible || ''}</span>
+ `;
+ contenedorLista.appendChild(fila);
+ });
+
+ } catch (errorLista) {
+ console.error('Error al cargar la lista de referidos de la tienda:', errorLista);
+ contenedorLista.innerHTML = '<p class="no-products-message">No se pudo cargar la lista de personas registradas (el link para compartir de arriba sí funciona).</p>';
+ }
  }
 
  // Editor de horario de atención al público (días de la semana + hora de apertura/cierre)
@@ -13730,6 +14200,7 @@ ${motivo}`;
 
  const fotoHTML = producto.foto ? `<div class="product-images-gallery"><img src="${producto.foto}" alt="${producto.nombre}" onclick="window.open('${producto.foto}', '_blank')"></div>` : '';
  const precioHTML = producto.precio ? `<div style="color: var(--color-primary); font-size: 14px;">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
+ const descripcionHTML = producto.descripcion ? `<div style="color: var(--color-text-dark); font-size: 12px; margin-top:4px;">${producto.descripcion}</div>` : '';
 
  // Badge de "últimos X": solo se muestra si el producto tiene stock definido (numero >=0) y quedan 5 o menos
  const tieneStock = typeof producto.stock === 'number';
@@ -13744,6 +14215,7 @@ ${motivo}`;
  <div class="product-info-edit">
  <div class="product-name-edit">${producto.nombre}</div>
  ${precioHTML}
+ ${descripcionHTML}
  ${fotoHTML}
  <div class="product-status-edit ${disponible ? 'disponible' : 'no-disponible'}">
  ${disponible ? ' Disponible' : ' No disponible'}
@@ -13756,8 +14228,8 @@ ${motivo}`;
  onclick="toggleDisponibilidadProducto('${negocioId}', '${productoId}', ${!disponible}, 'secciones/${seccionId}/productos')">
  ${disponible ? 'Marcar No Disponible' : 'Marcar Disponible'}
  </button>
- <button class="btn-eliminar-producto" onclick="eliminarProductoMiTienda('${negocioId}', '${productoId}', '${producto.nombre.replace(/'/g, "\\'")}', 'secciones/${seccionId}/productos')">
- 
+ <button class="btn-editar-producto" onclick="abrirModalEditarProducto('${negocioId}', '${productoId}', 'secciones/${seccionId}/productos')">
+ ✏️ Editar
  </button>
  </div>
  `;
@@ -13795,7 +14267,7 @@ ${motivo}`;
  });
  
  // Recargar la sección actual
- if (seccionActualId) await cargarProductosDeSeccionMiTienda(negocioId, seccionActualId, seccionActualTitulo || '');
+ await volverASeccionesMiTienda();
  
  } catch (error) {
  console.error('Error al cambiar disponibilidad:', error);
@@ -13820,7 +14292,7 @@ ${motivo}`;
  await update(ref(db, rutaCompleta), { disponible: false });
  }
 
- if (recargarUI && seccionActualId) await cargarProductosDeSeccionMiTienda(negocioId, seccionActualId, seccionActualTitulo || '');
+ if (recargarUI) await volverASeccionesMiTienda();
 
  } catch (error) {
  console.error('Error al descontar stock:', error);
@@ -13841,7 +14313,7 @@ ${motivo}`;
  alert('Producto eliminado exitosamente');
  
  // Recargar la sección actual
- if (seccionActualId) await cargarProductosDeSeccionMiTienda(negocioId, seccionActualId, seccionActualTitulo || '');
+ await volverASeccionesMiTienda();
  
  } catch (error) {
  console.error('Error al eliminar producto:', error);
@@ -13865,6 +14337,8 @@ ${motivo}`;
  document.getElementById('titulo-producto-seccion').value = '';
  document.getElementById('precio-producto-seccion').value = '';
  document.getElementById('foto-producto-seccion').value = '';
+ document.getElementById('descripcion-producto-seccion').value = '';
+ document.getElementById('contador-descripcion-producto-seccion').textContent = '0';
 
  document.getElementById('modal-producto-seccion').style.display = 'block';
  }
@@ -13904,6 +14378,7 @@ ${motivo}`;
  const fotoFile = document.getElementById('foto-producto-seccion').files[0];
  const stockInput = document.getElementById('stock-producto-seccion').value;
  const stock = stockInput !== '' ? parseInt(stockInput, 10) : null; // null = sin control de stock
+ const descripcion = document.getElementById('descripcion-producto-seccion').value.trim().slice(0, 300);
 
  if (!nombre) {
  alert('Por favor ingresa el título del producto.');
@@ -13939,11 +14414,14 @@ ${motivo}`;
  if (stock !== null && !isNaN(stock) && stock >= 0) {
  nuevoProducto.stock = stock;
  }
+ if (descripcion) {
+ nuevoProducto.descripcion = descripcion;
+ }
 
  await push(ref(db, `negocios/${miTiendaIdActual}/secciones/${seccionActualId}/productos`), nuevoProducto);
 
  cerrarModalProductoSeccion();
- await cargarProductosDeSeccionMiTienda(miTiendaIdActual, seccionActualId, seccionActualTitulo || '');
+ await volverASeccionesMiTienda();
 
  } catch (error) {
  console.error('Error al guardar el producto:', error);
@@ -13956,6 +14434,123 @@ ${motivo}`;
  }
  }
  
+ // Guarda el producto que se está editando actualmente (negocioId, productoId, ruta en Firebase)
+ let productoEditandoActual = null;
+
+ // Abre el modal de edición y precarga los datos actuales del producto
+ window.abrirModalEditarProducto = async function(negocioId, productoId, rutaProducto = 'productos') {
+ try {
+ const snap = await get(ref(db, `negocios/${negocioId}/${rutaProducto}/${productoId}`));
+ if (!snap.exists()) {
+ alert('Error: no se encontró el producto.');
+ return;
+ }
+ const producto = snap.val();
+ productoEditandoActual = { negocioId, productoId, rutaProducto };
+
+ document.getElementById('titulo-editar-producto').value = producto.nombre || '';
+ document.getElementById('precio-editar-producto').value = producto.precio || '';
+ document.getElementById('foto-editar-producto').value = '';
+ document.getElementById('descripcion-editar-producto').value = producto.descripcion || '';
+ document.getElementById('contador-descripcion-editar-producto').textContent = (producto.descripcion || '').length;
+ document.getElementById('stock-editar-producto').value = (typeof producto.stock === 'number') ? producto.stock : '';
+
+ document.getElementById('modal-editar-producto-seccion').style.display = 'block';
+ } catch (error) {
+ console.error('Error al abrir edición de producto:', error);
+ alert('Error al cargar el producto para editar');
+ }
+ }
+
+ window.cerrarModalEditarProducto = function() {
+ document.getElementById('modal-editar-producto-seccion').style.display = 'none';
+ productoEditandoActual = null;
+ }
+
+ // Guarda los cambios del producto (título, precio, descripción, stock y, si se eligió una nueva, la foto)
+ window.guardarEdicionProducto = async function(event) {
+ event.preventDefault();
+
+ if (!productoEditandoActual) {
+ alert('Error: no hay un producto seleccionado para editar.');
+ return;
+ }
+
+ const btnGuardar = document.getElementById('btn-guardar-edicion-producto');
+ if (btnGuardar) {
+ if (btnGuardar.disabled) return;
+ btnGuardar.disabled = true;
+ btnGuardar.textContent = 'Guardando...';
+ }
+
+ try {
+ const { negocioId, productoId, rutaProducto } = productoEditandoActual;
+
+ const nombre = document.getElementById('titulo-editar-producto').value.trim();
+ const precio = document.getElementById('precio-editar-producto').value;
+ const fotoFile = document.getElementById('foto-editar-producto').files[0];
+ const descripcion = document.getElementById('descripcion-editar-producto').value.trim().slice(0, 300);
+ const stockInput = document.getElementById('stock-editar-producto').value;
+ const stock = stockInput !== '' ? parseInt(stockInput, 10) : null;
+
+ if (!nombre) {
+ alert('Por favor ingresa el título del producto.');
+ return;
+ }
+ if (!precio || precio <= 0) {
+ alert('Por favor ingresa un precio válido.');
+ return;
+ }
+
+ const cambios = {
+ nombre,
+ precio: parseFloat(precio),
+ descripcion: descripcion || null
+ };
+
+ if (stock !== null && !isNaN(stock) && stock >= 0) {
+ cambios.stock = stock;
+ } else if (stockInput === '') {
+ cambios.stock = null; // deja el campo vacío para quitar el control de stock
+ }
+
+ if (fotoFile) {
+ try {
+ const imageRef = storageRef(storage, `negocios/${negocioId}/${rutaProducto}/${Date.now()}_${fotoFile.name}`);
+ await uploadBytesResumable(imageRef, fotoFile);
+ cambios.foto = await getDownloadURL(imageRef);
+ } catch (error) {
+ console.error('Error al subir la nueva foto del producto:', error.code, error.message, error);
+ alert('No se pudo subir la nueva foto (' + (error.code || error.message || 'error desconocido') + '). Se guardarán los demás cambios.');
+ }
+ }
+
+ await update(ref(db, `negocios/${negocioId}/${rutaProducto}/${productoId}`), cambios);
+
+ cerrarModalEditarProducto();
+ await volverASeccionesMiTienda();
+
+ } catch (error) {
+ console.error('Error al guardar la edición del producto:', error);
+ alert('Error al guardar los cambios: ' + error.message);
+ } finally {
+ if (btnGuardar) {
+ btnGuardar.disabled = false;
+ btnGuardar.textContent = 'Guardar Cambios';
+ }
+ }
+ }
+
+ // Permite eliminar el producto directamente desde el modal de edición (reutiliza la
+ // función existente de eliminación, que ya pide confirmación al dueño)
+ window.eliminarProductoDesdeEdicion = function() {
+ if (!productoEditandoActual) return;
+ const { negocioId, productoId, rutaProducto } = productoEditandoActual;
+ const nombreProducto = document.getElementById('titulo-editar-producto').value || 'este producto';
+ cerrarModalEditarProducto();
+ eliminarProductoMiTienda(negocioId, productoId, nombreProducto, rutaProducto);
+ }
+
  // VER PRODUCTOS DE OTRAS TIENDAS
  window.verProductosTienda = async function(negocioId, nombreTienda) {
  try {
@@ -15671,7 +16266,7 @@ Tu menú ya está visible para los clientes.`);
  }, 300);
  
  // Recargar productos
- if (seccionActualId) await cargarProductosDeSeccionMiTienda(miTiendaIdActual, seccionActualId, seccionActualTitulo || '');
+ if (seccionActualId) await volverASeccionesMiTienda();
  
  } catch (error) {
  console.error(' Error al guardar:', error);
@@ -15839,7 +16434,7 @@ Tu menú ya está visible para los clientes en tu tienda.`);
  
  // Recargar productos
  try {
- if (seccionActualId) await cargarProductosDeSeccionMiTienda(miTiendaIdActual, seccionActualId, seccionActualTitulo || '');
+ if (seccionActualId) await volverASeccionesMiTienda();
  console.log('Productos recargados exitosamente');
  } catch (reloadError) {
  console.error('Error al recargar productos:', reloadError);
@@ -16457,6 +17052,7 @@ Detalles técnicos en la consola (F12)`;
 
 
 <!-- ============================================================
+
      SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
 ============================================================ -->
 <!-- ==================== MODAL: AGREGAR PRODUCTO AL MENÚ (DUEÑO) ==================== -->
@@ -16514,11 +17110,44 @@ Detalles técnicos en la consola (F12)`;
  <label for="foto-producto-seccion">Foto del Producto (opcional):</label>
  <input type="file" id="foto-producto-seccion" accept="image/*" />
 
+ <label for="descripcion-producto-seccion">Descripción (opcional, máx. 300 caracteres):</label>
+ <textarea id="descripcion-producto-seccion" maxlength="300" rows="3" placeholder="Ej: Camisa 100% algodón, disponible en varias tallas" style="width:100%; box-sizing:border-box; resize:vertical;" oninput="document.getElementById('contador-descripcion-producto-seccion').textContent = this.value.length"></textarea>
+ <div style="text-align:right; font-size:11px; color:var(--color-text-dark); margin:-8px 0 8px;"><span id="contador-descripcion-producto-seccion">0</span>/300</div>
+
  <label for="stock-producto-seccion">Cantidad disponible (opcional):</label>
  <input type="number" id="stock-producto-seccion" placeholder="Déjalo vacío si no quieres controlar el stock" min="0" />
 
  <button type="submit" id="btn-guardar-producto-seccion">Guardar Producto</button>
  </form>
+ </div>
+</div>
+
+<!-- ==================== MODAL: EDITAR PRODUCTO DE UNA SECCIÓN ==================== -->
+<div id="modal-editar-producto-seccion" class="modal">
+ <div class="modal-content">
+ <span class="close-modal" onclick="cerrarModalEditarProducto()">&times;</span>
+ <h3>✏️ Editar Producto</h3>
+
+ <form id="form-editar-producto-seccion" onsubmit="guardarEdicionProducto(event)">
+ <label for="titulo-editar-producto">Título del Producto:</label>
+ <input type="text" id="titulo-editar-producto" required />
+
+ <label for="precio-editar-producto">Precio:</label>
+ <input type="number" id="precio-editar-producto" min="0" required />
+
+ <label for="foto-editar-producto">Cambiar foto (opcional, deja vacío para conservar la actual):</label>
+ <input type="file" id="foto-editar-producto" accept="image/*" />
+
+ <label for="descripcion-editar-producto">Descripción (opcional, máx. 300 caracteres):</label>
+ <textarea id="descripcion-editar-producto" maxlength="300" rows="3" placeholder="Ej: Camisa 100% algodón, disponible en varias tallas" style="width:100%; box-sizing:border-box; resize:vertical;" oninput="document.getElementById('contador-descripcion-editar-producto').textContent = this.value.length"></textarea>
+ <div style="text-align:right; font-size:11px; color:var(--color-text-dark); margin:-8px 0 8px;"><span id="contador-descripcion-editar-producto">0</span>/300</div>
+
+ <label for="stock-editar-producto">Cantidad disponible (opcional):</label>
+ <input type="number" id="stock-editar-producto" placeholder="Déjalo vacío si no quieres controlar el stock" min="0" />
+
+ <button type="submit" id="btn-guardar-edicion-producto">Guardar Cambios</button>
+ </form>
+ <button type="button" class="btn-eliminar-producto" style="width:100%; margin-top:10px;" onclick="eliminarProductoDesdeEdicion()">🗑 Eliminar este producto</button>
  </div>
 </div>
 
@@ -16556,6 +17185,15 @@ Detalles técnicos en la consola (F12)`;
  <button type="button" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin(); if(window.miTiendaIdActual) abrirHorarioMiTienda(window.miTiendaIdActual);">
  <span>🕐 Horario de Atención</span>
  </button>
+ <button type="button" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin(); if(window.miTiendaIdActual) abrirReferidosMiTienda(window.miTiendaIdActual);">
+ <span>🎁 Referidos</span>
+ </button>
+ <button type="button" id="btn-menu-ubicacion-tienda" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin();">
+ 📍 Configurar ubicación de mi tienda
+ </button>
+ <button type="button" id="btn-toggle-apertura-tienda" class="menu-lateral-item" style="background:linear-gradient(135deg,#dc3545,#a71d2a);" onclick="cerrarMenuLateralPanelAdmin();">
+ 🔴 Cerrar Tienda
+ </button>
  </div>
 </div>
 
@@ -16592,6 +17230,7 @@ Detalles técnicos en la consola (F12)`;
 </div>
 
 <!-- ============================================================
+
      SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
 ============================================================ -->
 <script>
@@ -18135,7 +18774,8 @@ window.enviarMensajeP2P = function(pedidoId) {
  if (!txt) return;
  inp.value = '';
  const msgRef = window.push(window.ref(window.db, 'chat_p2p/' + pid));
- window.set(msgRef, { tipo:'texto', texto: txt, remitente:'cliente', ts: Date.now(), leido: false, clienteNombre: window.currentUserNombre||'Cliente' });
+ window.set(msgRef, { tipo:'texto', texto: txt, remitente:'cliente', ts: Date.now(), leido: false, clienteNombre: window.currentUserNombre||'Cliente' })
+   .catch(e => { if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('chats', 'enviarMensajeP2P', e, { pedidoId: pid }); });
  if (contieneMalaPalabra(txt)) {
  reportarLenguajeInapropiado(pid, 'cliente', txt, window.currentUserNombre || 'Cliente');
  }
@@ -18159,7 +18799,7 @@ window.enviarFotoP2P = async function(input, pedidoId) {
  const url = await getDownloadURL(snap.ref);
  const msgRef = window.push(window.ref(window.db, 'chat_p2p/' + pid));
  window.set(msgRef, { tipo:'imagen', url, remitente:'cliente', ts: Date.now(), leido: false });
- } catch(e) { alert('Error al subir foto: ' + e.message); }
+ } catch(e) { alert('Error al subir foto: ' + e.message); if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('chats', 'enviarFotoP2P', e, { pedidoId: pid }); }
  input.value = '';
 };
 
@@ -18175,7 +18815,7 @@ window.toggleGrabarAudioP2P = async function(pedidoId) {
  estado.sesion = await window._audioUnifIniciar();
  estado.recording = true;
  if (btn) { btn.textContent = '[■] Detener'; btn.style.background = '#c0392b'; }
- } catch(e) { alert('Error al acceder al micrófono: ' + e.message); }
+ } catch(e) { alert('Error al acceder al micrófono: ' + e.message); if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('chats', 'toggleGrabarAudioP2P', e, { pedidoId: pid, etapa: 'iniciar' }); }
  } else {
  try {
  estado.recording = false;
@@ -18188,7 +18828,7 @@ window.toggleGrabarAudioP2P = async function(pedidoId) {
  if (prev) prev.src = url;
  if (prevCont) prevCont.style.display = 'block';
  estado.audio = { _blob: blob };
- } catch(e) { alert('Error al procesar el audio: ' + e.message); }
+ } catch(e) { alert('Error al procesar el audio: ' + e.message); if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('chats', 'toggleGrabarAudioP2P', e, { pedidoId: pid, etapa: 'detener' }); }
  }
 };
 
@@ -18205,7 +18845,7 @@ window.enviarAudioP2P = async function(pedidoId) {
  const msgRef = window.push(window.ref(window.db, 'chat_p2p/' + pid));
  window.set(msgRef, { tipo:'audio', url, remitente:'cliente', ts: Date.now(), leido: false });
  cancelarAudioP2P(pid);
- } catch(e) { alert('Error al subir audio: ' + e.message); }
+ } catch(e) { alert('Error al subir audio: ' + e.message); if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('chats', 'enviarAudioP2P', e, { pedidoId: pid }); }
 };
 
 window.cancelarAudioP2P = function(pedidoId) {
@@ -21729,7 +22369,6 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  <!-- ===== SISTEMA DE NOTIFICACIONES (CAMPANITA) ===== -->
 
-<!-- ============================================================
      SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
 ============================================================ -->
  <script>
@@ -21815,7 +22454,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  });
  }
 
- window.agregarNotificacion = function(title, body, type, action, extra) {
+window.agregarNotificacion = function(title, body, type, action, extra) {
  const n = { id: Date.now() + Math.random(), title, body, type: type||'pedido', action: action||null, ts: Date.now(), read: false, ...extra };
  _notifs.push(n);
  _save();
@@ -21872,7 +22511,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  img.src = url;
  modal.classList.add('activo');
  };
- window.cerrarVisorImg = function() {
+window.cerrarVisorImg = function() {
  const modal = document.getElementById('img-visor-modal');
  if (modal) modal.classList.remove('activo');
  const img = document.getElementById('img-visor-src');
@@ -21952,6 +22591,13 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  }
  }
  }
+ }, (error) => {
+ // 🩺 Monitoreo: si este listener se cae, el cliente deja de enterarse
+ // de cualquier cambio de estado de su pedido (aceptado/en camino/
+ // entregado) sin saber que algo falló — vale la pena que quede
+ // registrado, porque desde su lado todo se ve "normal" (silencio).
+ console.error('Error en listener de estado de pedido:', error);
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('pedidos', 'escucharEstadoPedidoNotif', error, { pedidoId });
  });
  };
  // FIX3: leer estado actual primero para inicializar el baseline.
@@ -21962,7 +22608,10 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  _lastPedidoEstado[pedidoId] = (dInit.estado || dInit.estadoHistorial || '').toLowerCase();
  }
  _registrarOnValue();
- }).catch(() => _registrarOnValue());
+ }).catch((error) => {
+ if (window.reportarErrorMonitoreo) window.reportarErrorMonitoreo('pedidos', 'escucharEstadoPedidoNotif', error, { pedidoId, etapa: 'lectura_inicial' });
+ _registrarOnValue();
+ });
  };
 
  // Escuchar mensajes del repartidor
@@ -22234,12 +22883,14 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  });
  }
 
- _suscribirPath(pathConPrefijo);
+_suscribirPath(pathConPrefijo);
  if (pathConPrefijo !== pathSinPrefijo) _suscribirPath(pathSinPrefijo);
  }
  };
 
  _updateBadge();
+
+
 
  // ── SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO ──────────────────
  // Escucha sos_alertas en Firebase y filtra las que corresponden
@@ -22558,6 +23209,9 @@ window._tiempoRecogidaSeleccionado = { minutos: 0, etiqueta: 'Ya está para reco
  <button id="img-visor-cerrar" onclick="cerrarVisorImg()"></button>
  <img id="img-visor-src" src="" alt="Imagen" onclick="event.stopPropagation()">
 </div>
+<!-- ============================================================
+     SECCIÓN 21 · INICIALIZACIÓN FINAL (lucide icons + auto-cierre de sesión)
+============================================================ -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>
  document.addEventListener('DOMContentLoaded', function() {

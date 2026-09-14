@@ -3078,7 +3078,7 @@
  overflow: hidden;
  border: 1px solid #333;
  }
- #ai-chat-panel.open { display: flex; }
+ #ai-chat-panel.open { display: none !important; } /* Widget viejo desactivado: ServiBot ahora vive en el menú */
  #ai-chat-header {
  background: linear-gradient(135deg, #2a2a00, #3a2e00);
  padding: 12px 14px;
@@ -5031,12 +5031,29 @@
  <button type="button" onclick="quitarImagenServibotTab()" style="background:#333; border:none; color:#fff; width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:14px; line-height:1; flex-shrink:0;">✕</button>
  </div>
 
- <!-- Input -->
- <div style="display:flex; gap:10px; padding:12px 14px 20px; border-top:1px solid #333; background:#1e1e1e; flex-shrink:0; position:relative; z-index:1;">
+<!-- Input -->
+ <div style="display:flex; gap:6px; padding:10px 8px 16px; border-top:1px solid #333; background:#1e1e1e; flex-shrink:0; position:relative; z-index:1;">
  <input type="file" id="servibot-tab-imagen-input" accept="image/*" style="display:none;" onchange="adjuntarImagenServibotTab(this)" />
- <button id="servibot-foto-btn" onclick="document.getElementById('servibot-tab-imagen-input').click()" title="Adjuntar foto con los datos del destinatario" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:46px !important; height:46px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
- <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+ <button id="servibot-foto-btn" onclick="document.getElementById('servibot-tab-imagen-input').click()" title="Adjuntar foto con los datos del destinatario" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:40px !important; height:40px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
  </button>
+ <!-- Cámara directa: mismo destino (adjuntarImagenServibotTab) pero con capture="environment",
+ así el celular abre la cámara de una vez en vez de mostrar el selector de galería. -->
+ <input type="file" id="servibot-tab-camara-input" accept="image/*" capture="environment" style="display:none;" onchange="adjuntarImagenServibotTab(this)" />
+ <button id="servibot-camara-btn" onclick="document.getElementById('servibot-tab-camara-input').click()" title="Tomar foto con la cámara" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:40px !important; height:40px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/></svg>
+ </button>
+ <input type="text" id="servibot-tab-input" placeholder="Escribe tu pregunta..." maxlength="400"
+ style="flex:1; min-width:0; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:10px 14px; font-size:14px; outline:none; width:auto; margin:0;"
+ onkeydown="if(event.key==='Enter') sendAIMessageTab()">
+ <button id="servibot-mic-btn" onclick="iniciarDictadoServiBot()" title="Dictar por voz" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:40px !important; height:40px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+ </button>
+ <button onclick="sendAIMessageTab()" style="background:linear-gradient(135deg,#FFD700,#ff9800); border:none; border-radius:50%; width:40px !important; height:40px; color:#111; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+ </button>
+ </div>
+ </div>
  <input type="text" id="servibot-tab-input" placeholder="Escribe tu pregunta..." maxlength="400"
  style="flex:1; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:12px 18px; font-size:15px; outline:none; width:auto; margin:0;"
  onkeydown="if(event.key==='Enter') sendAIMessageTab()">

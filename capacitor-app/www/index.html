@@ -2,7 +2,7 @@
 <html lang="es">
 <!--
 ================================================================================
-  ÍNDICE DE SECCIONES — index.html (Cliente) · Servi Aliados
+  ÍNDICE DE SECCIONES — index.html (Cliente) · Servi Aliados — Actualizado 2026-09-13
 ================================================================================
 
   BLOQUE CSS (dentro de <head>)
@@ -21,20 +21,20 @@
   Línea  4686  │ SECCIÓN  7 · TAB PREMIOS
   Línea  4995  │ SECCIÓN  8 · TAB SERVIBOT
   Línea  5061  │ SECCIÓN  9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
-  Línea 10788  │ SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
-  Línea 16684  │ SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
-  Línea 16858  │ SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
-  Línea 19171  │ SECCIÓN 13 · MODAL SUGERIR NUEVO LUGAR
-  Línea 19259  │ SECCIÓN 13B · MAPEADOR DE UBICACIÓN PARA SUGERENCIAS (pin en mapa)
-  Línea 19379  │ SECCIÓN 14 · SELECTOR DE DESTINO (Armenia / Municipio fuera)
-  Línea 19569  │ SECCIÓN 15 · GEOCODIFICACIÓN Y GPS (Nominatim + ubicación)
-  Línea 19705  │ SECCIÓN 16 · SERVIBOT CHATBOT (motor de respuestas por reglas)
-  Línea 21784  │ SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
-  Línea 21996  │ SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
-  Línea 22507  │ SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO
-  Línea 22668  │ SECCIÓN 19 · MODAL HOJA DE RUTA DE NIVELES
-  Línea 22817  │ SECCIÓN 20 · MODAL VISOR DE IMAGEN
-  Línea 22825  │ SECCIÓN 21 · INICIALIZACIÓN FINAL (lucide icons + auto-cierre de sesión)
+  Línea 10834  │ SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
+  Línea 17057  │ SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
+  Línea 17235  │ SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
+  Línea 19549  │ SECCIÓN 13 · MODAL SUGERIR NUEVO LUGAR
+  Línea 19637  │ SECCIÓN 13B · MAPEADOR DE UBICACIÓN PARA SUGERENCIAS (pin en mapa)
+  Línea 19757  │ SECCIÓN 14 · SELECTOR DE DESTINO (Armenia / Municipio fuera)
+  Línea 19947  │ SECCIÓN 15 · GEOCODIFICACIÓN Y GPS (Nominatim + ubicación)
+  Línea 20083  │ SECCIÓN 16 · SERVIBOT CHATBOT (motor de respuestas por reglas)
+  Línea 22162  │ SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
+  Línea 22374  │ SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
+  Línea 22897  │ SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO
+  Línea 23058  │ SECCIÓN 19 · MODAL HOJA DE RUTA DE NIVELES
+  Línea 23207  │ SECCIÓN 20 · MODAL VISOR DE IMAGEN
+  Línea 23215  │ SECCIÓN 21 · INICIALIZACIÓN FINAL (lucide icons + auto-cierre de sesión)
 
 ================================================================================
 -->
@@ -3078,7 +3078,7 @@
  overflow: hidden;
  border: 1px solid #333;
  }
- #ai-chat-panel.open { display: flex; }
+ #ai-chat-panel.open { display: none !important; } /* Widget viejo desactivado: ServiBot ahora vive en el menú */
  #ai-chat-header {
  background: linear-gradient(135deg, #2a2a00, #3a2e00);
  padding: 12px 14px;
@@ -5031,25 +5031,27 @@
  <button type="button" onclick="quitarImagenServibotTab()" style="background:#333; border:none; color:#fff; width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:14px; line-height:1; flex-shrink:0;">✕</button>
  </div>
 
- <!-- Input -->
- <div style="display:flex; gap:10px; padding:12px 14px 20px; border-top:1px solid #333; background:#1e1e1e; flex-shrink:0; position:relative; z-index:1;">
+<!-- Input -->
+ <div style="display:flex; gap:5px; padding:10px 6px 16px; border-top:1px solid #333; background:#1e1e1e; flex-shrink:0; position:relative; z-index:1;">
  <input type="file" id="servibot-tab-imagen-input" accept="image/*" style="display:none;" onchange="adjuntarImagenServibotTab(this)" />
- <button id="servibot-foto-btn" onclick="document.getElementById('servibot-tab-imagen-input').click()" title="Adjuntar foto con los datos del destinatario" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:46px !important; height:46px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
- <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+ <button id="servibot-foto-btn" onclick="document.getElementById('servibot-tab-imagen-input').click()" title="Adjuntar foto con los datos del destinatario" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:38px !important; height:38px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
  </button>
- <input type="text" id="servibot-tab-input" placeholder="Escribe tu pregunta..." maxlength="400"
- style="flex:1; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:12px 18px; font-size:15px; outline:none; width:auto; margin:0;"
- onkeydown="if(event.key==='Enter') sendAIMessageTab()">
- <button id="servibot-mic-btn" onclick="iniciarDictadoServiBot()" title="Dictar por voz" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:46px !important; height:46px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
- <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+ <input type="file" id="servibot-tab-camara-input" accept="image/*" capture="environment" style="display:none;" onchange="adjuntarImagenServibotTab(this)" />
+ <button id="servibot-camara-btn" onclick="document.getElementById('servibot-tab-camara-input').click()" title="Tomar foto con la cámara" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:38px !important; height:38px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/></svg>
  </button>
- <button onclick="sendAIMessageTab()" style="background:linear-gradient(135deg,#FFD700,#ff9800); border:none; border-radius:50%; width:46px !important; height:46px; color:#111; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset;">
- <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
- </button>
- </div>
- </div>
- </div>
 
+ <input type="text" id="servibot-tab-input" placeholder="Escribe tu pregunta..." maxlength="400"
+ style="flex:1; min-width:0; background:#2a2a2a; border:1.5px solid #555; border-radius:24px; color:#fff; padding:10px 14px; font-size:14px; outline:none; margin:0;"
+ onkeydown="if(event.key==='Enter') sendAIMessageTab()">
+ <button id="servibot-mic-btn" onclick="iniciarDictadoServiBot()" title="Dictar por voz" style="background:#2a2a2a; border:1.5px solid #555; border-radius:50%; width:38px !important; height:38px; color:#fff; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset; transition:background 0.15s;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+ </button>
+ <button onclick="sendAIMessageTab()" style="background:linear-gradient(135deg,#FFD700,#ff9800); border:none; border-radius:50%; width:38px !important; height:38px; color:#111; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:unset;">
+ <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+ </button>
+ </div>
  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
  
@@ -5057,6 +5059,7 @@
  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
  <script>eruda.init();</script>
 
+<!-- ============================================================
      SECCIÓN 9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
 ============================================================ -->
  <script>
@@ -10829,7 +10832,7 @@ if (dentroDeHorario) {
  console.log(' Sistema de routing corregido con validaciones robustas');
  console.log(' Sistema de tiendas: 1 tienda por cliente + aprobación admin');
  </script>
-============================================================ -->
+<!-- ============================================================
           SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
 ============================================================ -->
  <script type="module">
@@ -11070,6 +11073,10 @@ if (dentroDeHorario) {
    window._sbDatosTiendaPendiente = res.data.datosTienda || null;
    return res.data.respuesta;
  };
+ // FIX FOTO ADJUNTA (dirección de tercero por visión): usa las mismas claves
+ // de arriba (window._sbDatosTerceroPendiente) — sirve como referencia de
+ // los 2 campos nuevos que puede traer para prellenar/abrir el mapa:
+ // barrioNoReconocido y abrirMapaAuto (ver mostrarTarjetaTerceroChat).
  window.push = push;
  window.ref = ref;
  window.set = set;
@@ -21531,7 +21538,10 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  try { document.getElementById('sb-t-nombre').value = datos.nombreCliente || ''; } catch (e) { console.warn('No se pudo prellenar nombre:', e); }
  try { document.getElementById('sb-t-telefono').value = datos.telefonoCliente || ''; } catch (e) { console.warn('No se pudo prellenar teléfono:', e); }
  try { document.getElementById('sb-t-direccion').value = datos.direccionDetalle || ''; } catch (e) { console.warn('No se pudo prellenar dirección:', e); }
- try { document.getElementById('sb-t-barrio').value = datos.barrioEntrega || ''; } catch (e) { console.warn('No se pudo prellenar barrio:', e); }
+ // Si el barrio venía de una FOTO y no se reconoció contra la galería de
+ // ubicaciones, igual se muestra el texto leído (para que el local vea qué
+ // detectó ServiBot), pero el mapa se abre solo para que marque el punto real.
+ try { document.getElementById('sb-t-barrio').value = datos.barrioEntrega || datos.barrioNoReconocido || ''; } catch (e) { console.warn('No se pudo prellenar barrio:', e); }
 
  // Si el pedido viene de un link/ubicación de Google Maps (cotizarPorUbicacion),
  // ya tenemos coordenadas exactas: la dirección queda fija en "Ubicación GPS"
@@ -21539,6 +21549,18 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const tieneGps = !!(datos.gpsEntrega && datos.gpsEntrega.lat && datos.gpsEntrega.lng);
  window._sbTercero.gpsEntrega = tieneGps ? datos.gpsEntrega : null;
  if (tieneGps) sbAplicarGpsATarjetaTercero(datos.gpsEntrega);
+
+ // FOTO CON BARRIO NO RECONOCIDO: en vez de dejar que el local tenga que
+ // notar y darle clic al botón de mapa, se abre solo apenas se pinta la
+ // tarjeta, con un aviso corto explicando por qué.
+ if (datos.abrirMapaAuto) {
+ const avisoMapa = document.createElement('div');
+ avisoMapa.style.cssText = 'font-size:11px; color:#F59E0B; margin:-4px 0 8px;';
+ avisoMapa.textContent = ' El barrio "' + (datos.barrioNoReconocido || '') + '" (leído de la foto) no está en nuestros registros — marca el punto exacto en el mapa que se acaba de abrir.';
+ const barrioWrap = document.getElementById('sb-t-barrio') && document.getElementById('sb-t-barrio').parentElement;
+ if (barrioWrap && barrioWrap.parentElement) barrioWrap.parentElement.insertBefore(avisoMapa, barrioWrap.nextSibling);
+ setTimeout(function () { abrirMapeadorPedidoTercero(); }, 250);
+ }
  };
 
  // Bloquea dirección/barrio como "Ubicación GPS" cuando ya hay coordenadas
@@ -22158,6 +22180,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
 
 <!-- ============================================================
+
      SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
 ============================================================ -->
 <script>
@@ -22369,6 +22392,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  <!-- ===== SISTEMA DE NOTIFICACIONES (CAMPANITA) ===== -->
 
+<!-- ============================================================
      SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
 ============================================================ -->
  <script>

@@ -11071,6 +11071,10 @@ if (dentroDeHorario) {
    window._sbDatosTiendaPendiente = res.data.datosTienda || null;
    return res.data.respuesta;
  };
+ // FIX FOTO ADJUNTA (dirección de tercero por visión): usa las mismas claves
+ // de arriba (window._sbDatosTerceroPendiente) — sirve como referencia de
+ // los 2 campos nuevos que puede traer para prellenar/abrir el mapa:
+ // barrioNoReconocido y abrirMapaAuto (ver mostrarTarjetaTerceroChat).
  window.push = push;
  window.ref = ref;
  window.set = set;
@@ -21532,7 +21536,10 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  try { document.getElementById('sb-t-nombre').value = datos.nombreCliente || ''; } catch (e) { console.warn('No se pudo prellenar nombre:', e); }
  try { document.getElementById('sb-t-telefono').value = datos.telefonoCliente || ''; } catch (e) { console.warn('No se pudo prellenar teléfono:', e); }
  try { document.getElementById('sb-t-direccion').value = datos.direccionDetalle || ''; } catch (e) { console.warn('No se pudo prellenar dirección:', e); }
- try { document.getElementById('sb-t-barrio').value = datos.barrioEntrega || ''; } catch (e) { console.warn('No se pudo prellenar barrio:', e); }
+ // Si el barrio venía de una FOTO y no se reconoció contra la galería de
+ // ubicaciones, igual se muestra el texto leído (para que el local vea qué
+ // detectó ServiBot), pero el mapa se abre solo para que marque el punto real.
+ try { document.getElementById('sb-t-barrio').value = datos.barrioEntrega || datos.barrioNoReconocido || ''; } catch (e) { console.warn('No se pudo prellenar barrio:', e); }
 
  // Si el pedido viene de un link/ubicación de Google Maps (cotizarPorUbicacion),
  // ya tenemos coordenadas exactas: la dirección queda fija en "Ubicación GPS"
@@ -21540,6 +21547,18 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const tieneGps = !!(datos.gpsEntrega && datos.gpsEntrega.lat && datos.gpsEntrega.lng);
  window._sbTercero.gpsEntrega = tieneGps ? datos.gpsEntrega : null;
  if (tieneGps) sbAplicarGpsATarjetaTercero(datos.gpsEntrega);
+
+ // FOTO CON BARRIO NO RECONOCIDO: en vez de dejar que el local tenga que
+ // notar y darle clic al botón de mapa, se abre solo apenas se pinta la
+ // tarjeta, con un aviso corto explicando por qué.
+ if (datos.abrirMapaAuto) {
+ const avisoMapa = document.createElement('div');
+ avisoMapa.style.cssText = 'font-size:11px; color:#F59E0B; margin:-4px 0 8px;';
+ avisoMapa.textContent = ' El barrio "' + (datos.barrioNoReconocido || '') + '" (leído de la foto) no está en nuestros registros — marca el punto exacto en el mapa que se acaba de abrir.';
+ const barrioWrap = document.getElementById('sb-t-barrio') && document.getElementById('sb-t-barrio').parentElement;
+ if (barrioWrap && barrioWrap.parentElement) barrioWrap.parentElement.insertBefore(avisoMapa, barrioWrap.nextSibling);
+ setTimeout(function () { abrirMapeadorPedidoTercero(); }, 250);
+ }
  };
 
  // Bloquea dirección/barrio como "Ubicación GPS" cuando ya hay coordenadas
@@ -22159,6 +22178,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
 
 <!-- ============================================================
+
      SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
 ============================================================ -->
 <script>

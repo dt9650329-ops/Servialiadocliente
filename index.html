@@ -20293,17 +20293,18 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
  }
 
- // Primer paso: antes de dar el tiempo, se le pregunta al cliente para qué
- // zona es su pedido (se usa como aproximación del punto de recogida,
- // porque en este punto del chat todavía no existe un pedido real con GPS).
- // Con esa zona sí se puede mirar qué repartidor conectado le queda más
- // cerca (o cuál va pasando más cerca según su pedido activo) en vez de dar
- // un tiempo genérico igual para toda la ciudad.
+ // Primer paso: antes de dar el tiempo, se le pregunta al cliente la zona de
+ // ENTREGA de su pedido (no la de recogida — las rutas y el enrutamiento de
+ // esta app siempre se arman por dirección/zona de entrega, la recogida
+ // suele ser en el local). Con esa zona se puede mirar qué repartidor
+ // conectado le queda más cerca de esa entrega (o cuál va pasando más cerca
+ // según su pedido activo) en vez de dar un tiempo genérico para toda la
+ // ciudad.
  async function respuestaColaRepartidores() {
  const botones = Object.keys(ZONA_CENTROIDE).map(z =>
  `<button onclick="elegirZonaCola('${z}')" style="padding:6px 14px;border-radius:16px;border:1px solid var(--color-primary,#F59E0B);background:transparent;color:var(--color-primary,#F59E0B);font-size:13px;cursor:pointer;">${ZONA_NOMBRE[z]}</button>`
  ).join('');
- return 'Para darte un tiempo más exacto, cuéntame: ¿de qué zona es tu pedido? Así reviso qué repartidor te queda más cerca.'
+ return 'Para darte un tiempo más exacto, cuéntame: ¿cuál es la zona de entrega de tu pedido? Así reviso qué repartidor te queda más cerca.'
  + `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${botones}</div>`;
  }
 
@@ -20322,7 +20323,7 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  if (typeof aiHistory !== 'undefined') aiHistory.push({ role: 'assistant', content: respuesta });
  if (typingDiv) {
  typingDiv.classList.remove('typing');
- typingDiv.innerHTML = respuesta;
+ typingDiv.innerHTML = respuesta.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/\n/g,'<br>');
  const container = document.getElementById('servibot-tab-messages');
  if (container) container.scrollTop = container.scrollHeight;
  }
@@ -20368,9 +20369,9 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  const mejor = conDistancia[0];
  if (mejor.distKm !== null) {
  const min = Math.max(3, Math.round(mejor.distKm / velocidadKmMin));
- return `¡Tenemos un repartidor libre! El más cercano a la zona **${nombreZona}** está a unos **${mejor.distKm.toFixed(1)} km**, así que estaría recogiendo tu pedido en aproximadamente **${min}–${min + 5} minutos**. Solicítalo ya en **Servicio**.`;
+ return `¡Tenemos un repartidor libre! El más cercano a tu zona de entrega (**${nombreZona}**) está a unos **${mejor.distKm.toFixed(1)} km**, así que en aproximadamente **${min}–${min + 5} minutos** ya estaría recogiendo tu pedido para llevarlo. Solicítalo ya en **Servicio**.`;
  }
- return `¡Tenemos un repartidor libre! Irá directo a recoger tu pedido en la zona **${nombreZona}**, no esperes más y solicítalo en **Servicio**.`;
+ return `¡Tenemos un repartidor libre! Irá directo a tomar tu pedido para llevarlo a la zona **${nombreZona}**, no esperes más y solicítalo en **Servicio**.`;
  }
 
  // 2) Todos ocupados: revisar el pedido activo de cada uno para ver cuál
@@ -20423,6 +20424,7 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
 
  // Convierte el aiHistory del cliente (role: 'user'|'assistant') al formato
  // que espera la Cloud Function/Gemini (role: 'user'|'model'), sin incluir
+
  // el mensaje que se está por responder (ese va aparte como "msg").
  function construirHistorialParaIA() {
  return aiHistory.slice(0, -1).slice(-10).map(function(m) {

@@ -3473,7 +3473,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.3.7</small>
+ <small>Versión 1.3.8</small>
  </div>
  </div>
  </div>
@@ -10832,7 +10832,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.3.7');
+ console.log(' Sistema del cliente inicializado v1.3.8');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -10932,7 +10932,7 @@ if (dentroDeHorario) {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.3.7";
+ const APP_VERSION = "1.3.8";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -13491,7 +13491,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.7');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.8');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -13536,7 +13536,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.3.7  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.3.8  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -21537,8 +21537,13 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  '<button type="button" id="sb-t-btn-mapa" onclick="abrirMapeadorPedidoTercero()" style="width:100%; margin-bottom:10px; padding:9px 12px; border-radius:8px; border:1px dashed #F59E0B; background:rgba(245,158,11,0.08); color:#F59E0B; font-size:12px; font-weight:bold; cursor:pointer; text-align:left;"> ¿No tienes la dirección? Selecciona la ubicación en el mapa</button>' +
  '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;">¿En cuánto está listo el pedido?</div>' +
  '<div id="sb-t-minutos" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">' + minutosBtns + '</div>' +
+ '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;"> Valor del producto a cobrarle al cliente (déjalo vacío si no aplica):</div>' +
+ '<input type="text" inputmode="numeric" id="sb-t-valor-producto" placeholder="Ej: 25000" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:12px; box-sizing:border-box;">' +
  '<div id="sb-t-error" style="display:none; color:#ef4444; font-size:12px; margin-bottom:8px;"></div>' +
- '<button type="button" id="sb-t-btn-enviar" onclick="sbConfirmarPedidoTercero()" style="width:100%; padding:11px; border-radius:8px; border:none; background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:14px;"> Enviar pedido</button>';
+ '<div style="display:flex; gap:8px;">' +
+ '<button type="button" id="sb-t-btn-solo-domi" onclick="sbConfirmarPedidoTercero(true)" style="flex:1; padding:11px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:bold; font-size:13px;"> Solo cobrar Domi</button>' +
+ '<button type="button" id="sb-t-btn-enviar" onclick="sbConfirmarPedidoTercero(false)" style="flex:1; padding:11px; border-radius:8px; border:none; background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:14px;"> Enviar pedido</button>' +
+ '</div>';
 
  container.appendChild(div);
  container.scrollTop = container.scrollHeight;
@@ -21550,6 +21555,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // ubicaciones, igual se muestra el texto leído (para que el local vea qué
  // detectó ServiBot), pero el mapa se abre solo para que marque el punto real.
  try { document.getElementById('sb-t-barrio').value = datos.barrioEntrega || datos.barrioNoReconocido || ''; } catch (e) { console.warn('No se pudo prellenar barrio:', e); }
+ try { if (datos.valorProducto) document.getElementById('sb-t-valor-producto').value = datos.valorProducto; } catch (e) { console.warn('No se pudo prellenar valor de producto:', e); }
 
  // Si el pedido viene de un link/ubicación de Google Maps (cotizarPorUbicacion),
  // ya tenemos coordenadas exactas: la dirección queda fija en "Ubicación GPS"
@@ -21663,7 +21669,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (status) status.innerHTML = ' Ubicación de recogida marcada en el mapa.';
  };
 
- window.sbConfirmarPedidoTercero = async function () {
+ window.sbConfirmarPedidoTercero = async function (soloDomicilio) {
  const errEl = document.getElementById('sb-t-error');
  if (errEl) errEl.style.display = 'none';
 
@@ -21674,6 +21680,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const minutosPreparacion = window._sbTercero ? window._sbTercero.minutos : null;
  const gpsEntrega = window._sbTercero ? window._sbTercero.gpsEntrega : null;
  const tieneGps = !!(gpsEntrega && gpsEntrega.lat && gpsEntrega.lng);
+ // "Solo cobrar Domi" ignora lo que se haya escrito en el campo de producto
+ const valorProductoTexto = (document.getElementById('sb-t-valor-producto')?.value || '').replace(/[^0-9]/g, '');
+ const valorProducto = soloDomicilio ? 0 : (parseInt(valorProductoTexto, 10) || 0);
 
  if (!nombreCliente || !telefonoCliente || !direccionDetalle || (!barrioEntrega && !tieneGps)) {
  if (errEl) { errEl.textContent = 'Completa nombre, teléfono, dirección y barrio.'; errEl.style.display = 'block'; }
@@ -21684,15 +21693,17 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  return;
  }
 
- const btn = document.getElementById('sb-t-btn-enviar');
+ const btn = document.getElementById(soloDomicilio ? 'sb-t-btn-solo-domi' : 'sb-t-btn-enviar');
+ const btnOtro = document.getElementById(soloDomicilio ? 'sb-t-btn-enviar' : 'sb-t-btn-solo-domi');
  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+ if (btnOtro) { btnOtro.disabled = true; }
 
  try {
  if (!window.confirmarPedidoTerceroCallable) throw new Error('No se pudo conectar con el servidor.');
  const origenRecogida = (window._sbTercero && window._sbTercero.origenRecogida) || 'local';
  const gpsRecogidaManual = (origenRecogida === 'otro_lugar' && window._sbTercero) ? (window._sbTercero.gpsRecogida || null) : null;
  const res = await window.confirmarPedidoTerceroCallable({
- nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega, origenRecogida, gpsRecogidaManual,
+ nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega, origenRecogida, gpsRecogidaManual, valorProducto,
  });
  const card = document.getElementById('sb-tercero-card');
  if (card) card.remove();
@@ -21708,7 +21719,8 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  } catch (e) {
  console.error('[Pedido tercero] Error:', e);
  if (errEl) { errEl.textContent = (e && e.message) || 'No se pudo enviar el pedido. Intenta de nuevo.'; errEl.style.display = 'block'; }
- if (btn) { btn.disabled = false; btn.textContent = ' Enviar pedido'; }
+ if (btn) { btn.disabled = false; btn.textContent = soloDomicilio ? ' Solo cobrar Domi' : ' Enviar pedido'; }
+ if (btnOtro) { btnOtro.disabled = false; }
  }
  };
 

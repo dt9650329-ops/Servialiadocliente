@@ -1772,13 +1772,44 @@
  border-radius: 8px;
  margin-bottom: 10px;
  display: flex;
- justify-content: space-between;
- align-items: center;
+ flex-direction: column;
+ gap: 10px;
  border: 1px solid #444;
  }
  
  .product-item-edit:hover {
  border-color: var(--color-primary);
+ }
+ 
+ /* Encabezado de la card de producto (panel "Mi Tienda"): nombre y precio a
+    la izquierda, la foto del producto arriba a la derecha. */
+ .product-header-edit {
+ display: flex;
+ justify-content: space-between;
+ align-items: flex-start;
+ gap: 10px;
+ }
+ 
+ .product-title-price-edit {
+ flex: 1;
+ min-width: 0;
+ }
+ 
+ .product-thumb-edit {
+ width: 64px;
+ height: 64px;
+ border-radius: 8px;
+ overflow: hidden;
+ flex-shrink: 0;
+ background: #111;
+ cursor: pointer;
+ }
+ 
+ .product-thumb-edit img {
+ width: 100%;
+ height: 100%;
+ object-fit: cover;
+ display: block;
  }
  
  .product-info-edit {
@@ -1788,7 +1819,26 @@
  .product-name-edit {
  color: var(--color-text-light);
  font-weight: bold;
- margin-bottom: 5px;
+ margin-bottom: 4px;
+ font-size: 15px;
+ }
+ 
+ .product-price-edit {
+ color: var(--color-primary);
+ font-weight: bold;
+ font-size: 14px;
+ }
+ 
+ .product-descripcion-edit {
+ color: var(--color-text-dark);
+ font-size: 12px;
+ line-height: 1.4;
+ }
+ 
+ .product-status-row-edit {
+ display: flex;
+ gap: 8px;
+ flex-wrap: wrap;
  }
  
  .product-status-edit {
@@ -1803,9 +1853,21 @@
  color: #dc3545;
  }
  
+ /* Fila de acciones del producto: los botones quedan parejos y ordenados,
+    repartiendo el ancho completo en partes iguales (2 o 3 botones según
+    tenga o no control de stock). */
  .product-actions-edit {
  display: flex;
  gap: 8px;
+ }
+ 
+ .product-actions-edit button {
+ flex: 1;
+ min-width: 0;
+ padding: 8px 6px;
+ font-size: 11.5px;
+ line-height: 1.25;
+ text-align: center;
  }
  
  /* Tarjeta de "Compras de mi tienda": más espaciosa, con la info arriba
@@ -13813,9 +13875,9 @@ ${motivo}`;
  const productoDiv = document.createElement('div');
  productoDiv.className = 'product-item-edit';
 
- const fotoHTML = producto.foto ? `<div class="product-images-gallery"><img src="${producto.foto}" alt="${producto.nombre}" onclick="window.open('${producto.foto}', '_blank')"></div>` : '';
- const precioHTML = producto.precio ? `<div style="color: var(--color-primary); font-size: 14px;">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
- const descripcionHTML = producto.descripcion ? `<div style="color: var(--color-text-dark); font-size: 12px; margin-top:4px;">${producto.descripcion}</div>` : '';
+ const fotoHTML = producto.foto ? `<div class="product-thumb-edit" onclick="window.open('${producto.foto}', '_blank')"><img src="${producto.foto}" alt="${producto.nombre}"></div>` : '';
+ const precioHTML = producto.precio ? `<div class="product-price-edit">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
+ const descripcionHTML = producto.descripcion ? `<div class="product-descripcion-edit">${producto.descripcion}</div>` : '';
 
  const tieneStock = typeof producto.stock === 'number';
  const stockBajoHTML = (tieneStock && producto.stock <= 5)
@@ -13825,12 +13887,18 @@ ${motivo}`;
  ? `<button class="btn-toggle-disponibilidad disponible" onclick="descontarStockProducto('${negocioId}', '${productoId}', 'secciones/${seccionId}/productos')">Vendí uno (quedan ${producto.stock})</button>`
  : '';
 
+ // Estructura: encabezado (nombre+precio a la izquierda, foto arriba a la
+ // derecha) → descripción → estado/stock → fila de botones parejos abajo.
  productoDiv.innerHTML = `
- <div class="product-info-edit">
+ <div class="product-header-edit">
+ <div class="product-title-price-edit">
  <div class="product-name-edit">${producto.nombre}</div>
  ${precioHTML}
- ${descripcionHTML}
+ </div>
  ${fotoHTML}
+ </div>
+ ${descripcionHTML}
+ <div class="product-status-row-edit">
  <div class="product-status-edit ${disponible ? 'disponible' : 'no-disponible'}">
  ${disponible ? ' Disponible' : ' No disponible'}
  </div>
@@ -14232,9 +14300,9 @@ ${motivo}`;
  const productoDiv = document.createElement('div');
  productoDiv.className = 'product-item-edit';
 
- const fotoHTML = producto.foto ? `<div class="product-images-gallery"><img src="${producto.foto}" alt="${producto.nombre}" onclick="window.open('${producto.foto}', '_blank')"></div>` : '';
- const precioHTML = producto.precio ? `<div style="color: var(--color-primary); font-size: 14px;">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
- const descripcionHTML = producto.descripcion ? `<div style="color: var(--color-text-dark); font-size: 12px; margin-top:4px;">${producto.descripcion}</div>` : '';
+ const fotoHTML = producto.foto ? `<div class="product-thumb-edit" onclick="window.open('${producto.foto}', '_blank')"><img src="${producto.foto}" alt="${producto.nombre}"></div>` : '';
+ const precioHTML = producto.precio ? `<div class="product-price-edit">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
+ const descripcionHTML = producto.descripcion ? `<div class="product-descripcion-edit">${producto.descripcion}</div>` : '';
 
  // Badge de "últimos X": solo se muestra si el producto tiene stock definido (numero >=0) y quedan 5 o menos
  const tieneStock = typeof producto.stock === 'number';
@@ -14245,12 +14313,18 @@ ${motivo}`;
  ? `<button class="btn-toggle-disponibilidad disponible" onclick="descontarStockProducto('${negocioId}', '${productoId}', 'secciones/${seccionId}/productos')">Vendí uno (quedan ${producto.stock})</button>`
  : '';
 
+ // Estructura: encabezado (nombre+precio a la izquierda, foto arriba a la
+ // derecha) → descripción → estado/stock → fila de botones parejos abajo.
  productoDiv.innerHTML = `
- <div class="product-info-edit">
+ <div class="product-header-edit">
+ <div class="product-title-price-edit">
  <div class="product-name-edit">${producto.nombre}</div>
  ${precioHTML}
- ${descripcionHTML}
+ </div>
  ${fotoHTML}
+ </div>
+ ${descripcionHTML}
+ <div class="product-status-row-edit">
  <div class="product-status-edit ${disponible ? 'disponible' : 'no-disponible'}">
  ${disponible ? ' Disponible' : ' No disponible'}
  </div>

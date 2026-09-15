@@ -5052,6 +5052,14 @@
  <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
  </button>
  </div>
+</div>
+</div>
+<!-- FIX 2026-09-14: se cerraron aquí los 2 <div> que quedaban abiertos
+     (el wrapper flex de ServiBot y el propio #content-servibot). Antes de
+     este cierre, TODO el resto del archivo (tienda, modales, secciones 9-20)
+     quedaba anidado dentro de #content-servibot, y como .tab-content usa
+     display:none salvo .active-content, esas secciones solo se veían
+     cuando la pestaña ServiBot estaba activa. -->
  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
  

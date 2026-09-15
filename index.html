@@ -3761,6 +3761,9 @@
  <div class="dato">
  <strong>Dirección:</strong> <span id="dirPerfil"></span>
  </div>
+ <div class="dato">
+ <strong>Tipo de cuenta:</strong> <span id="tipoCuentaPerfil"></span>
+ </div>
  </div>
 
  <!-- Formulario edición inline -->
@@ -8472,6 +8475,8 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  document.getElementById("tel1Perfil").textContent = usuario.tel1;
  document.getElementById("tel2Perfil").textContent = usuario.tel2 || "No registrado";
  document.getElementById("dirPerfil").textContent = usuario.direccion; 
+ document.getElementById("tipoCuentaPerfil").textContent =
+   usuario.tipoCliente === 'local' ? 'Comercio / Local' : 'Persona Natural';
  
  // 🆕 Avatar guardado del usuario
  if (usuario.avatarId) {
@@ -12281,7 +12286,12 @@ if (refTienda) {
  } else {
  btnCrear.style.display = 'block';
  btnCrear.textContent = 'Crear Mi Tienda';
+ if (window.currentTipoCliente !== 'local') {
+   btnCrear.textContent = '⛔ Solo cuentas de Comercio';
+   btnCrear.onclick = function() { alert('Solo las cuentas de Comercio/Local pueden crear una tienda. Si tienes un negocio, actualiza tu tipo de cuenta desde el perfil.'); };
+ } else {
  btnCrear.onclick = function() { abrirModalNegocio(); };
+ }
  if (mensajeLimite) mensajeLimite.style.display = 'none';
  console.log(` Cliente puede crear tienda (${misTiendasCount}/${MAX_TIENDAS_POR_CLIENTE})`);
  }
@@ -12347,7 +12357,12 @@ if (refTienda) {
  } else {
  btnCrear.style.display = 'block';
  btnCrear.textContent = 'Crear Mi Tienda';
+ if (window.currentTipoCliente !== 'local') {
+   btnCrear.textContent = '⛔ Solo cuentas de Comercio';
+   btnCrear.onclick = function() { alert('Solo las cuentas de Comercio/Local pueden crear una tienda. Si tienes un negocio, actualiza tu tipo de cuenta desde el perfil.'); };
+ } else {
  btnCrear.onclick = function() { abrirModalNegocio(); };
+ }
  if (mensajeLimite) mensajeLimite.style.display = 'none';
  }
  
@@ -12670,6 +12685,10 @@ ${mensajeEstado}
 
  // ABRIR MODAL DE NEGOCIO (SIN VERIFICACIÓN DE ADMIN)
  window.abrirModalNegocio = async function(datosPrefill) {
+ if (window.currentTipoCliente !== 'local') {
+   alert('Solo las cuentas de Comercio/Local pueden crear una tienda. Si tienes un negocio, actualiza tu tipo de cuenta desde el perfil.');
+   return;
+ }
  // Verificar en vivo cuántas tiendas tiene (el cupo se libera si el admin borra una)
  try {
  const negociosSnap = await get(ref(db, 'negocios'));

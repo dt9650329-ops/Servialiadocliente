@@ -20094,6 +20094,7 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
 
 
 <!-- ============================================================
+
      SECCIÓN 16 · SERVIBOT CHATBOT (motor de respuestas por reglas)
 ============================================================ -->
 <script>
@@ -20264,11 +20265,79 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  // 
  const RE_COLA = /\bcola\b|repartidor(es)?.{0,15}(ocupad|disponib|libre|desocupad)|(ocupad|disponib|libre|desocupad).{0,15}repartidor(es)?|hay repartidor(es)?|repartidores? conectad/;
 
+ // Centroides aproximados de cada zona de Armenia, calculados a partir de
+ // las coordenadas reales de barrios ya cargadas en BARRIOS_ARMENIA_CLIENT
+ // (agrupadas por dirección cardinal respecto al centro histórico —
+ // Plaza de Bolívar). Son un promedio, no un límite exacto de comuna: sirven
+ // para estimar qué tan cerca está un repartidor de esa zona, no para
+ // cotizar. Si notas que quedan corridos, ajusta los números a mano.
+ const ZONA_CENTROIDE = {
+ sur: { lat: 4.5194, lng: -75.6800 },
+ centro: { lat: 4.5339, lng: -75.6811 },
+ norte: { lat: 4.5503, lng: -75.6763 },
+ oriente: { lat: 4.5366, lng: -75.6590 },
+ occidente: { lat: 4.5330, lng: -75.6960 },
+ };
+ const ZONA_NOMBRE = { sur: 'Sur', centro: 'Centro', norte: 'Norte', oriente: 'Oriente', occidente: 'Occidente' };
+
+ // Recuerda la última zona que el cliente escogió en esta sesión de chat,
+ // para no volver a preguntarle si dice "revisa otra vez" / "verifica".
+ let _ultimaZonaCola = null;
+
+ function _distanciaKmCola(a, b) {
+ if (!a || !b || typeof a.lat !== 'number' || typeof b.lat !== 'number') return null;
+ const R = 6371;
+ const dLat = (b.lat - a.lat) * Math.PI / 180;
+ const dLng = (b.lng - a.lng) * Math.PI / 180;
+ const x = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+ return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+ }
+
+ // Primer paso: antes de dar el tiempo, se le pregunta al cliente para qué
+ // zona es su pedido (se usa como aproximación del punto de recogida,
+ // porque en este punto del chat todavía no existe un pedido real con GPS).
+ // Con esa zona sí se puede mirar qué repartidor conectado le queda más
+ // cerca (o cuál va pasando más cerca según su pedido activo) en vez de dar
+ // un tiempo genérico igual para toda la ciudad.
  async function respuestaColaRepartidores() {
+ const botones = Object.keys(ZONA_CENTROIDE).map(z =>
+ `<button onclick="elegirZonaCola('${z}')" style="padding:6px 14px;border-radius:16px;border:1px solid var(--color-primary,#F59E0B);background:transparent;color:var(--color-primary,#F59E0B);font-size:13px;cursor:pointer;">${ZONA_NOMBRE[z]}</button>`
+ ).join('');
+ return 'Para darte un tiempo más exacto, cuéntame: ¿de qué zona es tu pedido? Así reviso qué repartidor te queda más cerca.'
+ + `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${botones}</div>`;
+ }
+
+ // Se ejecuta cuando el cliente toca uno de los botones de zona (o cuando
+ // insiste con "revisa otra vez" y ya sabíamos su zona de antes).
+ window.elegirZonaCola = async function(zona) {
+ if (window.aiWorking) return;
+ _ultimaZonaCola = zona;
+ renderMsgEnTab('user', ZONA_NOMBRE[zona] || zona);
+ if (typeof aiHistory !== 'undefined') aiHistory.push({ role: 'user', content: ZONA_NOMBRE[zona] || zona });
+ window.aiWorking = true;
+ const typingDiv = renderMsgEnTab('bot', ' Escribiendo...');
+ if (typingDiv) typingDiv.classList.add('typing');
+ try {
+ const respuesta = await respuestaColaPorZona(zona);
+ if (typeof aiHistory !== 'undefined') aiHistory.push({ role: 'assistant', content: respuesta });
+ if (typingDiv) {
+ typingDiv.classList.remove('typing');
+ typingDiv.innerHTML = respuesta;
+ const container = document.getElementById('servibot-tab-messages');
+ if (container) container.scrollTop = container.scrollHeight;
+ }
+ } finally {
+ window.aiWorking = false;
+ }
+ };
+
+ async function respuestaColaPorZona(zona) {
  try {
  if (!window.db || !window.ref || !window.get) {
  return 'En este momento no puedo consultar la disponibilidad de repartidores. Intenta de nuevo en un momento, o mira el estado en la pestaña **Seguir**.';
  }
+ const centroZona = ZONA_CENTROIDE[zona];
+ const nombreZona = ZONA_NOMBRE[zona] || zona;
  const snap = await window.get(window.ref(window.db, 'repartidores_info'));
  if (!snap.exists()) {
  return 'En este momento no tenemos repartidores conectados. Intenta en unos minutos o escríbenos por WhatsApp.';
@@ -20278,7 +20347,8 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  snap.forEach(child => {
  const d = child.val();
  if (d && d.online === true) {
- enLinea.push({ uid: child.key, pedidosActivos: d.pedidosActivos || 0 });
+ const gps = d.ubicacionActual || d.ubicacion || null;
+ enLinea.push({ uid: child.key, pedidosActivos: d.pedidosActivos || 0, gps });
  }
  });
 
@@ -20286,17 +20356,58 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  return 'En este momento no tenemos repartidores conectados. Intenta en unos minutos o escríbenos por WhatsApp.';
  }
 
- const desocupados = enLinea.filter(r => r.pedidosActivos === 0).length;
- if (desocupados > 0) {
- return '¡Justo tenemos un repartidor desocupado! Irá directo a recoger tu pedido, no esperes más y solicita tu domicilio en **Servicio**.';
+ const velocidadKmMin = 25 / 60; // 25 km/h, igual que el resto de la app
+
+ // 1) Si hay algún repartidor LIBRE, se manda al más cercano al centro de
+ // la zona escogida (no al primero que aparezca).
+ const libres = enLinea.filter(r => r.pedidosActivos === 0);
+ if (libres.length > 0) {
+ const conDistancia = libres
+ .map(r => ({ ...r, distKm: _distanciaKmCola(r.gps, centroZona) }))
+ .sort((a, b) => (a.distKm ?? 999) - (b.distKm ?? 999));
+ const mejor = conDistancia[0];
+ if (mejor.distKm !== null) {
+ const min = Math.max(3, Math.round(mejor.distKm / velocidadKmMin));
+ return `¡Tenemos un repartidor libre! El más cercano a la zona **${nombreZona}** está a unos **${mejor.distKm.toFixed(1)} km**, así que estaría recogiendo tu pedido en aproximadamente **${min}–${min + 5} minutos**. Solicítalo ya en **Servicio**.`;
+ }
+ return `¡Tenemos un repartidor libre! Irá directo a recoger tu pedido en la zona **${nombreZona}**, no esperes más y solicítalo en **Servicio**.`;
  }
 
- // Todos ocupados: buscar el que tiene menos pedidos en cola
- let menosOcupado = enLinea[0];
- enLinea.forEach(r => { if (r.pedidosActivos < menosOcupado.pedidosActivos) menosOcupado = r; });
- const n = menosOcupado.pedidosActivos;
+ // 2) Todos ocupados: revisar el pedido activo de cada uno para ver cuál
+ // va pasando más cerca de la zona pedida (su ruta de entrega actual),
+ // en vez de solo mirar quién tiene menos pedidos en cola.
+ let mejorOpcion = null;
+ for (const r of enLinea) {
+ let zonaEntregaActual = null;
+ try {
+ const snapPed = await window.get(window.ref(window.db, `repartidores_pedidos/${r.uid}`));
+ if (snapPed.exists()) {
+ const pedidosObj = snapPed.val();
+ const activos = Object.values(pedidosObj).filter(p => p.estado === 'aceptado' || p.estado === 'en_camino' || p.estado === 'pendiente');
+ if (activos.length) zonaEntregaActual = activos[activos.length - 1].zonaEntrega || null;
+ }
+ } catch (eP) { /* si falla la consulta de este repartidor, se sigue con los demás */ }
+
+ const pasaPorLaZona = zonaEntregaActual === zona;
+ const distKm = _distanciaKmCola(r.gps, centroZona);
+ const candidato = { ...r, pasaPorLaZona, distKm };
+ if (!mejorOpcion) { mejorOpcion = candidato; continue; }
+ // Prioridad: 1) el que va justo hacia esa zona, 2) menos pedidos en cola, 3) más cerca
+ if (candidato.pasaPorLaZona && !mejorOpcion.pasaPorLaZona) { mejorOpcion = candidato; continue; }
+ if (candidato.pasaPorLaZona === mejorOpcion.pasaPorLaZona) {
+ if (candidato.pedidosActivos < mejorOpcion.pedidosActivos) { mejorOpcion = candidato; continue; }
+ if (candidato.pedidosActivos === mejorOpcion.pedidosActivos && (candidato.distKm ?? 999) < (mejorOpcion.distKm ?? 999)) {
+ mejorOpcion = candidato;
+ }
+ }
+ }
+
+ const n = mejorOpcion.pedidosActivos;
  const tMin = 8 * n, tMax = 15 * n;
- return `En este momento todos nuestros repartidores están ocupados. El que menos pedidos tiene en cola lleva **${n} pedido${n === 1 ? '' : 's'} pendiente${n === 1 ? '' : 's'}**, con un tiempo aproximado de **${tMin} a ${tMax} minutos** antes de poder tomar el tuyo. Todos están conectados a la misma base, así que apenas uno se desocupe, tomará tu pedido automáticamente.`;
+ if (mejorOpcion.pasaPorLaZona) {
+ return `En este momento todos nuestros repartidores están ocupados, pero uno de ellos ya va entregando justo hacia la zona **${nombreZona}** — al terminar esa entrega puede tomar tu pedido casi de una vez, en unos **${tMin}–${tMax} minutos**.`;
+ }
+ return `En este momento todos nuestros repartidores están ocupados. El que menos pedidos tiene en cola lleva **${n} pedido${n === 1 ? '' : 's'} pendiente${n === 1 ? '' : 's'}**, con un tiempo aproximado de **${tMin} a ${tMax} minutos** antes de poder tomar el tuyo de la zona **${nombreZona}**. Todos están conectados a la misma base, así que apenas uno se desocupe, tomará tu pedido automáticamente.`;
  } catch (e) {
  console.warn('Error consultando disponibilidad de repartidores:', e);
  return 'No pude consultar la disponibilidad de repartidores justo ahora. Intenta de nuevo en unos segundos.';
@@ -20336,7 +20447,9 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  return await respuestaColaRepartidores();
  }
  if (ultimoTema === 'cola' && RE_COLA_SEGUIMIENTO.test(m)) {
- return await respuestaColaRepartidores();
+ // Si ya sabemos la zona de esta conversación, no se vuelve a preguntar:
+ // se repite la consulta directo para esa misma zona.
+ return _ultimaZonaCola ? await respuestaColaPorZona(_ultimaZonaCola) : await respuestaColaRepartidores();
  }
  }
  if (typeof window.consultarServibot === 'function') {
@@ -21537,13 +21650,8 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  '<button type="button" id="sb-t-btn-mapa" onclick="abrirMapeadorPedidoTercero()" style="width:100%; margin-bottom:10px; padding:9px 12px; border-radius:8px; border:1px dashed #F59E0B; background:rgba(245,158,11,0.08); color:#F59E0B; font-size:12px; font-weight:bold; cursor:pointer; text-align:left;"> ¿No tienes la dirección? Selecciona la ubicación en el mapa</button>' +
  '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;">¿En cuánto está listo el pedido?</div>' +
  '<div id="sb-t-minutos" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">' + minutosBtns + '</div>' +
- '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;"> Valor del producto a cobrarle al cliente (déjalo vacío si no aplica):</div>' +
- '<input type="text" inputmode="numeric" id="sb-t-valor-producto" placeholder="Ej: 25000" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:12px; box-sizing:border-box;">' +
  '<div id="sb-t-error" style="display:none; color:#ef4444; font-size:12px; margin-bottom:8px;"></div>' +
- '<div style="display:flex; gap:8px;">' +
- '<button type="button" id="sb-t-btn-solo-domi" onclick="sbConfirmarPedidoTercero(true)" style="flex:1; padding:11px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:bold; font-size:13px;"> Solo cobrar Domi</button>' +
- '<button type="button" id="sb-t-btn-enviar" onclick="sbConfirmarPedidoTercero(false)" style="flex:1; padding:11px; border-radius:8px; border:none; background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:14px;"> Enviar pedido</button>' +
- '</div>';
+ '<button type="button" id="sb-t-btn-enviar" onclick="sbConfirmarPedidoTercero()" style="width:100%; padding:11px; border-radius:8px; border:none; background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:14px;"> Enviar pedido</button>';
 
  container.appendChild(div);
  container.scrollTop = container.scrollHeight;
@@ -21555,7 +21663,6 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // ubicaciones, igual se muestra el texto leído (para que el local vea qué
  // detectó ServiBot), pero el mapa se abre solo para que marque el punto real.
  try { document.getElementById('sb-t-barrio').value = datos.barrioEntrega || datos.barrioNoReconocido || ''; } catch (e) { console.warn('No se pudo prellenar barrio:', e); }
- try { if (datos.valorProducto) document.getElementById('sb-t-valor-producto').value = datos.valorProducto; } catch (e) { console.warn('No se pudo prellenar valor de producto:', e); }
 
  // Si el pedido viene de un link/ubicación de Google Maps (cotizarPorUbicacion),
  // ya tenemos coordenadas exactas: la dirección queda fija en "Ubicación GPS"
@@ -21669,7 +21776,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (status) status.innerHTML = ' Ubicación de recogida marcada en el mapa.';
  };
 
- window.sbConfirmarPedidoTercero = async function (soloDomicilio) {
+ window.sbConfirmarPedidoTercero = async function () {
  const errEl = document.getElementById('sb-t-error');
  if (errEl) errEl.style.display = 'none';
 
@@ -21680,9 +21787,6 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const minutosPreparacion = window._sbTercero ? window._sbTercero.minutos : null;
  const gpsEntrega = window._sbTercero ? window._sbTercero.gpsEntrega : null;
  const tieneGps = !!(gpsEntrega && gpsEntrega.lat && gpsEntrega.lng);
- // "Solo cobrar Domi" ignora lo que se haya escrito en el campo de producto
- const valorProductoTexto = (document.getElementById('sb-t-valor-producto')?.value || '').replace(/[^0-9]/g, '');
- const valorProducto = soloDomicilio ? 0 : (parseInt(valorProductoTexto, 10) || 0);
 
  if (!nombreCliente || !telefonoCliente || !direccionDetalle || (!barrioEntrega && !tieneGps)) {
  if (errEl) { errEl.textContent = 'Completa nombre, teléfono, dirección y barrio.'; errEl.style.display = 'block'; }
@@ -21693,17 +21797,15 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  return;
  }
 
- const btn = document.getElementById(soloDomicilio ? 'sb-t-btn-solo-domi' : 'sb-t-btn-enviar');
- const btnOtro = document.getElementById(soloDomicilio ? 'sb-t-btn-enviar' : 'sb-t-btn-solo-domi');
+ const btn = document.getElementById('sb-t-btn-enviar');
  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
- if (btnOtro) { btnOtro.disabled = true; }
 
  try {
  if (!window.confirmarPedidoTerceroCallable) throw new Error('No se pudo conectar con el servidor.');
  const origenRecogida = (window._sbTercero && window._sbTercero.origenRecogida) || 'local';
  const gpsRecogidaManual = (origenRecogida === 'otro_lugar' && window._sbTercero) ? (window._sbTercero.gpsRecogida || null) : null;
  const res = await window.confirmarPedidoTerceroCallable({
- nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega, origenRecogida, gpsRecogidaManual, valorProducto,
+ nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega, origenRecogida, gpsRecogidaManual,
  });
  const card = document.getElementById('sb-tercero-card');
  if (card) card.remove();
@@ -21719,8 +21821,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  } catch (e) {
  console.error('[Pedido tercero] Error:', e);
  if (errEl) { errEl.textContent = (e && e.message) || 'No se pudo enviar el pedido. Intenta de nuevo.'; errEl.style.display = 'block'; }
- if (btn) { btn.disabled = false; btn.textContent = soloDomicilio ? ' Solo cobrar Domi' : ' Enviar pedido'; }
- if (btnOtro) { btnOtro.disabled = false; }
+ if (btn) { btn.disabled = false; btn.textContent = ' Enviar pedido'; }
  }
  };
 
@@ -22197,7 +22298,6 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  <div id="mapeador-favor-msg" style="display:none; margin-top:8px; padding:8px 12px; border-radius:8px; font-size:13px; text-align:center;"></div>
  </div>
 </div>
-
 
 <!-- ============================================================
 

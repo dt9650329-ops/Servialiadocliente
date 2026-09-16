@@ -13401,8 +13401,17 @@ ${motivo}`;
  }
 
  // Obtiene la ubicación GPS actual del dispositivo (o null si no se puede)
+ // 🔧 FIX 2026-09-16: el timeout de getCurrentPosition solo corre DESPUÉS
+ // de que el usuario responde el permiso de ubicación — si el diálogo de
+ // permiso queda pendiente sin resolverse (navegador embebido sin permiso
+ // delegado, diálogo ignorado, etc.), la promesa original nunca se
+ // resolvía ni se rechazaba y "Guardar Negocio" se quedaba pegado en
+ // "Guardando..." para siempre, antes de llegar siquiera a subir la
+ // imagen. Ahora se corre en carrera contra un setTimeout propio que SÍ
+ // corre sin depender del navegador, así el guardado nunca se cuelga por
+ // esto: si no hay respuesta a tiempo, sigue sin ubicación (null).
  function obtenerGPSActual(timeoutMs = 8000) {
- return new Promise((resolve) => {
+ const geoPromise = new Promise((resolve) => {
  if (!navigator.geolocation) { resolve(null); return; }
  navigator.geolocation.getCurrentPosition(
  (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
@@ -13410,6 +13419,8 @@ ${motivo}`;
  { timeout: timeoutMs, enableHighAccuracy: true }
  );
  });
+ const timeoutDuro = new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs + 2000));
+ return Promise.race([geoPromise, timeoutDuro]);
  }
 
  // GUARDAR NEGOCIO DIRECTAMENTE (SIN VERIFICACIÓN DE ADMIN)
@@ -13478,14 +13489,25 @@ ${motivo}`;
  // Intentar capturar la ubicación GPS de la tienda (para poder asignar
  // repartidor y calcular domicilio en la compra directa dentro de la app).
  // Si el cliente no da permiso o falla, queda null y se puede configurar después.
+ console.log('[guardarNegocio] Pidiendo GPS...');
  const ubicacionNegocio = await obtenerGPSActual();
+ console.log('[guardarNegocio] GPS resuelto:', ubicacionNegocio);
 
  // Subir imagen a Firebase Storage
  if (imagenFile) {
  try {
+ console.log('[guardarNegocio] Subiendo imagen...');
  const imageRef = storageRef(storage, `negocios/${Date.now()}_${imagenFile.name}`);
- await uploadBytesResumable(imageRef, imagenFile);
+ // 🔧 FIX 2026-09-16: timeout de seguridad de 30s para la subida — si la
+ // conexión se cae a mitad de camino, uploadBytesResumable puede quedar
+ // sin resolver ni rechazar nunca, colgando el guardado completo.
+ const subidaConTimeout = Promise.race([
+ uploadBytesResumable(imageRef, imagenFile),
+ new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado subiendo la imagen (revisa tu conexión)')), 30000))
+ ]);
+ await subidaConTimeout;
  imagenURL = await getDownloadURL(imageRef);
+ console.log('[guardarNegocio] Imagen subida:', imagenURL);
  } catch (error) {
  console.error('Error al subir imagen:', error);
  alert('Error al subir la imagen. Se guardará sin imagen.');
@@ -13519,7 +13541,9 @@ ${motivo}`;
  };
 
  const nuevoNegocioRef = push(ref(db, 'negocios'));
+ console.log('[guardarNegocio] Guardando en Firebase...');
  await set(nuevoNegocioRef, nuevoNegocio);
+ console.log('[guardarNegocio] Guardado con éxito, id:', nuevoNegocioRef.key);
  if (slugTienda) {
  try {
  await set(ref(db, `slugsTiendas/${slugTienda}`), nuevoNegocioRef.key);

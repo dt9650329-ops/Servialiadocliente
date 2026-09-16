@@ -14525,7 +14525,13 @@ ${motivo}`;
  if (fotoFile) {
  try {
  const imageRef = storageRef(storage, `negocios/${miTiendaIdActual}/secciones/${seccionActualId}/${Date.now()}_${fotoFile.name}`);
- await uploadBytesResumable(imageRef, fotoFile);
+ // 🔧 FIX 2026-09-16: mismo timeout de seguridad de 30s que en guardarNegocio —
+ // si la conexión se cae a mitad de camino, uploadBytesResumable puede quedar
+ // sin resolver ni rechazar nunca, dejando el botón en "Guardando..." para siempre.
+ await Promise.race([
+ uploadBytesResumable(imageRef, fotoFile),
+ new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado subiendo la foto (revisa tu conexión)')), 30000))
+ ]);
  fotoURL = await getDownloadURL(imageRef);
  } catch (error) {
  // FIX: se deja visible el código real del error (ej. storage/unauthorized
@@ -14649,7 +14655,12 @@ ${motivo}`;
  if (fotoFile) {
  try {
  const imageRef = storageRef(storage, `negocios/${negocioId}/${rutaProducto}/${Date.now()}_${fotoFile.name}`);
- await uploadBytesResumable(imageRef, fotoFile);
+ // 🔧 FIX 2026-09-16: mismo timeout de seguridad de 30s — evita que el botón
+ // se quede en "Guardando..." para siempre si la subida se cuelga a mitad de camino.
+ await Promise.race([
+ uploadBytesResumable(imageRef, fotoFile),
+ new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado subiendo la foto (revisa tu conexión)')), 30000))
+ ]);
  cambios.foto = await getDownloadURL(imageRef);
  } catch (error) {
  console.error('Error al subir la nueva foto del producto:', error.code, error.message, error);

@@ -8586,6 +8586,7 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  if (typeof window.mostrarCampanita === 'function') window.mostrarCampanita(true);
  const _uid = usuario.uid ? window.getClientID(usuario.uid) : window.currentUserID;
  if (typeof window.escucharNotifAdmin === 'function') window.escucharNotifAdmin(_uid);
+ if (typeof window.escucharEsperaConfirmacionCliente === 'function') window.escucharEsperaConfirmacionCliente(_uid);
 
  // FIX NOTIF: escanear pedidos al login y adjuntar listeners
  setTimeout(async function() {
@@ -15455,6 +15456,10 @@ ${motivo}`;
  <button class="btn-toggle-disponibilidad disponible" onclick="confirmarCompraTienda('${negocioId}', '${compraId}')">Confirmar Pedido</button>
  <button class="btn-eliminar-producto" onclick="rechazarCompraTienda('${negocioId}', '${compraId}')">Rechazar</button>
  `;
+ } else if (compra.estado === 'esperando_confirmacion_cliente') {
+ // 🆕 Se le avisó al cliente que el pedido se demora 30 min o más y se
+ // está esperando que él responda si quiere esperar o no.
+ estadoHTML = `<div class="product-status-edit no-disponible" style="color:#F59E0B;"> Esperando que el cliente confirme la espera de ${compra.tiempoPreparacionMinutos || '—'} min...</div>`;
  } else if (compra.estado === 'confirmado_esperando_asignacion') {
  // 🆕 Confirmado, pero el repartidor todavía no se asigna: se asignará
  // automáticamente ~12 min antes de la hora en que el dueño dijo que
@@ -15634,9 +15639,11 @@ ${motivo}`;
  }
  }
 
- // 🆕 Modal de 4 botones fijos (reemplaza el prompt() de texto libre, que
- // dejaba escribir "0" y disparaba el error "Ingresa un número de minutos
- // válido" en vez de asignar de una vez). Se crea una sola vez y se reusa.
+ // 🆕 Modal de 5 botones fijos (antes eran 4: 0/10/20/30 min). Ahora usa
+ // los tiempos pedidos: Ya está listo / 15 / 30 / 45 / Más de una hora.
+ // Desde 30 min para arriba, no se asigna repartidor de una vez: primero
+ // se le avisa al cliente cuánto se demora y se espera que confirme que
+ // sí quiere esperar (ver _iniciarEsperaConfirmacionCliente más abajo).
  function _mostrarModalTiempoPreparacionTienda() {
  let modal = document.getElementById('modal-tiempo-prep-tienda');
  if (!modal) {
@@ -15653,9 +15660,10 @@ ${motivo}`;
  <h3 style="color:var(--color-primary); text-align:center; margin-top:0;">¿En cuánto tiempo está listo el pedido?</h3>
  <div style="display:flex; flex-direction:column; gap:10px; margin-top:16px;">
  <button type="button" onclick="_confirmarTiendaConTiempo(0)" style="padding:14px; border-radius:8px; border:none; background:linear-gradient(135deg,#28a745,#1e7e34); color:#fff; font-weight:bold; font-size:15px; cursor:pointer;">Ya está listo</button>
- <button type="button" onclick="_confirmarTiendaConTiempo(10)" style="padding:14px; border-radius:8px; border:2px solid var(--color-primary); background:#2a2a2a; color:var(--color-primary); font-weight:bold; font-size:15px; cursor:pointer;">En 10 minutos</button>
- <button type="button" onclick="_confirmarTiendaConTiempo(20)" style="padding:14px; border-radius:8px; border:2px solid var(--color-primary); background:#2a2a2a; color:var(--color-primary); font-weight:bold; font-size:15px; cursor:pointer;">En 20 minutos</button>
- <button type="button" onclick="_confirmarTiendaConTiempo(30)" style="padding:14px; border-radius:8px; border:2px solid var(--color-primary); background:#2a2a2a; color:var(--color-primary); font-weight:bold; font-size:15px; cursor:pointer;">En 30 minutos</button>
+ <button type="button" onclick="_confirmarTiendaConTiempo(15)" style="padding:14px; border-radius:8px; border:2px solid var(--color-primary); background:#2a2a2a; color:var(--color-primary); font-weight:bold; font-size:15px; cursor:pointer;">15 minutos</button>
+ <button type="button" onclick="_confirmarTiendaConTiempo(30)" style="padding:14px; border-radius:8px; border:2px solid var(--color-primary); background:#2a2a2a; color:var(--color-primary); font-weight:bold; font-size:15px; cursor:pointer;">30 minutos</button>
+ <button type="button" onclick="_confirmarTiendaConTiempo(45)" style="padding:14px; border-radius:8px; border:2px solid var(--color-primary); background:#2a2a2a; color:var(--color-primary); font-weight:bold; font-size:15px; cursor:pointer;">45 minutos</button>
+ <button type="button" onclick="_confirmarTiendaConTiempo(90)" style="padding:14px; border-radius:8px; border:2px solid var(--color-primary); background:#2a2a2a; color:var(--color-primary); font-weight:bold; font-size:15px; cursor:pointer;">Más de una hora</button>
  </div>
  <button type="button" onclick="document.getElementById('modal-tiempo-prep-tienda').style.display='none'; window._pendienteConfirmarTienda=null;" style="margin-top:16px; width:100%; padding:10px; border-radius:8px; border:none; background:#555; color:#eee; font-weight:bold; cursor:pointer;">Cancelar</button>
  </div>`;
@@ -15664,9 +15672,15 @@ ${motivo}`;
  modal.style.display = 'block';
  }
 
- // Se ejecuta al tocar uno de los 4 botones. Misma lógica de asignación
- // inmediata/programada que antes, solo que ahora "Ya está listo" (0 min)
- // sí entra por el camino de asignación inmediata en vez de rechazarse.
+ // 🆕 Desde este tiempo (minutos) para arriba, antes de asignar repartidor
+ // se le pregunta al cliente si quiere esperar. Por debajo de este umbral
+ // se sigue asignando/programando de una vez, igual que antes.
+ const UMBRAL_CONFIRMACION_CLIENTE_MIN = 30;
+
+ // Se ejecuta al tocar uno de los 5 botones. Si el tiempo es corto (menos
+ // de 30 min) sigue el camino de siempre. Si es 30 min o más, en vez de
+ // asignar de una vez, primero se le avisa al cliente el tiempo real y se
+ // espera su confirmación (Sí/No).
  window._confirmarTiendaConTiempo = async function(tiempoPreparacionMinutos) {
  const modal = document.getElementById('modal-tiempo-prep-tienda');
  if (modal) modal.style.display = 'none';
@@ -15676,6 +15690,21 @@ ${motivo}`;
  window._pendienteConfirmarTienda = null;
 
  try {
+ if (tiempoPreparacionMinutos >= UMBRAL_CONFIRMACION_CLIENTE_MIN) {
+ await _iniciarEsperaConfirmacionCliente(negocioId, compraId, pedidoId, compra, tiempoPreparacionMinutos);
+ return;
+ }
+ await _asignarOProgramarPedidoTienda(negocioId, compraId, pedidoId, compra, tiempoPreparacionMinutos);
+ } catch (error) {
+ console.error('Error al confirmar la compra:', error);
+ alert('Error al confirmar el pedido: ' + error.message);
+ }
+ }
+
+ // Lógica de asignación inmediata/programada que antes vivía dentro de
+ // _confirmarTiendaConTiempo. Se separa en su propia función porque ahora
+ // también se llama después de que el cliente confirma que sí quiere esperar.
+ async function _asignarOProgramarPedidoTienda(negocioId, compraId, pedidoId, compra, tiempoPreparacionMinutos) {
  const ANTICIPACION_MIN = 12;
  const timestamp = Date.now();
  const horaListoEstimada = timestamp + tiempoPreparacionMinutos * 60000;
@@ -15715,12 +15744,66 @@ ${motivo}`;
  }
 
  await window.verComprasDeMiTienda(negocioId);
+ }
 
- } catch (error) {
- console.error('Error al confirmar la compra:', error);
- alert('Error al confirmar el pedido: ' + error.message);
+ // 🆕 Quita el prefijo cliente_auth_ para tener el mismo "uidBase" que usa
+ // el resto de la app (notificaciones_usuario, campanita, etc.)
+ function _stripPrefijoCliente(id) {
+ return (id || '').toString().replace(/^(cliente_auth_)+/, '');
  }
+
+ // 🆕 Cuando el tiempo de preparación es de 30 min o más: en vez de asignar
+ // repartidor de una vez, se le avisa al cliente cuánto se va a demorar y
+ // se espera su respuesta (Sí/No) antes de seguir. Mientras espera, el
+ // pedido queda en estado 'esperando_confirmacion_cliente'. La respuesta la
+ // procesa la Cloud Function onRespuestaEsperaConfirmacionCliente (Admin SDK,
+ // corre server-side), así que NO hace falta mantener esta pestaña abierta.
+ async function _iniciarEsperaConfirmacionCliente(negocioId, compraId, pedidoId, compra, tiempoPreparacionMinutos) {
+ let nombreTienda = 'La tienda';
+ try {
+ const negocioSnap = await get(ref(db, `negocios/${negocioId}/nombre`));
+ if (negocioSnap.exists()) nombreTienda = negocioSnap.val();
+ } catch (e) { console.warn('No se pudo leer el nombre de la tienda:', e); }
+
+ const clienteIdBase = _stripPrefijoCliente(compra.clienteId || compra.clienteIdAsignado || '');
+ if (!clienteIdBase) {
+ alert('No se pudo identificar al cliente para pedirle confirmación. Se asigna directo.');
+ await _asignarOProgramarPedidoTienda(negocioId, compraId, pedidoId, compra, tiempoPreparacionMinutos);
+ return;
  }
+
+ const payload = {
+ negocioId, compraId, pedidoId,
+ nombreTienda,
+ tiempoMinutos: tiempoPreparacionMinutos,
+ estado: 'pendiente',
+ fecha: Date.now()
+ };
+
+ // Se escribe en ambas variantes de la llave (con y sin el prefijo
+ // cliente_auth_) porque no sabemos de antemano con cuál quedó guardado
+ // el clienteId de esta compra — mismo patrón que notificaciones_usuario.
+ await set(ref(db, `esperas_confirmacion_cliente/${clienteIdBase}/${pedidoId}`), payload);
+ await set(ref(db, `esperas_confirmacion_cliente/cliente_auth_${clienteIdBase}/${pedidoId}`), payload);
+
+ await update(ref(db, `compras_tienda/${negocioId}/${compraId}`), {
+ estado: 'esperando_confirmacion_cliente',
+ tiempoPreparacionMinutos
+ });
+ await update(ref(db, `pedidos_historial/${pedidoId}`), {
+ estado: 'esperando_confirmacion_cliente',
+ tiempoPreparacionMinutos
+ });
+
+ // A partir de aquí, la Cloud Function onRespuestaEsperaConfirmacionCliente
+ // (index.js) toma el control apenas el cliente responda: si dice que sí
+ // espera, programa la asignación (asignarComprasTiendaProgramadas la
+ // completa en el siguiente minuto); si dice que no, rechaza el pedido.
+ // Puedes cerrar esta pestaña tranquilo mientras el cliente responde.
+ alert(`Se le avisó al cliente que el pedido se demora ${tiempoPreparacionMinutos} minutos. Apenas responda si quiere esperar, se asigna repartidor o se rechaza el pedido solo (no hace falta que dejes esta pestaña abierta).`);
+ await window.verComprasDeMiTienda(negocioId);
+ }
+
 
  // El dueño rechaza el pedido (ej. producto agotado); el cliente se entera por notificación
  window.rechazarCompraTienda = async function(negocioId, compraId) {
@@ -23164,6 +23247,97 @@ _suscribirPath(pathConPrefijo);
 
  _updateBadge();
 
+
+ // ── 🆕 SECCIÓN 18A · ESPERA DE CONFIRMACIÓN DEL CLIENTE (tiempo de cocina) ──
+ // Cuando una tienda confirma un pedido con 30 min o más de preparación,
+ // escribe en esperas_confirmacion_cliente/{uid}/{pedidoId}. Este listener
+ // global (arranca al loguear, igual que la campanita) muestra un modal
+ // encima de cualquier sección de la app con el aviso de la tienda y los
+ // botones Sí/No para que el cliente confirme si quiere esperar.
+ let _esperaClienteUnsubscribe = null;
+ let _esperaClienteModalPedidoId = null; // pedidoId que está mostrando el modal ahora mismo
+
+ window.escucharEsperaConfirmacionCliente = function(userId) {
+ if (!window.db || !window.ref || !window.onValue) return;
+ if (!userId) return;
+
+ if (_esperaClienteUnsubscribe) {
+ try { _esperaClienteUnsubscribe(); } catch(e) {}
+ _esperaClienteUnsubscribe = null;
+ }
+
+ const uidBase = String(userId).replace(/^(cliente_auth_)+/, '');
+ const pathEsperas = window.ref(window.db, 'esperas_confirmacion_cliente/' + uidBase);
+
+ _esperaClienteUnsubscribe = window.onValue(pathEsperas, function(snap) {
+ if (!snap.exists()) { _ocultarModalEsperaCliente(); return; }
+
+ let pendiente = null;
+ snap.forEach(function(child) {
+ const val = child.val();
+ if (val && val.estado === 'pendiente') pendiente = Object.assign({ pedidoId: child.key, uidBase: uidBase }, val);
+ });
+
+ if (pendiente) {
+ _mostrarModalEsperaCliente(pendiente);
+ } else if (_esperaClienteModalPedidoId) {
+ _ocultarModalEsperaCliente();
+ }
+ });
+ };
+
+ // Modal global (por encima de cualquier sección de la app) con el aviso
+ // de la tienda y los botones Sí/No.
+ function _mostrarModalEsperaCliente(espera) {
+ if (_esperaClienteModalPedidoId === espera.pedidoId) return; // ya se está mostrando este mismo pedido
+ _esperaClienteModalPedidoId = espera.pedidoId;
+
+ let modal = document.getElementById('modal-espera-confirmacion-cliente');
+ if (!modal) {
+ modal = document.createElement('div');
+ modal.id = 'modal-espera-confirmacion-cliente';
+ // z-index por encima de cualquier otro modal de la app
+ modal.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10400; overflow-y:auto;';
+ document.body.appendChild(modal);
+ }
+
+ modal.innerHTML = `
+ <div style="background:#333; border-radius:14px; margin:15% auto; padding:24px; max-width:380px; width:88%; border:2px solid #F59E0B;">
+ <h3 style="color:#F59E0B; text-align:center; margin-top:0;">⏱️ Aviso de tu pedido</h3>
+ <p style="color:#eee; font-size:14px; line-height:1.4; text-align:center;">
+ El restaurante <strong>${espera.nombreTienda || 'la tienda'}</strong> confirma que el pedido se demora
+ <strong>${espera.tiempoMinutos} minutos</strong> en salir de cocina debido a la cantidad de pedidos que tenemos.
+ </p>
+ <p style="color:#eee; font-size:14px; text-align:center; margin-bottom:0;">¿Deseas confirmar la espera?</p>
+ <div style="display:flex; gap:10px; margin-top:18px;">
+ <button type="button" onclick="_responderEsperaCliente('${espera.pedidoId}', '${espera.uidBase}', true)" style="flex:1; padding:14px; border-radius:8px; border:none; background:linear-gradient(135deg,#28a745,#1e7e34); color:#fff; font-weight:bold; font-size:15px; cursor:pointer;">Sí</button>
+ <button type="button" onclick="_responderEsperaCliente('${espera.pedidoId}', '${espera.uidBase}', false)" style="flex:1; padding:14px; border-radius:8px; border:none; background:linear-gradient(135deg,#dc3545,#a71d2a); color:#fff; font-weight:bold; font-size:15px; cursor:pointer;">No</button>
+ </div>
+ </div>`;
+ modal.style.display = 'block';
+ }
+
+ function _ocultarModalEsperaCliente() {
+ _esperaClienteModalPedidoId = null;
+ const modal = document.getElementById('modal-espera-confirmacion-cliente');
+ if (modal) modal.style.display = 'none';
+ }
+
+ // El cliente responde Sí (quiere esperar) o No (no quiere esperar). Solo
+ // escribe su respuesta; es la sesión de la tienda (que sigue escuchando
+ // este mismo nodo) la que asigna el repartidor o rechaza el pedido según
+ // la respuesta.
+ window._responderEsperaCliente = async function(pedidoId, uidBase, quiereEsperar) {
+ _ocultarModalEsperaCliente();
+ try {
+ const nuevoEstado = quiereEsperar ? 'confirmada' : 'rechazada';
+ await window.update(window.ref(window.db, 'esperas_confirmacion_cliente/' + uidBase + '/' + pedidoId), { estado: nuevoEstado });
+ await window.update(window.ref(window.db, 'esperas_confirmacion_cliente/cliente_auth_' + uidBase + '/' + pedidoId), { estado: nuevoEstado });
+ } catch (error) {
+ console.error('Error al responder la espera de confirmación:', error);
+ alert('No se pudo enviar tu respuesta, intenta de nuevo: ' + error.message);
+ }
+ };
 
 
  // ── SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO ──────────────────

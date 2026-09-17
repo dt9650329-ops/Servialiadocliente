@@ -11134,11 +11134,17 @@ if (dentroDeHorario) {
  window.borrarContactoLocalUnoCallable = borrarContactoLocalUnoCallable;
  window.guardarContactoLocalConMapaCallable = guardarContactoLocalConMapaCallable;
  window.cotizarPrecioDomicilioCallable = cotizarPrecioDomicilioCallable;
- window.consultarServibot = async function(mensaje, historial, imagenAdjunta) {
+   // imagenesAdjuntas: arreglo de 0 a 3 { base64, mimeType, ... } (ruteo múltiple).
+   // Se acepta también un solo objeto (compatibilidad hacia atrás) por si
+   // algún llamador viejo todavía manda una sola imagen suelta.
+ window.consultarServibot = async function(mensaje, historial, imagenesAdjuntas) {
    const payload = { mensaje, historial };
-   if (imagenAdjunta && imagenAdjunta.base64) {
-     payload.imagenBase64 = imagenAdjunta.base64;
-     payload.imagenMimeType = imagenAdjunta.mimeType;
+   const lista = Array.isArray(imagenesAdjuntas)
+     ? imagenesAdjuntas.filter(function(im) { return im && im.base64; })
+     : (imagenesAdjuntas && imagenesAdjuntas.base64 ? [imagenesAdjuntas] : []);
+   if (lista.length) {
+     payload.imagenesBase64 = lista.map(function(im) { return im.base64; });
+     payload.imagenesMimeType = lista.map(function(im) { return im.mimeType; });
    }
    const res = await servibotChatCallable(payload);
    window._sbAccionPendiente = res.data.accion || null;
@@ -20649,11 +20655,13 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  // (precios, zonas, tiempos, cómo pedir, estado del pedido, charla libre)
  // pasa por servibotChat (Gemini). El motor de reglas viejo (TEMAS /
  // obtenerRespuesta) queda solo como red de seguridad si la IA falla.
- async function obtenerRespuestaAsync(msg, imagenAdjunta) {
+ // imagenesAdjuntas: arreglo de 0 a 3 { base64, mimeType, previewUrl } (ruteo múltiple).
+ async function obtenerRespuestaAsync(msg, imagenesAdjuntas) {
  const textoParaReglas = msg || '';
- // Si viene una foto adjunta, se salta el motor de reglas por palabras clave
- // (no aplica sin texto) y se va directo a Gemini, que sí puede leerla.
- if (!imagenAdjunta) {
+ const hayImagenes = Array.isArray(imagenesAdjuntas) && imagenesAdjuntas.length > 0;
+ // Si vienen fotos adjuntas, se salta el motor de reglas por palabras clave
+ // (no aplica sin texto) y se va directo a Gemini, que sí puede leerlas.
+ if (!hayImagenes) {
  const m = textoParaReglas.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
  if (RE_COLA.test(m)) {
  ultimoTema = 'cola';
@@ -20667,14 +20675,14 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  }
  if (typeof window.consultarServibot === 'function') {
  try {
- return await window.consultarServibot(textoParaReglas, construirHistorialParaIA(), imagenAdjunta);
+ return await window.consultarServibot(textoParaReglas, construirHistorialParaIA(), imagenesAdjuntas);
  } catch (e) {
  console.error('[ServiBot] Error consultando servibotChat:', e);
  // Si falla la Cloud Function (sin internet, cuota agotada, etc.),
  // cae a la respuesta genérica de siempre en vez de dejar al cliente sin nada.
- // (Si venía una foto, el motor de reglas no la puede leer, así que se avisa.)
- return imagenAdjunta
- ? ' No pude leer la foto en este momento (sin conexión con el asistente). Intenta de nuevo en un momento o escribe los datos directamente.'
+ // (Si venían fotos, el motor de reglas no las puede leer, así que se avisa.)
+ return hayImagenes
+ ? ' No pude leer la' + (imagenesAdjuntas.length > 1 ? 's fotos' : ' foto') + ' en este momento (sin conexión con el asistente). Intenta de nuevo en un momento o escribe los datos directamente.'
  : obtenerRespuesta(textoParaReglas);
  }
  }
@@ -21258,13 +21266,50 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // ServiBot (Gemini) la lee para sacar nombre/teléfono/dirección/barrio
  // y armar el domicilio con esos datos, sin tener que escribirlos.
  // ================================================================
- window._sbImagenPendiente = null; // { base64, mimeType, previewUrl }
+ // 🆕 RUTEO MÚLTIPLE (2026-09-17): ahora se pueden adjuntar hasta 3 fotos en
+ // un mismo mensaje (ej. 3 direcciones distintas) para pedir un repartidor
+ // que las lleve juntas o repartidas según la ruta. window._sbImagenPendiente
+ // se deja como alias de compatibilidad (la primera foto de la lista), por
+ // si algún código viejo todavía lo lee en algún lado.
+ window._sbImagenesPendientes = []; // [{ base64, mimeType, previewUrl }, ...] máx 3
+ const SB_MAX_FOTOS_CHAT = 3;
+
+ function _sbActualizarAliasImagenPendiente() {
+ window._sbImagenPendiente = window._sbImagenesPendientes[0] || null;
+ }
+
+ function _sbRenderPreviewImagenesTab() {
+ const preview = document.getElementById('servibot-tab-imagen-preview');
+ if (!preview) return;
+ const imgs = window._sbImagenesPendientes || [];
+ if (!imgs.length) {
+ preview.style.display = 'none';
+ preview.innerHTML = '';
+ return;
+ }
+ preview.style.display = 'flex';
+ preview.innerHTML = imgs.map(function(img, i) {
+ return '<div style="position:relative; flex-shrink:0;">'
+ + '<img src="' + img.previewUrl + '" style="width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid #555;" />'
+ + '<button type="button" onclick="quitarImagenServibotTab(' + i + ')" '
+ + 'style="position:absolute; top:-6px; right:-6px; background:#333; border:none; color:#fff; width:18px; height:18px; border-radius:50%; cursor:pointer; font-size:10px; line-height:1; padding:0;">✕</button>'
+ + '</div>';
+ }).join('')
+ + '<span style="color:#aaa; font-size:11px; flex-shrink:0;">'
+ + (imgs.length > 1 ? imgs.length + ' fotos (direcciones distintas)' : '1 foto adjunta')
+ + '</span>';
+ }
 
  window.adjuntarImagenServibotTab = function(input) {
  const file = input.files && input.files[0];
  if (!file) return;
  if (!file.type.startsWith('image/')) {
  alert(' Por favor selecciona una imagen válida');
+ input.value = '';
+ return;
+ }
+ if (window._sbImagenesPendientes.length >= SB_MAX_FOTOS_CHAT) {
+ alert(' Máximo ' + SB_MAX_FOTOS_CHAT + ' fotos por mensaje (un repartidor puede llevar hasta ' + SB_MAX_FOTOS_CHAT + ' pedidos juntos). Envía primero este mensaje y luego adjunta las demás.');
  input.value = '';
  return;
  }
@@ -21279,15 +21324,13 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const base64Full = e.target.result; // data:image/jpeg;base64,...
  const partes = base64Full.split(',');
  const mimeMatch = partes[0].match(/data:(.*?);base64/);
- window._sbImagenPendiente = {
+ window._sbImagenesPendientes.push({
  base64: partes[1] || '',
  mimeType: (mimeMatch && mimeMatch[1]) || file.type,
  previewUrl: base64Full,
- };
- const preview = document.getElementById('servibot-tab-imagen-preview');
- const thumb = document.getElementById('servibot-tab-imagen-preview-thumb');
- if (thumb) thumb.src = base64Full;
- if (preview) preview.style.display = 'flex';
+ });
+ _sbActualizarAliasImagenPendiente();
+ _sbRenderPreviewImagenesTab();
  };
  reader.onerror = function() {
  alert(' No se pudo leer la imagen, intenta de nuevo.');
@@ -21296,10 +21339,17 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  input.value = ''; // permite volver a elegir la misma foto si la quita y la vuelve a adjuntar
  };
 
- window.quitarImagenServibotTab = function() {
- window._sbImagenPendiente = null;
- const preview = document.getElementById('servibot-tab-imagen-preview');
- if (preview) preview.style.display = 'none';
+ // Sin argumento: quita todas las fotos pendientes (comportamiento de
+ // siempre, usado al enviar el mensaje). Con índice: quita solo esa foto
+ // (usado por la ✕ de cada miniatura en la vista previa).
+ window.quitarImagenServibotTab = function(indice) {
+ if (typeof indice === 'number') {
+ window._sbImagenesPendientes.splice(indice, 1);
+ } else {
+ window._sbImagenesPendientes = [];
+ }
+ _sbActualizarAliasImagenPendiente();
+ _sbRenderPreviewImagenesTab();
  };
 
  window.sendAIMessageTab = function() {
@@ -21310,8 +21360,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const input = document.getElementById('servibot-tab-input');
  if (!input) return;
  const text = input.value.trim();
- const imagenPendiente = window._sbImagenPendiente;
- if (!text && !imagenPendiente) return;
+ // 🆕 RUTEO MÚLTIPLE: hasta 3 fotos adjuntas en el mismo mensaje.
+ const imagenesPendientes = (window._sbImagenesPendientes || []).slice();
+ if (!text && !imagenesPendientes.length) return;
  input.value = '';
  window.quitarImagenServibotTab();
 
@@ -21319,9 +21370,14 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const qbtns = document.getElementById('servibot-tab-quick-btns');
  if (qbtns) qbtns.style.display = 'none';
 
- // Renderizar mensaje usuario en tab (con la miniatura de la foto si venía una)
- renderMsgEnTab('user', text || ' Foto enviada', null, imagenPendiente ? imagenPendiente.previewUrl : null);
- aiHistory.push({ role: 'user', content: text || ' [Foto con datos del destinatario]' });
+ // Renderizar mensaje usuario en tab (con la miniatura de la primera foto si venía alguna)
+ const textoConFotos = text || (imagenesPendientes.length > 1
+ ? ' ' + imagenesPendientes.length + ' fotos enviadas'
+ : ' Foto enviada');
+ renderMsgEnTab('user', textoConFotos, null, imagenesPendientes.length ? imagenesPendientes[0].previewUrl : null);
+ aiHistory.push({ role: 'user', content: text || (imagenesPendientes.length > 1
+ ? ' [' + imagenesPendientes.length + ' fotos con direcciones de destinatarios]'
+ : ' [Foto con datos del destinatario]') });
  aiWorking = true;
 
  // Mensaje escribiendo...
@@ -21330,7 +21386,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  setTimeout(async function() {
  try {
- const respuesta = await obtenerRespuestaAsync(text, imagenPendiente);
+ const respuesta = await obtenerRespuestaAsync(text, imagenesPendientes);
 
  const msgLower = text.toLowerCase();
  if (/queja|reclamo|sugerencia|falla|error|problema|mal servicio|mejora/.test(msgLower)) {

@@ -21951,6 +21951,20 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (barrioWrap && barrioWrap.parentElement) barrioWrap.parentElement.insertBefore(avisoMapa, barrioWrap.nextSibling);
  setTimeout(function () { abrirMapeadorPedidoTercero(); }, 250);
  }
+
+ // 🆕 ORIGEN DE RECOGIDA INTELIGENTE: si el backend detectó que el GPS
+ // actual del local no coincide con su dirección registrada, se
+ // preselecciona "Estoy en otro lugar" en vez de dejarlo en "Recoger en
+ // el local" por defecto (el local ya no tiene que acordarse de cambiarlo
+ // cada vez que pide un domicilio estando fuera).
+ if (datos.origenSugerido === 'otro_lugar' && !tieneGps) {
+ sbSetOrigenRecogidaTercero('otro_lugar');
+ const avisoOrigen = document.createElement('div');
+ avisoOrigen.style.cssText = 'font-size:11px; color:#9ca3af; margin:-4px 0 8px;';
+ avisoOrigen.textContent = ' Veo que no estás en tu local ahora mismo' + (datos.distanciaLocalKm ? ' (~' + datos.distanciaLocalKm + ' km)' : '') + ', así que dejé marcado "Estoy en otro lugar". Cambia el botón si en realidad sí vas a recoger en el local.';
+ const btnsWrap = document.getElementById('sb-t-btn-local') && document.getElementById('sb-t-btn-local').closest('div');
+ if (btnsWrap && btnsWrap.parentElement) btnsWrap.parentElement.insertBefore(avisoOrigen, btnsWrap.nextSibling);
+ }
  };
 
  // Bloquea dirección/barrio como "Ubicación GPS" cuando ya hay coordenadas

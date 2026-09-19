@@ -22150,7 +22150,8 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  });
  const card = document.getElementById('sb-tercero-card');
  if (card) card.remove();
- const msg = res.data.mensaje || '¡Listo! El pedido fue creado.';
+ let msg = res.data.mensaje || '¡Listo! El pedido fue creado.';
+ if (res.data.pedidoId && res.data.codigoEntrega) msg += '\n\nApenas un repartidor acepte el pedido, te muestro aquí el código de confirmación.';
  const tabMsgs = document.getElementById('servibot-tab-messages');
  if (tabMsgs && tabMsgs.offsetParent !== null) {
  renderMsgEnTab('bot', msg);
@@ -22158,6 +22159,15 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  addBotMessage(msg);
  }
  aiHistory.push({ role: 'assistant', content: msg });
+ // Espera a que un repartidor acepte para mostrar el código de confirmación en el chat
+ try {
+ if (res.data.pedidoId && res.data.codigoEntrega) {
+ const pl = sbLeerCodigosPendientes();
+ pl.push({ id: res.data.pedidoId, codigo: res.data.codigoEntrega });
+ sbGuardarCodigosPendientes(pl);
+ window.sbEsperarAceptacionPedido(res.data.pedidoId, res.data.codigoEntrega);
+ }
+ } catch (eCod) { console.warn('[Pedido tercero] No se pudo dejar el aviso del código:', eCod); }
  window._sbTercero = null;
  } catch (e) {
  console.error('[Pedido tercero] Error:', e);
@@ -22165,6 +22175,65 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (btn) { btn.disabled = false; btn.textContent = ' Enviar pedido'; }
  }
  };
+
+// ── Código de confirmación en el chat cuando un repartidor acepta ──
+// Si el pedido todavía no tiene repartidor, el código no se puede mostrar
+// al crearlo. Este aviso se queda escuchando el pedido y, apenas pasa a
+// "aceptado", escribe el código en el chat de ServiBot. Los pendientes se
+// guardan en el celular para retomarlos si se cierra la app.
+function sbLeerCodigosPendientes() {
+ try { return JSON.parse(localStorage.getItem('sb_codigos_pendientes') || '[]'); } catch (e) { return []; }
+}
+function sbGuardarCodigosPendientes(arr) {
+ try { localStorage.setItem('sb_codigos_pendientes', JSON.stringify(arr.slice(-10))); } catch (e) {}
+}
+window.sbEsperarAceptacionPedido = function (pedidoId, codigo) {
+ if (!pedidoId || !window.db || !window.ref || !window.onValue) return;
+ if (!window._sbEscuchandoCodigo) window._sbEscuchandoCodigo = {};
+ if (window._sbEscuchandoCodigo[pedidoId]) return;
+ const estadosAceptado = ['aceptado', 'esperando', 'esperando pedido', 'en camino'];
+ let unsub = null;
+ const terminar = function () {
+  if (typeof unsub === 'function') { try { unsub(); } catch (e) {} }
+  delete window._sbEscuchandoCodigo[pedidoId];
+  sbGuardarCodigosPendientes(sbLeerCodigosPendientes().filter(function (p) { return p.id !== pedidoId; }));
+ };
+ window._sbEscuchandoCodigo[pedidoId] = true;
+ unsub = window.onValue(window.ref(window.db, 'pedidos_historial/' + pedidoId), function (snap) {
+  if (!snap.exists()) return;
+  const p = snap.val() || {};
+  const estado = String(p.estado || '').trim().toLowerCase();
+  if (['cancelado', 'completado', 'entregado'].indexOf(estado) !== -1) { terminar(); return; }
+  if (estadosAceptado.indexOf(estado) === -1) return;
+  const cod = p.codigoEntrega || codigo;
+  if (!cod) { terminar(); return; }
+  const quien = (p.repartidorNombre && p.repartidorNombre !== 'Sin asignar') ? p.repartidorNombre : 'Un repartidor';
+  const paraQuien = p.nombreRecibe ? ' para ' + p.nombreRecibe : '';
+  const aviso = '🛵 ¡' + quien + ' aceptó tu pedido' + paraQuien + '!\n\nCódigo de confirmación: **' + cod + '**\n\nQuien recibe el pedido debe dárselo al repartidor al momento de la entrega.';
+  const tabMsgs = document.getElementById('servibot-tab-messages');
+  if (tabMsgs && tabMsgs.offsetParent !== null) {
+   renderMsgEnTab('bot', aviso);
+  } else {
+   addBotMessage(aviso);
+  }
+  try { aiHistory.push({ role: 'assistant', content: aviso }); } catch (e) {}
+  terminar();
+ }, function (err) {
+  console.warn('[Código pedido] No se pudo escuchar el pedido', pedidoId, err && err.code);
+  delete window._sbEscuchandoCodigo[pedidoId];
+ });
+};
+// Retoma los avisos pendientes al abrir la app (espera a que haya sesión)
+(function () {
+ let intentos = 0;
+ const t = setInterval(function () {
+  intentos++;
+  if (window.currentUserID && window.db && window.ref && window.onValue) {
+   clearInterval(t);
+   sbLeerCodigosPendientes().forEach(function (p) { window.sbEsperarAceptacionPedido(p.id, p.codigo); });
+  } else if (intentos > 30) { clearInterval(t); }
+ }, 2000);
+})();
 
 })();
 

@@ -17006,17 +17006,17 @@ Detalles técnicos en la consola (F12)`;
  window.confirmarPedidoRealizado = async function() {
  console.log(' Usuario confirmó que hizo el pedido');
 
-  // \u274c Bloquear si la cuenta no est� activada por el admin
+  // \u274c Bloquear si la cuenta no está activada por el admin
   if (window.currentUserID && window.db && window.ref && window.get) {
     try {
       const snapAct = await window.get(window.ref(window.db, `usuarios/${window.currentUserID}/activado`));
       if (!snapAct.exists() || snapAct.val() !== true) {
         const modal = document.getElementById('modal-confirmacion-pedido');
         if (modal) modal.style.display = 'none';
-        alert('\u23f3 Tu cuenta est� pendiente de activaci�n.\n\nUn administrador debe aprobar tu perfil antes de que puedas hacer pedidos. Recibir�s una notificaci�n cuando tu cuenta sea activada.');
+        alert('\u23f3 Tu cuenta está pendiente de activación.\n\nUn administrador debe aprobar tu perfil antes de que puedas hacer pedidos. Recibirás una notificación cuando tu cuenta sea activada.');
         return;
       }
-    } catch(e) { console.warn('No se pudo verificar activaci�n:', e); }
+    } catch(e) { console.warn('No se pudo verificar activación:', e); }
   }
  console.log(' DEBUG - window.currentUserID:', window.currentUserID);
  console.log(' DEBUG - window.db existe:', !!window.db);
@@ -19635,6 +19635,52 @@ window._borrarContactoLocalDesdeDetalle = async function() {
  }
  };
 
+ // SUGERENCIA DE BARRIO DESDE EL MAPEADOR DE TERCERO: cuando el local marca a
+ // mano un punto de entrega que no es un barrio registrado, se deja en
+ // barrios_sugeridos/ (el mismo nodo del selector normal y de los contactos)
+ // para que el admin lo revise y lo agregue a la lista real. Nunca bloquea
+ // el pedido: si falla solo avisa en consola.
+ function registrarSugerenciaDesdeMapeadorTercero(coords) {
+ try {
+ if (!coords || typeof coords.lat !== 'number' || typeof coords.lng !== 'number') return;
+ if (!window.set || !window.ref || !window.db) return;
+ const key = coords.lat.toFixed(5) + ',' + coords.lng.toFixed(5);
+ window._sbSugKeysTercero = window._sbSugKeysTercero || {};
+ if (window._sbSugKeysTercero[key]) return;
+ const barrioEl = document.getElementById('sb-t-barrio');
+ const dirEl = document.getElementById('sb-t-direccion');
+ const puntoEl = document.getElementById('mapeador-pedido-tercero-nombre');
+ const barrioTxt = ((barrioEl && barrioEl.value) || '').trim();
+ const dirTxt = ((dirEl && dirEl.value) || '').trim();
+ const puntoTxt = ((puntoEl && puntoEl.value) || '').trim();
+ const noReconocido = ((window._sbTercero && window._sbTercero.barrioNoReconocido) || '').trim();
+ const esEtiquetaGps = /ubicaci[oó]n gps/i.test(barrioTxt);
+ const lista = (typeof BARRIOS_ARMENIA !== 'undefined' && Array.isArray(BARRIOS_ARMENIA)) ? BARRIOS_ARMENIA : [];
+ const barrioConocido = !!barrioTxt && !esEtiquetaGps &&
+ lista.some(function (b) { return b && b.n && String(b.n).toLowerCase() === barrioTxt.toLowerCase(); });
+ if (barrioConocido) return; // el barrio ya existe en la lista, no hay nada que sugerir
+ const nombre = noReconocido || (!esEtiquetaGps && barrioTxt) || puntoTxt || 'Ubicación marcada en mapa (ServiBot)';
+ window._sbSugKeysTercero[key] = true;
+ const id = 'sug_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+ window.set(window.ref(window.db, 'barrios_sugeridos/' + id), {
+ nombre: nombre,
+ tipo: 'fuera',
+ zona: 'fuera',
+ lat: coords.lat,
+ lng: coords.lng,
+ clienteId: window.currentUserID || 'anonimo',
+ clienteNombre: window.currentUserNombre || 'Cliente',
+ ts: Date.now(),
+ estado: 'pendiente',
+ origen: 'servibot_pedido_tercero',
+ direccionDetalle: (dirTxt && !/ubicaci[oó]n gps/i.test(dirTxt)) ? dirTxt : ''
+ }).catch(function (e) {
+ delete window._sbSugKeysTercero[key];
+ console.warn('No se pudo registrar la sugerencia de barrio:', e && (e.code || e.message));
+ });
+ } catch (e) { console.warn('registrarSugerenciaDesdeMapeadorTercero:', e); }
+ }
+
  window.confirmarUbicacionPedidoTercero = function() {
  if (!_coordsTempPedidoT) return;
  if (window._modoMapeadorTercero === 'recogida') {
@@ -19642,6 +19688,9 @@ window._borrarContactoLocalDesdeDetalle = async function() {
  cerrarMapeadorPedidoTercero();
  return;
  }
+ // Deja el punto en barrios_sugeridos/ ANTES de que el formulario reemplace
+ // barrio/dirección por "Ubicación GPS", para que el admin lo confirme.
+ registrarSugerenciaDesdeMapeadorTercero(_coordsTempPedidoT);
  sbAplicarGpsATarjetaTercero(_coordsTempPedidoT);
  cerrarMapeadorPedidoTercero();
  // Deja el cuadro de texto normal del chat listo para que el local escriba
@@ -21883,7 +21932,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const existente = document.getElementById('sb-tercero-card');
  if (existente) existente.remove();
 
- window._sbTercero = { minutos: null, origenRecogida: 'local' };
+ window._sbTercero = { minutos: null, origenRecogida: 'local', barrioNoReconocido: (datos && datos.barrioNoReconocido) || null };
 
  const nuevoTxt = datos.esContactoNuevo ? ' (cliente nuevo — se guardará en tu libreta)' : '';
  const minutosBtns = [['Ya está', 0], ['5', 5], ['10', 10], ['15', 15], ['20', 20], ['25', 25], ['30', 30]]
@@ -21899,6 +21948,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
   '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;">¿Dónde recoges este pedido?</div>' +
  '<div style="display:flex; gap:8px; margin-bottom:8px;">' +
  '<button type="button" id="sb-t-btn-local" onclick="sbSetOrigenRecogidaTercero(\'local\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid var(--color-primary,#F59E0B); background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:12px; cursor:pointer;"> Recoger en el local</button>' +
+ '<button type="button" id="sb-t-btn-casa" onclick="sbSetOrigenRecogidaTercero(\'casa\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:bold; font-size:12px; cursor:pointer;">🏠 Recoger en casa</button>' +
  '<button type="button" id="sb-t-btn-otro" onclick="sbSetOrigenRecogidaTercero(\'otro_lugar\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:bold; font-size:12px; cursor:pointer;"> Estoy en otro lugar</button>' +
  '</div>' +
  // FIX "ESTOY EN OTRO LUGAR": antes, al elegir esta opción, no pasaba nada
@@ -21957,11 +22007,14 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // preselecciona "Estoy en otro lugar" en vez de dejarlo en "Recoger en
  // el local" por defecto (el local ya no tiene que acordarse de cambiarlo
  // cada vez que pide un domicilio estando fuera).
- if (datos.origenSugerido === 'otro_lugar' && !tieneGps) {
- sbSetOrigenRecogidaTercero('otro_lugar');
+ if ((datos.origenSugerido === 'otro_lugar' || datos.origenSugerido === 'casa') && !tieneGps) {
+ const sugCasa = datos.origenSugerido === 'casa';
+ sbSetOrigenRecogidaTercero(sugCasa ? 'casa' : 'otro_lugar');
  const avisoOrigen = document.createElement('div');
  avisoOrigen.style.cssText = 'font-size:11px; color:#9ca3af; margin:-4px 0 8px;';
- avisoOrigen.textContent = ' Veo que no estás en tu local ahora mismo' + (datos.distanciaLocalKm ? ' (~' + datos.distanciaLocalKm + ' km)' : '') + ', así que dejé marcado "Estoy en otro lugar". Cambia el botón si en realidad sí vas a recoger en el local.';
+ avisoOrigen.textContent = sugCasa
+  ? ('Veo que no estás en el local ahora mismo' + (datos.distanciaLocalKm ? ' (~' + datos.distanciaLocalKm + ' km)' : '') + '. ¿Recoges en tu casa' + (datos.direccionCasa ? ' (' + datos.direccionCasa + ')' : '') + ' o en el local? Dejé marcado "casa"; cámbialo si vas a recoger en el local.')
+  : ('Veo que no estás en tu local ahora mismo' + (datos.distanciaLocalKm ? ' (~' + datos.distanciaLocalKm + ' km)' : '') + ', así que dejé marcado "Estoy en otro lugar". Cambia el botón si en realidad sí vas a recoger en el local.');
  const btnsWrap = document.getElementById('sb-t-btn-local') && document.getElementById('sb-t-btn-local').closest('div');
  if (btnsWrap && btnsWrap.parentElement) btnsWrap.parentElement.insertBefore(avisoOrigen, btnsWrap.nextSibling);
  }
@@ -22032,11 +22085,16 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  window.sbSetOrigenRecogidaTercero = function (origen) {
  if (!window._sbTercero) window._sbTercero = {};
  window._sbTercero.origenRecogida = origen;
- const btnLocal = document.getElementById('sb-t-btn-local');
- const btnOtro = document.getElementById('sb-t-btn-otro');
+ const estilosOrigen = { local: 'sb-t-btn-local', casa: 'sb-t-btn-casa', otro_lugar: 'sb-t-btn-otro' };
+ Object.keys(estilosOrigen).forEach(function (k) {
+ const b = document.getElementById(estilosOrigen[k]);
+ if (!b) return;
+ const activo = origen === k;
+ b.style.background = activo ? 'var(--color-primary,#F59E0B)' : 'transparent';
+ b.style.color = activo ? '#000' : '#9ca3af';
+ b.style.borderColor = activo ? 'var(--color-primary,#F59E0B)' : '#374151';
+ });
  const esLocal = origen === 'local';
- if (btnLocal) { btnLocal.style.background = esLocal ? 'var(--color-primary,#F59E0B)' : 'transparent'; btnLocal.style.color = esLocal ? '#000' : '#9ca3af'; btnLocal.style.borderColor = esLocal ? 'var(--color-primary,#F59E0B)' : '#374151'; }
- if (btnOtro) { btnOtro.style.background = esLocal ? 'transparent' : 'var(--color-primary,#F59E0B)'; btnOtro.style.color = esLocal ? '#9ca3af' : '#000'; btnOtro.style.borderColor = esLocal ? '#374151' : 'var(--color-primary,#F59E0B)'; }
 
  // FIX "ESTOY EN OTRO LUGAR": mostrar el aviso + botón de mapa solo cuando
  // aplica, y si vuelve a "Recoger en el local" limpiar cualquier punto que
@@ -22086,7 +22144,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  try {
  if (!window.confirmarPedidoTerceroCallable) throw new Error('No se pudo conectar con el servidor.');
  const origenRecogida = (window._sbTercero && window._sbTercero.origenRecogida) || 'local';
- const gpsRecogidaManual = (origenRecogida === 'otro_lugar' && window._sbTercero) ? (window._sbTercero.gpsRecogida || null) : null;
+ const gpsRecogidaManual = (origenRecogida !== 'local' && window._sbTercero) ? (window._sbTercero.gpsRecogida || null) : null;
  const res = await window.confirmarPedidoTerceroCallable({
  nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega, origenRecogida, gpsRecogidaManual,
  });

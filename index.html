@@ -4839,7 +4839,7 @@
  <div style="text-align:center; margin-bottom:18px; position:relative;">
  <div style="font-size:36px; line-height:1; margin-bottom:6px;"></div>
  <div style="color:#e0d7ff; font-weight:800; font-size:20px; letter-spacing:-0.5px;">Ruleta de Descuentos</div>
- <div style="color:#818cf8; font-size:12px; margin-top:3px;">Gira cada 7 pedidos completados</div>
+ <div id="ruleta-cada-texto" style="color:#818cf8; font-size:12px; margin-top:3px;">Gira cada 7 pedidos completados</div>
  </div>
 
 
@@ -5530,6 +5530,17 @@ const TONOS_NOTIFICACION = [
  // Menú hamburguesa solo visible cuando hay sesión iniciada
  // (y nunca si el menú lateral ya está abierto, para no dejarlo "flotando" detrás del panel)
  const esLogueado = (vistaId === 'vista-cliente');
+ // Al cerrar sesión (o salir de la vista logueada) con el menú lateral abierto, cerrarlo del todo
+ // para que no quede el panel con todas las funciones visible sobre la pantalla de inicio
+ if (!esLogueado && menuAbierto) {
+ menuAbierto = false;
+ window.menuAbierto = false;
+ ['menu-lateral', 'menu-overlay', 'btn-menu'].forEach(function(id) {
+ const el = document.getElementById(id);
+ if (el) el.classList.remove('active');
+ });
+ document.body.style.overflow = '';
+ }
  const menuHam = document.getElementById('menu-hamburguesa');
  const aiFab = document.getElementById('ai-fab');
  const aiPanel = document.getElementById('ai-chat-panel');
@@ -7531,7 +7542,7 @@ window._domiPendiente = { nombreEntrega, dirRecogida, telEntrega, zonaRecogida, 
  const mensajesBusqueda = [
  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9.5 3.5h5"/><path d="M12 3.5v2"/><path d="M16.5 4.5l1-1"/></svg>Espera un momento, ya casi tenemos a tu repartidor...',
  ' ¿Tienes dudas sobre precios? ¡Escríbele a ServiBot en el menú!',
- ' Recuerda: por cada 7 pedidos ganas un giro en la Ruleta de Premios.',
+ ' Recuerda: por cada ' + (window.currentTipoCliente === 'local' ? 10 : 7) + ' pedidos ganas un giro en la Ruleta de Premios.',
  ' Puedes seguir a tu repartidor en tiempo real en la pestaña "Seguir".',
  ' ¿Sabías que puedes ganar domicilios gratis acumulando puntos?',
  ' Gracias por confiar en Servi Aliados — ¡somos tu mejor aliado!',
@@ -17774,16 +17785,20 @@ if (window.db) {
  // RULETA 
  const giros = est.girosDisp || 0;
  const pedAcum = est.pedidosAcum || 0;
- const restoRuleta = pedAcum % 7;
- const pedParaGiro = restoRuleta === 0 ? 7 : (7 - restoRuleta); // FIX: evitar mostrar 0/7
- const pctRuleta = Math.round((restoRuleta / 7) * 100);
+ // Pedidos por giro: 7 para Persona Natural, 10 para Local/Negocio (igual que el servidor)
+ const pedPorGiro = (window.currentTipoCliente === 'local') ? 10 : 7;
+ const restoRuleta = pedAcum % pedPorGiro;
+ const pedParaGiro = restoRuleta === 0 ? pedPorGiro : (pedPorGiro - restoRuleta); // FIX: evitar mostrar 0/N
+ const pctRuleta = Math.round((restoRuleta / pedPorGiro) * 100);
+ const txtCadaRuleta = document.getElementById('ruleta-cada-texto');
+ if (txtCadaRuleta) txtCadaRuleta.textContent = `Gira cada ${pedPorGiro} pedidos completados`;
 
  const cntGiros = document.getElementById('ruleta-giros-count');
  const progFill = document.getElementById('ruleta-prog-fill');
  const progTxt = document.getElementById('ruleta-prog-texto');
  if (cntGiros) cntGiros.textContent = giros;
  if (progFill) progFill.style.width = pctRuleta + '%';
- if (progTxt) progTxt.textContent = `${restoRuleta} / 7 pedidos para el próximo giro`;
+ if (progTxt) progTxt.textContent = `${restoRuleta} / ${pedPorGiro} pedidos para el próximo giro`;
 
  const btnGirar = document.getElementById('btn-girar-ruleta');
  if (btnGirar) {

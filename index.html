@@ -5128,9 +5128,6 @@
  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
  
- <!-- DEBUG: Eruda para diagnóstico -->
- <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
- <script>eruda.init();</script>
 
 <!-- ============================================================
      SECCIÓN 9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
@@ -15015,6 +15012,11 @@ ${motivo}`;
  categoria: tiendaData.categoria || 'general',
  ...tiendaData
  };
+ // Empezar a descargar los videos de los Estados EN CUANTO llega la info de
+ // la tienda (antes de pintar nada), para que cuando se abra el banner ya
+ // esté cargado y se reproduzca de una vez, sin espera.
+ precalentarVideosEstados(tiendaActual.estados);
+
  
  const categoriaNegocio = tiendaData.categoria ? tiendaData.categoria.toLowerCase() : 'general';
  console.log(' Viendo tienda - Categoría:', categoriaNegocio);
@@ -15107,6 +15109,31 @@ ${motivo}`;
  // arriba de las secciones para volver a abrirlos.
  // Lee negocios/{id}/estados (ya viene dentro de tiendaActual) y oculta los que
  // pasaron de 23 h aunque todavía no los haya borrado la limpieza automática.
+
+ // Descarga por adelantado (sin mostrarlos) los videos de los Estados activos,
+ // usando <link rel="preload"> para que el navegador los tenga listos en caché
+ // apenas se abra el visor. Evita duplicar precargas si ya se hizo antes.
+ const _videosEstadosPrecalentados = new Set();
+ function precalentarVideosEstados(estadosObj) {
+ try {
+ if (!estadosObj) return;
+ const ahora = Date.now();
+ Object.values(estadosObj).forEach((e) => {
+ if (!e || !e.video) return;
+ if ((ahora - (e.fecha || 0)) > ESTADOS_DURACION_MS) return; // ya vencido, no vale la pena
+ if (_videosEstadosPrecalentados.has(e.video)) return;
+ _videosEstadosPrecalentados.add(e.video);
+ const link = document.createElement('link');
+ link.rel = 'preload';
+ link.as = 'video';
+ link.href = e.video;
+ document.head.appendChild(link);
+ });
+ } catch (errPrecalentar) {
+ console.warn('No se pudieron precargar los videos de estados:', errPrecalentar);
+ }
+ }
+
  function obtenerEstadosActivosTienda() {
  const obj = (typeof tiendaActual !== 'undefined' && tiendaActual && tiendaActual.estados) ? tiendaActual.estados : null;
  if (!obj) return [];
@@ -15222,7 +15249,7 @@ ${motivo}`;
  overlay.style.cssText = 'position:fixed;inset:0;z-index:10300;background:rgba(0,0,0,0.78);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
 
  const tarjeta = document.createElement('div');
- tarjeta.style.cssText = 'position:relative;width:100%;max-width:420px;max-height:88vh;background:#1c1c1c;border:2px solid var(--color-primary);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;touch-action:pan-y;box-shadow:0 10px 40px rgba(0,0,0,0.6);';
+ tarjeta.style.cssText = 'position:relative;width:100%;max-width:420px;max-height:88vh;background:#1c1c1c;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;touch-action:pan-y;box-shadow:0 10px 40px rgba(0,0,0,0.6);';
  overlay.appendChild(tarjeta);
 
  const barra = document.createElement('div');

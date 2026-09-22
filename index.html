@@ -22003,29 +22003,51 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  input.value = '';
  return;
  }
- // Límite razonable para no saturar la función (Gemini igual reescala).
- if (file.size > 8 * 1024 * 1024) {
- alert(' La imagen es muy pesada (máx 8MB). Intenta con otra foto o una captura más liviana.');
+ if (file.size > 15 * 1024 * 1024) {
+ alert(' La imagen es muy pesada (máx 15MB). Intenta con otra foto.');
  input.value = '';
  return;
  }
- const reader = new FileReader();
- reader.onload = function(e) {
- const base64Full = e.target.result; // data:image/jpeg;base64,...
+ // FIX (2026-09-22): antes se mandaba la foto tal cual (hasta 8MB) en base64,
+ // lo que con señal débil (VoLTE/pocas rayas) podía agotar el tiempo de espera
+ // de la Cloud Function antes de llegar a Gemini, cayendo al mensaje genérico
+ // "No pude leer la foto en este momento" aunque el monitoreo mostrara todo
+ // en verde (el chequeo de monitoreo solo prueba texto, no fotos). Ahora se
+ // reescala a máx 1280px de ancho y se comprime a JPEG 0.7 antes de convertir
+ // a base64, bajando el payload de varios MB a normalmente ~100-300KB.
+ const img = new Image();
+ const readerOriginal = new FileReader();
+ readerOriginal.onload = function(ev) {
+ img.onload = function() {
+ const MAX_ANCHO = 1280;
+ let ancho = img.width, alto = img.height;
+ if (ancho > MAX_ANCHO) {
+ alto = Math.round(alto * (MAX_ANCHO / ancho));
+ ancho = MAX_ANCHO;
+ }
+ const canvas = document.createElement('canvas');
+ canvas.width = ancho;
+ canvas.height = alto;
+ canvas.getContext('2d').drawImage(img, 0, 0, ancho, alto);
+ const base64Full = canvas.toDataURL('image/jpeg', 0.7); // data:image/jpeg;base64,...
  const partes = base64Full.split(',');
- const mimeMatch = partes[0].match(/data:(.*?);base64/);
  window._sbImagenesPendientes.push({
  base64: partes[1] || '',
- mimeType: (mimeMatch && mimeMatch[1]) || file.type,
+ mimeType: 'image/jpeg',
  previewUrl: base64Full,
  });
  _sbActualizarAliasImagenPendiente();
  _sbRenderPreviewImagenesTab();
  };
- reader.onerror = function() {
+ img.onerror = function() {
+ alert(' No se pudo procesar la imagen, intenta de nuevo.');
+ };
+ img.src = ev.target.result;
+ };
+ readerOriginal.onerror = function() {
  alert(' No se pudo leer la imagen, intenta de nuevo.');
  };
- reader.readAsDataURL(file);
+ readerOriginal.readAsDataURL(file);
  input.value = ''; // permite volver a elegir la misma foto si la quita y la vuelve a adjuntar
  };
 

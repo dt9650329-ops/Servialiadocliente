@@ -5158,6 +5158,42 @@ if (new URLSearchParams(window.location.search).get('debug') === '1') {
  return div.innerHTML;
  }
  
+ // ======================================================================
+ // === VISOR DE IMAGEN A PANTALLA COMPLETA (sin salir de la app) ===
+ // ======================================================================
+ window.abrirImagenPantallaCompleta = function (url) {
+ if (!url) return;
+ let overlay = document.getElementById('visor-imagen-overlay');
+ if (!overlay) {
+ overlay = document.createElement('div');
+ overlay.id = 'visor-imagen-overlay';
+ overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.92);display:none;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;';
+ overlay.addEventListener('click', function (e) {
+ if (e.target === overlay) window.cerrarVisorImagen();
+ });
+ const img = document.createElement('img');
+ img.id = 'visor-imagen-img';
+ img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;';
+ const btnCerrar = document.createElement('div');
+ btnCerrar.textContent = '✕';
+ btnCerrar.style.cssText = 'position:fixed;top:16px;right:18px;color:#fff;font-size:26px;line-height:1;cursor:pointer;z-index:100000;background:rgba(0,0,0,0.55);width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;';
+ btnCerrar.addEventListener('click', function (e) {
+ e.stopPropagation();
+ window.cerrarVisorImagen();
+ });
+ overlay.appendChild(img);
+ overlay.appendChild(btnCerrar);
+ document.body.appendChild(overlay);
+ }
+ document.getElementById('visor-imagen-img').src = url;
+ overlay.style.display = 'flex';
+ };
+
+ window.cerrarVisorImagen = function () {
+ const overlay = document.getElementById('visor-imagen-overlay');
+ if (overlay) overlay.style.display = 'none';
+ };
+ 
  // Llamada segura al backend con token de Firebase
  async function llamarBackend(endpoint, method = 'GET', body = null) {
  const auth = window.firebaseAuth;
@@ -12728,7 +12764,7 @@ ${mensajeEstado}
  if (producto.imagenes && producto.imagenes.length > 1) {
  galeriaHTML = '<div class="product-images-gallery">';
  producto.imagenes.slice(1, 3).forEach((url, index) => {
- galeriaHTML += `<img src="${url}" alt="${producto.nombre} ${index + 2}" onclick="window.open('${url}', '_blank')">`;
+ galeriaHTML += `<img src="${url}" alt="${producto.nombre} ${index + 2}" onclick="abrirImagenPantallaCompleta('${url}')">`;
  });
  galeriaHTML += '</div>';
  }
@@ -13923,7 +13959,7 @@ ${motivo}`;
  const productoDiv = document.createElement('div');
  productoDiv.className = 'product-item-edit';
 
- const fotoHTML = producto.foto ? `<div class="product-thumb-edit" onclick="window.open('${producto.foto}', '_blank')"><img src="${producto.foto}" alt="${producto.nombre}"></div>` : '';
+ const fotoHTML = producto.foto ? `<div class="product-thumb-edit" onclick="abrirImagenPantallaCompleta('${producto.foto}')"><img src="${producto.foto}" alt="${producto.nombre}"></div>` : '';
  const precioHTML = producto.precio ? `<div class="product-price-edit">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
  const descripcionHTML = producto.descripcion ? `<div class="product-descripcion-edit">${producto.descripcion}</div>` : '';
 
@@ -14633,7 +14669,7 @@ ${motivo}`;
  const productoDiv = document.createElement('div');
  productoDiv.className = 'product-item-edit';
 
- const fotoHTML = producto.foto ? `<div class="product-thumb-edit" onclick="window.open('${producto.foto}', '_blank')"><img src="${producto.foto}" alt="${producto.nombre}"></div>` : '';
+ const fotoHTML = producto.foto ? `<div class="product-thumb-edit" onclick="abrirImagenPantallaCompleta('${producto.foto}')"><img src="${producto.foto}" alt="${producto.nombre}"></div>` : '';
  const precioHTML = producto.precio ? `<div class="product-price-edit">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
  const descripcionHTML = producto.descripcion ? `<div class="product-descripcion-edit">${producto.descripcion}</div>` : '';
 
@@ -15119,10 +15155,11 @@ ${motivo}`;
  // Lee negocios/{id}/estados (ya viene dentro de tiendaActual) y oculta los que
  // pasaron de 23 h aunque todavía no los haya borrado la limpieza automática.
 
- // Descarga por adelantado (sin mostrarlos) los videos de los Estados activos,
- // usando <link rel="preload"> para que el navegador los tenga listos en caché
- // apenas se abra el visor. Evita duplicar precargas si ya se hizo antes.
+// Descarga por adelantado (sin mostrarlos) los videos de los Estados activos,
+ // bajándolos como blob a memoria para que el visor los reproduzca al instante
+ // sin volver a pedirlos a Firebase Storage. Evita duplicar precargas si ya se hizo antes.
  const _videosEstadosPrecalentados = new Set();
+ const _estadosBlobCache = new Map(); // url original de Storage -> blob URL local
  function precalentarVideosEstados(estadosObj) {
  try {
  if (!estadosObj) return;
@@ -15132,11 +15169,10 @@ ${motivo}`;
  if ((ahora - (e.fecha || 0)) > ESTADOS_DURACION_MS) return; // ya vencido, no vale la pena
  if (_videosEstadosPrecalentados.has(e.video)) return;
  _videosEstadosPrecalentados.add(e.video);
- const link = document.createElement('link');
- link.rel = 'preload';
- link.as = 'video';
- link.href = e.video;
- document.head.appendChild(link);
+ fetch(e.video)
+ .then(r => r.blob())
+ .then(blob => { _estadosBlobCache.set(e.video, URL.createObjectURL(blob)); })
+ .catch(errFetch => console.warn('No se pudo precargar el video del estado:', errFetch));
  });
  } catch (errPrecalentar) {
  console.warn('No se pudieron precargar los videos de estados:', errPrecalentar);
@@ -15316,7 +15352,7 @@ ${motivo}`;
  }
  if (e.video) {
  videoEl = document.createElement('video');
- videoEl.src = e.video;
+ videoEl.src = _estadosBlobCache.get(e.video) || e.video;
  videoEl.controls = true;
  videoEl.loop = true;
  videoEl.muted = true; // los navegadores solo dejan autoplay en silencio; el cliente activa el sonido con los controles
@@ -15468,7 +15504,7 @@ ${motivo}`;
  productoDiv.className = 'menu-producto-card';
 
  const thumbHTML = producto.foto
- ? `<div class="menu-producto-thumb" onclick="window.open('${producto.foto}', '_blank')"><img src="${producto.foto}" alt="${producto.nombre}"></div>`
+ ? `<div class="menu-producto-thumb" onclick="abrirImagenPantallaCompleta('${producto.foto}')"><img src="${producto.foto}" alt="${producto.nombre}"></div>`
  : '';
  const precioHTML = producto.precio ? `<div class="menu-producto-precio">$${parseInt(producto.precio).toLocaleString('es-ES')}</div>` : '';
 

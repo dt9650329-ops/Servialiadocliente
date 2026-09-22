@@ -14172,6 +14172,291 @@ ${motivo}`;
  }
  }
 
+ // ==================== SISTEMA DE ESTADOS DE TIENDA (tipo WhatsApp) ====================
+ // Estados de texto y/o foto que el dueño de la tienda publica para sus clientes.
+ // Se guardan en negocios/{id}/estados/{estadoId} = { texto, imagen, fecha }.
+ // Cada estado se considera vencido a las 23 horas de publicado (y se borra
+ // solo, al filo de cumplir el día, para no dejar el estado "de ayer" colgado).
+ const ESTADOS_DURACION_MS = 23 * 60 * 60 * 1000;
+
+ function formatearTiempoRestanteEstado(fecha) {
+ const msRestante = (fecha + ESTADOS_DURACION_MS) - Date.now();
+ if (msRestante <= 0) return 'Vencido';
+ const horas = Math.floor(msRestante / (60 * 60 * 1000));
+ const minutos = Math.floor((msRestante % (60 * 60 * 1000)) / (60 * 1000));
+ if (horas >= 1) return `Vence en ${horas}h ${minutos}m`;
+ return `Vence en ${minutos}m`;
+ }
+
+ window.abrirEstadosMiTienda = async function(negocioId) {
+ const listaProductos = document.getElementById('lista-productos-mi-tienda');
+ document.getElementById('btn-agregar-producto-seccion-wrapper')?.remove();
+ seccionActualId = null;
+ listaProductos.innerHTML = '<p class="no-products-message">Cargando estados...</p>';
+
+ document.getElementById('modal-mi-tienda-productos').style.display = 'block';
+
+ if (!negocioId) {
+ listaProductos.innerHTML = '<p class="no-products-message">No se pudo identificar tu tienda. Cierra este panel, entra de nuevo a "Mi tienda" y vuelve a intentar.</p>';
+ return;
+ }
+
+ listaProductos.innerHTML = '';
+
+ const backBtn = document.createElement('button');
+ backBtn.type = 'button';
+ backBtn.className = 'section-back-btn';
+ backBtn.textContent = '← Volver a secciones';
+ backBtn.onclick = () => volverASeccionesMiTienda();
+ listaProductos.appendChild(backBtn);
+
+ const encabezado = document.createElement('h4');
+ encabezado.style.color = 'var(--color-primary)';
+ encabezado.style.marginBottom = '6px';
+ encabezado.textContent = '💬 Estados';
+ listaProductos.appendChild(encabezado);
+
+ const descripcion = document.createElement('p');
+ descripcion.style.fontSize = '13px';
+ descripcion.style.color = 'var(--color-text-dark)';
+ descripcion.style.margin = '0 0 12px';
+ descripcion.textContent = 'Publica novedades de texto, foto o video corto (máx. 30 s) para tus clientes. Se muestran al entrar a tu tienda y cada estado se vence solo a las 23 horas.';
+ listaProductos.appendChild(descripcion);
+
+ // ==== Formulario para publicar un nuevo estado ====
+ const formEstado = document.createElement('div');
+ formEstado.style.background = '#2a2a2a';
+ formEstado.style.border = '2px solid #555';
+ formEstado.style.borderRadius = '10px';
+ formEstado.style.padding = '12px';
+ formEstado.style.marginBottom = '18px';
+
+ const textareaEstado = document.createElement('textarea');
+ textareaEstado.id = 'texto-nuevo-estado';
+ textareaEstado.placeholder = 'Escribe una novedad (opcional si subes una foto o video)...';
+ textareaEstado.maxLength = 200;
+ textareaEstado.rows = 3;
+ textareaEstado.style.width = '100%';
+ textareaEstado.style.boxSizing = 'border-box';
+ textareaEstado.style.background = 'transparent';
+ textareaEstado.style.color = '#fff';
+ textareaEstado.style.border = '1px solid #555';
+ textareaEstado.style.borderRadius = '8px';
+ textareaEstado.style.padding = '8px';
+ textareaEstado.style.fontSize = '13px';
+ textareaEstado.style.resize = 'vertical';
+ formEstado.appendChild(textareaEstado);
+
+ const inputFotoEstado = document.createElement('input');
+ inputFotoEstado.type = 'file';
+ inputFotoEstado.id = 'foto-nuevo-estado';
+ inputFotoEstado.accept = 'image/*,video/*';
+ inputFotoEstado.style.width = '100%';
+ inputFotoEstado.style.margin = '10px 0';
+ inputFotoEstado.style.color = '#fff';
+ inputFotoEstado.style.fontSize = '12px';
+ formEstado.appendChild(inputFotoEstado);
+
+ const btnPublicarEstado = document.createElement('button');
+ btnPublicarEstado.type = 'button';
+ btnPublicarEstado.className = 'btn-agregar-producto-mi-tienda';
+ btnPublicarEstado.style.width = '100%';
+ btnPublicarEstado.textContent = 'Publicar Estado';
+ formEstado.appendChild(btnPublicarEstado);
+
+ listaProductos.appendChild(formEstado);
+
+ const encabezadoLista = document.createElement('h4');
+ encabezadoLista.style.color = 'var(--color-primary)';
+ encabezadoLista.style.marginBottom = '10px';
+ encabezadoLista.textContent = 'Estados activos';
+ listaProductos.appendChild(encabezadoLista);
+
+ const contenedorLista = document.createElement('div');
+ contenedorLista.id = 'lista-estados-tienda';
+ contenedorLista.innerHTML = '<p class="no-products-message">Cargando...</p>';
+ listaProductos.appendChild(contenedorLista);
+
+ // Carga, borra en segundo plano los estados vencidos (+23h) y pinta los que siguen activos.
+ const cargarYPintarEstados = async () => {
+ contenedorLista.innerHTML = '<p class="no-products-message">Cargando...</p>';
+ try {
+ const estadosSnapshot = await get(ref(db, `negocios/${negocioId}/estados`));
+ if (!estadosSnapshot.exists()) {
+ contenedorLista.innerHTML = '<p class="no-products-message">Todavía no has publicado ningún estado.</p>';
+ return;
+ }
+
+ const estadosObj = estadosSnapshot.val();
+ const ahora = Date.now();
+ const activos = [];
+ const idsVencidos = [];
+ Object.entries(estadosObj).forEach(([id, estado]) => {
+ if (ahora - (estado.fecha || 0) > ESTADOS_DURACION_MS) {
+ idsVencidos.push(id);
+ } else {
+ activos.push({ id, ...estado });
+ }
+ });
+ idsVencidos.forEach(id => {
+ remove(ref(db, `negocios/${negocioId}/estados/${id}`)).catch(err =>
+ console.error('No se pudo borrar el estado vencido', id, err)
+ );
+ });
+
+ if (activos.length === 0) {
+ contenedorLista.innerHTML = '<p class="no-products-message">No tienes estados activos en este momento.</p>';
+ return;
+ }
+
+ activos.sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
+
+ contenedorLista.innerHTML = '';
+ activos.forEach(estado => {
+ const fila = document.createElement('div');
+ fila.className = 'product-item-edit';
+ fila.style.flexDirection = 'column';
+ fila.style.alignItems = 'stretch';
+
+ if (estado.imagen) {
+ const img = document.createElement('img');
+ img.src = estado.imagen;
+ img.style.width = '100%';
+ img.style.maxHeight = '160px';
+ img.style.objectFit = 'cover';
+ img.style.borderRadius = '8px';
+ img.style.marginBottom = '6px';
+ fila.appendChild(img);
+ }
+
+ if (estado.video) {
+ const vid = document.createElement('video');
+ vid.src = estado.video;
+ vid.controls = true;
+ vid.preload = 'metadata';
+ vid.setAttribute('playsinline', '');
+ vid.style.width = '100%';
+ vid.style.maxHeight = '200px';
+ vid.style.borderRadius = '8px';
+ vid.style.marginBottom = '6px';
+ vid.style.background = '#000';
+ fila.appendChild(vid);
+ }
+
+ if (estado.texto) {
+ const textoEl = document.createElement('span');
+ textoEl.style.color = 'var(--color-text-light)';
+ textoEl.style.fontSize = '13px';
+ textoEl.textContent = estado.texto;
+ fila.appendChild(textoEl);
+ }
+
+ const infoEl = document.createElement('span');
+ infoEl.style.fontSize = '11px';
+ infoEl.style.color = 'var(--color-text-dark)';
+ infoEl.style.marginTop = '4px';
+ infoEl.textContent = formatearTiempoRestanteEstado(estado.fecha || ahora);
+ fila.appendChild(infoEl);
+
+ const btnBorrar = document.createElement('button');
+ btnBorrar.type = 'button';
+ btnBorrar.className = 'btn-eliminar-producto';
+ btnBorrar.style.marginTop = '8px';
+ btnBorrar.textContent = '🗑 Borrar estado';
+ btnBorrar.onclick = async () => {
+ if (!confirm('¿Borrar este estado?')) return;
+ try {
+ await remove(ref(db, `negocios/${negocioId}/estados/${estado.id}`));
+ cargarYPintarEstados();
+ } catch (errorBorrar) {
+ console.error('Error al borrar el estado:', errorBorrar);
+ alert('No se pudo borrar el estado.');
+ }
+ };
+ fila.appendChild(btnBorrar);
+
+ contenedorLista.appendChild(fila);
+ });
+
+ } catch (errorEstados) {
+ console.error('Error al cargar los estados de la tienda:', errorEstados);
+ contenedorLista.innerHTML = '<p class="no-products-message">No se pudieron cargar los estados.</p>';
+ }
+ };
+
+ btnPublicarEstado.onclick = async () => {
+ const texto = textareaEstado.value.trim();
+ const fotoFile = inputFotoEstado.files[0];
+
+ if (!texto && !fotoFile) {
+ alert('Escribe un texto o sube una foto o video para publicar un estado.');
+ return;
+ }
+
+ const esVideoEstado = !!(fotoFile && fotoFile.type && fotoFile.type.startsWith('video/'));
+ if (esVideoEstado) {
+ if (fotoFile.size > 25 * 1024 * 1024) {
+ alert('El video pesa demasiado (máximo 25 MB). Sube uno más corto o de menor calidad.');
+ return;
+ }
+ // Duración máxima 30 s (si el navegador no logra leerla, se deja pasar por tamaño)
+ const duracionVideo = await new Promise((resolve) => {
+ try {
+ const v = document.createElement('video');
+ const urlTmp = URL.createObjectURL(fotoFile);
+ const fin = (dur) => { URL.revokeObjectURL(urlTmp); resolve(dur); };
+ v.preload = 'metadata';
+ v.onloadedmetadata = () => fin(isFinite(v.duration) ? v.duration : null);
+ v.onerror = () => fin(null);
+ setTimeout(() => fin(null), 5000);
+ v.src = urlTmp;
+ } catch (errDur) { resolve(null); }
+ });
+ if (duracionVideo !== null && duracionVideo > 30) {
+ alert('El video es muy largo (dura ' + Math.round(duracionVideo) + ' s). El máximo es 30 segundos.');
+ return;
+ }
+ }
+
+ btnPublicarEstado.disabled = true;
+ btnPublicarEstado.textContent = 'Publicando...';
+
+ let imagenURL = null;
+ let videoURL = null;
+ try {
+ if (fotoFile) {
+ const imageRef = storageRef(storage, `negocios/${negocioId}/estados/${Date.now()}_${fotoFile.name}`);
+ await Promise.race([
+ uploadBytesResumable(imageRef, fotoFile),
+ new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado subiendo ' + (esVideoEstado ? 'el video' : 'la foto') + ' (revisa tu conexión)')), esVideoEstado ? 120000 : 30000))
+ ]);
+ const urlSubida = await getDownloadURL(imageRef);
+ if (esVideoEstado) { videoURL = urlSubida; } else { imagenURL = urlSubida; }
+ }
+
+ const nuevoEstado = {
+ texto: texto || null,
+ imagen: imagenURL,
+ video: videoURL,
+ fecha: Date.now()
+ };
+ await push(ref(db, `negocios/${negocioId}/estados`), nuevoEstado);
+
+ textareaEstado.value = '';
+ inputFotoEstado.value = '';
+ cargarYPintarEstados();
+ } catch (errorPublicar) {
+ console.error('Error al publicar el estado:', errorPublicar);
+ alert('No se pudo publicar el estado (' + (errorPublicar.code || errorPublicar.message || 'error desconocido') + ').');
+ } finally {
+ btnPublicarEstado.disabled = false;
+ btnPublicarEstado.textContent = 'Publicar Estado';
+ }
+ };
+
+ cargarYPintarEstados();
+ }
+
  // Editor de horario de atención al público (días de la semana + hora de apertura/cierre)
  const DIAS_SEMANA_HORARIO = [
  { id: 'lunes', label: 'Lunes' },
@@ -14782,6 +15067,8 @@ ${motivo}`;
  
  actualizarCarritoUI();
  
+ // Si el modal ya estaba abierto, es navegación dentro de la misma tienda (ej. "Volver a secciones"): no se reabren los estados.
+ const _yaEstabaEnTienda = document.getElementById('modal-ver-tienda').style.display === 'block';
  // Mostrar modal
  document.getElementById('modal-ver-tienda').style.display = 'block';
  document.getElementById('nombre-tienda-ver').textContent = nombreTienda;
@@ -14797,6 +15084,8 @@ ${motivo}`;
  // Migra tiendas viejas (sin `secciones`) automáticamente
  const secciones = await migrarTiendaASeccionesSiNecesario(negocioId, tiendaData);
  renderSeccionesClienteTienda(negocioId, nombreTienda, secciones);
+ // Al ENTRAR a la tienda se abren primero los estados del día (banner al centro).
+ if (!_yaEstabaEnTienda) abrirEstadosDelDiaAlEntrar();
  
  // Agregar botón flotante del carrito si no existe
  if (!document.getElementById('carrito-flotante')) {
@@ -14809,6 +15098,266 @@ ${motivo}`;
  }
  }
 
+
+ // ==================== ESTADOS DE LA TIENDA (vista del cliente) ====================
+ // La "publicidad" es propia de cada local: solo se ve al ENTRAR a la tienda,
+ // nunca regada por el resto de la app. Al entrar se abre SOLA, al centro de la
+ // pantalla, como banner: se desliza a los lados para pasar de uno a otro (foto
+ // o video corto) y se cierra con la X. Además queda una tira de miniaturas
+ // arriba de las secciones para volver a abrirlos.
+ // Lee negocios/{id}/estados (ya viene dentro de tiendaActual) y oculta los que
+ // pasaron de 23 h aunque todavía no los haya borrado la limpieza automática.
+ function obtenerEstadosActivosTienda() {
+ const obj = (typeof tiendaActual !== 'undefined' && tiendaActual && tiendaActual.estados) ? tiendaActual.estados : null;
+ if (!obj) return [];
+ const ahora = Date.now();
+ return Object.entries(obj)
+ .map(([id, e]) => ({ id, ...(e || {}) }))
+ .filter(e => (e.texto || e.imagen || e.video) && (ahora - (e.fecha || 0)) <= ESTADOS_DURACION_MS)
+ .sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
+ }
+
+ function abrirEstadosDelDiaAlEntrar() {
+ try {
+ const activos = obtenerEstadosActivosTienda();
+ if (activos.length > 0) abrirVisorEstadosTienda(activos, 0);
+ } catch (errAuto) {
+ console.warn('No se pudieron abrir los estados al entrar a la tienda:', errAuto);
+ }
+ }
+
+ function agregarEstadosClienteTienda(contenedor) {
+ try {
+ document.getElementById('estados-cliente-tienda')?.remove();
+ if (!contenedor) return;
+ const activos = obtenerEstadosActivosTienda();
+ if (activos.length === 0) return;
+
+ const bloque = document.createElement('div');
+ bloque.id = 'estados-cliente-tienda';
+ bloque.style.gridColumn = '1 / -1';
+ bloque.style.width = '100%';
+ bloque.style.marginBottom = '16px';
+
+ const titulo = document.createElement('h4');
+ titulo.style.color = 'var(--color-primary)';
+ titulo.style.margin = '0 0 8px';
+ titulo.textContent = '💬 Estados de la tienda';
+ bloque.appendChild(titulo);
+
+ const tira = document.createElement('div');
+ tira.style.display = 'flex';
+ tira.style.gap = '10px';
+ tira.style.overflowX = 'auto';
+ tira.style.paddingBottom = '6px';
+
+ activos.forEach((estado, idx) => {
+ const item = document.createElement('div');
+ item.style.flex = '0 0 auto';
+ item.style.width = '92px';
+ item.style.height = '124px';
+ item.style.borderRadius = '12px';
+ item.style.border = '2px solid var(--color-primary)';
+ item.style.overflow = 'hidden';
+ item.style.position = 'relative';
+ item.style.cursor = 'pointer';
+ item.style.background = '#2a2a2a';
+ if (estado.imagen) {
+ const img = document.createElement('img');
+ img.src = estado.imagen;
+ img.alt = 'Estado';
+ img.style.width = '100%';
+ img.style.height = '100%';
+ img.style.objectFit = 'cover';
+ item.appendChild(img);
+ } else if (estado.video) {
+ const vid = document.createElement('video');
+ vid.src = estado.video + '#t=0.1';
+ vid.muted = true;
+ vid.preload = 'metadata';
+ vid.setAttribute('playsinline', '');
+ vid.style.width = '100%';
+ vid.style.height = '100%';
+ vid.style.objectFit = 'cover';
+ vid.style.pointerEvents = 'none';
+ item.appendChild(vid);
+ const play = document.createElement('div');
+ play.textContent = '▶';
+ play.style.cssText = 'position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,0.65);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;';
+ item.appendChild(play);
+ } else {
+ const t = document.createElement('div');
+ t.style.padding = '8px';
+ t.style.fontSize = '12px';
+ t.style.color = '#fff';
+ t.style.overflow = 'hidden';
+ t.textContent = estado.texto;
+ item.appendChild(t);
+ }
+ item.onclick = () => abrirVisorEstadosTienda(activos, idx);
+ tira.appendChild(item);
+ });
+ bloque.appendChild(tira);
+ contenedor.prepend(bloque);
+ } catch (errEstadosCliente) {
+ console.warn('No se pudieron mostrar los estados de la tienda:', errEstadosCliente);
+ }
+ }
+
+ // Banner al centro de la pantalla: desliza a los lados (o usa ‹ ›) para pasar
+ // de un estado a otro, X para cerrar. Acepta foto, video corto y/o texto.
+ function abrirVisorEstadosTienda(lista, indiceInicial) {
+ document.getElementById('visor-estados-tienda')?.remove();
+ if (!lista || lista.length === 0) return;
+ if (!document.getElementById('visor-estados-css')) {
+ const st = document.createElement('style');
+ st.id = 'visor-estados-css';
+ st.textContent = '@keyframes estadoEntraDer{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}@keyframes estadoEntraIzq{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}';
+ document.head.appendChild(st);
+ }
+ let indice = Math.min(Math.max(indiceInicial || 0, 0), lista.length - 1);
+
+ const overlay = document.createElement('div');
+ overlay.id = 'visor-estados-tienda';
+ overlay.style.cssText = 'position:fixed;inset:0;z-index:10300;background:rgba(0,0,0,0.78);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+
+ const tarjeta = document.createElement('div');
+ tarjeta.style.cssText = 'position:relative;width:100%;max-width:420px;max-height:88vh;background:#1c1c1c;border:2px solid var(--color-primary);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;touch-action:pan-y;box-shadow:0 10px 40px rgba(0,0,0,0.6);';
+ overlay.appendChild(tarjeta);
+
+ const barra = document.createElement('div');
+ barra.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 12px;';
+ const contador = document.createElement('span');
+ contador.style.cssText = 'color:#ccc;font-size:13px;';
+ const btnCerrar = document.createElement('button');
+ btnCerrar.type = 'button';
+ btnCerrar.setAttribute('aria-label', 'Cerrar');
+ btnCerrar.textContent = '×';
+ btnCerrar.style.cssText = 'background:#333;color:#fff;border:none;border-radius:50%;width:34px;height:34px;font-size:22px;line-height:1;cursor:pointer;';
+ barra.appendChild(contador);
+ barra.appendChild(btnCerrar);
+ tarjeta.appendChild(barra);
+
+ const cuerpo = document.createElement('div');
+ cuerpo.style.cssText = 'flex:1;overflow-y:auto;padding:0 12px 6px;text-align:center;';
+ tarjeta.appendChild(cuerpo);
+
+ const puntos = document.createElement('div');
+ puntos.style.cssText = 'display:flex;justify-content:center;gap:6px;padding:6px 0 12px;';
+ tarjeta.appendChild(puntos);
+
+ const estiloFlecha = 'position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:34px;height:34px;font-size:20px;cursor:pointer;';
+ const btnPrev = document.createElement('button');
+ const btnNext = document.createElement('button');
+ btnPrev.type = 'button'; btnNext.type = 'button';
+ btnPrev.textContent = '‹'; btnNext.textContent = '›';
+ btnPrev.style.cssText = estiloFlecha + 'left:6px;';
+ btnNext.style.cssText = estiloFlecha + 'right:6px;';
+ if (lista.length > 1) { tarjeta.appendChild(btnPrev); tarjeta.appendChild(btnNext); }
+
+ const hace = (fecha) => {
+ const min = Math.max(0, Math.floor((Date.now() - (fecha || 0)) / 60000));
+ return min < 60 ? `hace ${min} min` : `hace ${Math.floor(min / 60)} h`;
+ };
+ const pausarVideos = () => { cuerpo.querySelectorAll('video').forEach(v => { try { v.pause(); } catch (e) {} }); };
+
+ const pintar = (dir) => {
+ pausarVideos();
+ const e = lista[indice];
+ cuerpo.innerHTML = '';
+ contador.textContent = `${indice + 1} / ${lista.length}`;
+ cuerpo.style.animation = 'none';
+ void cuerpo.offsetWidth;
+ cuerpo.style.animation = dir ? (dir > 0 ? 'estadoEntraDer 0.22s ease' : 'estadoEntraIzq 0.22s ease') : 'none';
+
+ let videoEl = null;
+ if (e.imagen) {
+ const img = document.createElement('img');
+ img.src = e.imagen;
+ img.alt = 'Estado';
+ img.style.cssText = 'max-width:100%;max-height:52vh;border-radius:10px;object-fit:contain;background:#000;';
+ cuerpo.appendChild(img);
+ }
+ if (e.video) {
+ videoEl = document.createElement('video');
+ videoEl.src = e.video;
+ videoEl.controls = true;
+ videoEl.loop = true;
+ videoEl.muted = true; // los navegadores solo dejan autoplay en silencio; el cliente activa el sonido con los controles
+ videoEl.preload = 'auto';
+ videoEl.setAttribute('playsinline', '');
+ videoEl.style.cssText = 'width:100%;max-height:52vh;border-radius:10px;background:#000;';
+ cuerpo.appendChild(videoEl);
+ }
+ if (e.texto) {
+ const t = document.createElement('p');
+ t.style.cssText = 'color:#fff;font-size:16px;margin:12px 0 0;white-space:pre-wrap;word-break:break-word;';
+ t.textContent = e.texto;
+ cuerpo.appendChild(t);
+ }
+ const h = document.createElement('p');
+ h.style.cssText = 'color:#999;font-size:12px;margin:8px 0 0;';
+ h.textContent = hace(e.fecha);
+ cuerpo.appendChild(h);
+ if (videoEl) { const pr = videoEl.play(); if (pr && pr.catch) pr.catch(() => {}); }
+
+ puntos.innerHTML = '';
+ if (lista.length > 1) {
+ lista.forEach((_, n) => {
+ const d = document.createElement('span');
+ d.style.cssText = `width:7px;height:7px;border-radius:50%;background:${n === indice ? 'var(--color-primary)' : '#555'};`;
+ puntos.appendChild(d);
+ });
+ }
+ btnPrev.style.visibility = indice > 0 ? 'visible' : 'hidden';
+ btnNext.style.visibility = indice < lista.length - 1 ? 'visible' : 'hidden';
+ };
+
+ const ir = (dir) => {
+ const nuevo = indice + dir;
+ if (nuevo < 0 || nuevo >= lista.length) return;
+ indice = nuevo;
+ pintar(dir);
+ };
+
+ const onTecla = (ev) => {
+ if (ev.key === 'Escape') cerrar();
+ else if (ev.key === 'ArrowRight') ir(1);
+ else if (ev.key === 'ArrowLeft') ir(-1);
+ };
+ const cerrar = () => {
+ pausarVideos();
+ document.removeEventListener('keydown', onTecla);
+ overlay.remove();
+ };
+ btnCerrar.onclick = cerrar;
+ btnPrev.onclick = () => ir(-1);
+ btnNext.onclick = () => ir(1);
+ document.addEventListener('keydown', onTecla);
+
+ // Deslizar con el dedo a izquierda/derecha (se ignora si el toque empieza en la
+ // barra de controles del video, para no chocar con la barra de avance)
+ let x0 = null, y0 = null;
+ tarjeta.addEventListener('touchstart', (ev) => {
+ const t = ev.touches[0];
+ x0 = t.clientX; y0 = t.clientY;
+ if (ev.target && ev.target.tagName === 'VIDEO') {
+ const r = ev.target.getBoundingClientRect();
+ if (t.clientY > r.bottom - 56) x0 = null;
+ }
+ }, { passive: true });
+ tarjeta.addEventListener('touchend', (ev) => {
+ if (x0 === null) return;
+ const t = ev.changedTouches[0];
+ const dx = t.clientX - x0, dy = t.clientY - y0;
+ x0 = null;
+ if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2) ir(dx < 0 ? 1 : -1);
+ }, { passive: true });
+
+ pintar(0);
+ document.body.appendChild(overlay);
+ }
+
  // Muestra la grilla de secciones de la tienda para el cliente final
  function renderSeccionesClienteTienda(negocioId, nombreTienda, secciones) {
  const listaProductosVer = document.getElementById('lista-productos-ver');
@@ -14817,6 +15366,7 @@ ${motivo}`;
 
  if (idsOrdenados.length === 0) {
  listaProductosVer.innerHTML = '<p class="no-products-message">Esta tienda aún no tiene productos disponibles.</p>';
+ agregarEstadosClienteTienda(listaProductosVer);
  return;
  }
 
@@ -14843,6 +15393,7 @@ ${motivo}`;
  `;
  listaProductosVer.appendChild(card);
  });
+ agregarEstadosClienteTienda(listaProductosVer);
  }
 
  // Muestra los productos de una sección puntual para que el cliente los agregue al pedido
@@ -17430,6 +17981,9 @@ Detalles técnicos en la consola (F12)`;
  </button>
  <button type="button" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin(); if(window.miTiendaIdActual) abrirReferidosMiTienda(window.miTiendaIdActual);">
  <span>🎁 Referidos</span>
+ </button>
+ <button type="button" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin(); if(window.miTiendaIdActual) abrirEstadosMiTienda(window.miTiendaIdActual);">
+ <span>💬 Estados</span>
  </button>
  <button type="button" id="btn-menu-ubicacion-tienda" class="menu-lateral-item" onclick="cerrarMenuLateralPanelAdmin();">
  📍 Configurar ubicación de mi tienda

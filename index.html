@@ -5128,6 +5128,15 @@
  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
  
+<!-- DEBUG: solo se activa si la URL trae ?debug=1, así no molesta a los clientes -->
+<script>
+if (new URLSearchParams(window.location.search).get('debug') === '1') {
+ const s = document.createElement('script');
+ s.src = 'https://cdn.jsdelivr.net/npm/eruda';
+ s.onload = () => eruda.init();
+ document.head.appendChild(s);
+}
+</script>
 
 <!-- ============================================================
      SECCIÓN 9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)

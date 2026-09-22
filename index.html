@@ -14392,8 +14392,8 @@ ${motivo}`;
 
  const esVideoEstado = !!(fotoFile && fotoFile.type && fotoFile.type.startsWith('video/'));
  if (esVideoEstado) {
- if (fotoFile.size > 25 * 1024 * 1024) {
- alert('El video pesa demasiado (máximo 25 MB). Sube uno más corto o de menor calidad.');
+ if (fotoFile.size > 80 * 1024 * 1024) {
+ alert('El video pesa demasiado (máximo 80 MB). Sube uno más corto o de menor calidad.');
  return;
  }
  // Duración máxima 30 s (si el navegador no logra leerla, se deja pasar por tamaño)
@@ -14425,7 +14425,7 @@ ${motivo}`;
  const imageRef = storageRef(storage, `negocios/${negocioId}/estados/${Date.now()}_${fotoFile.name}`);
  await Promise.race([
  uploadBytesResumable(imageRef, fotoFile),
- new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado subiendo ' + (esVideoEstado ? 'el video' : 'la foto') + ' (revisa tu conexión)')), esVideoEstado ? 120000 : 30000))
+ new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado subiendo ' + (esVideoEstado ? 'el video' : 'la foto') + ' (revisa tu conexión)')), esVideoEstado ? 180000 : 60000))
  ]);
  const urlSubida = await getDownloadURL(imageRef);
  if (esVideoEstado) { videoURL = urlSubida; } else { imagenURL = urlSubida; }

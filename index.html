@@ -15799,6 +15799,48 @@ ${motivo}`;
  if (inputFoto) inputFoto.value = '';
  }
 
+ // ==================== PUSH DE CHAT DE TIENDA: ABRIR EL CHAT AL TOCAR LA NOTIFICACIÓN ====================
+ // La Cloud Function notificarChatNegocio manda un push con data.tipo = 'chat_negocio'
+ // (negocioId, clienteUID, rolDestino, nombreCliente, nombreTienda). Al tocarlo se
+ // abre ese chat; si la app estaba cerrada, se espera a que termine el login.
+ function _abrirChatNegocioDesdePush(data) {
+ if (!data || data.tipo !== 'chat_negocio' || !data.negocioId || !data.clienteUID) return;
+ const intentar = (n) => {
+ if (!window.currentUserID) {
+ if (n < 40) setTimeout(() => intentar(n + 1), 500);
+ return;
+ }
+ if (data.rolDestino === 'Negocio') {
+ abrirHiloChatNegocio(data.negocioId, data.clienteUID, 'Negocio', `Chat con ${data.nombreCliente || 'cliente'}`);
+ } else if (data.clienteUID === window.currentUserID) {
+ abrirHiloChatNegocio(data.negocioId, window.currentUserID, 'Cliente', `Hablar con ${data.nombreTienda || 'la tienda'}`);
+ }
+ };
+ intentar(0);
+ }
+
+ (function _registrarTapPushChatNegocio() {
+ let intentos = 0;
+ const timer = setInterval(() => {
+ intentos++;
+ const fm = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseMessaging;
+ const nativo = typeof window._nativoDisponiblePush === 'function' && window._nativoDisponiblePush();
+ if (fm && nativo) {
+ clearInterval(timer);
+ try {
+ fm.addListener('notificationActionPerformed', (ev) => {
+ const data = (ev && ev.notification && ev.notification.data) || {};
+ _abrirChatNegocioDesdePush(data);
+ });
+ } catch (errTap) {
+ console.warn('No se pudo registrar el toque de notificaciones del chat de tienda:', errTap);
+ }
+ } else if (intentos > 20) {
+ clearInterval(timer);
+ }
+ }, 500);
+ })();
+
  function abrirEstadosDelDiaAlEntrar() {
  try {
  const activos = obtenerEstadosActivosTienda();

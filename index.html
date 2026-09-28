@@ -3322,11 +3322,61 @@
  pointer-events: none;
 }
 /* ============================================================
+   OVERLAY "SIN CONEXIÓN" (pantalla propia en vez del error del navegador)
+   ============================================================ */
+#overlaySinConexion {
+ display: none;
+ position: fixed;
+ inset: 0;
+ z-index: 99999;
+ background: #111827;
+ color: #fff;
+ flex-direction: column;
+ align-items: center;
+ justify-content: center;
+ text-align: center;
+ padding: 32px;
+}
+#overlaySinConexion.visible { display: flex; }
+#overlaySinConexion .icono-sin-conexion {
+ font-size: 64px;
+ margin-bottom: 16px;
+}
+#overlaySinConexion h2 {
+ font-size: 20px;
+ margin: 0 0 10px;
+ color: #F59E0B;
+}
+#overlaySinConexion p {
+ font-size: 14px;
+ color: #9ca3af;
+ max-width: 320px;
+ margin: 0 0 24px;
+}
+#overlaySinConexion button {
+ background: #F59E0B;
+ color: #111827;
+ border: none;
+ border-radius: 10px;
+ padding: 12px 28px;
+ font-size: 15px;
+ font-weight: 700;
+ cursor: pointer;
+}
+/* ============================================================
    FIN DEL BLOQUE CSS
    ============================================================ */
   </style>
 </head>
 <body>
+
+<!-- OVERLAY "SIN CONEXIÓN" -->
+<div id="overlaySinConexion">
+ <div class="icono-sin-conexion">📡</div>
+ <h2>Sin conexión a internet</h2>
+ <p>No pudimos conectarnos. Verifica tu wifi o tus datos móviles e intenta de nuevo.</p>
+ <button onclick="window.location.reload()">Reintentar</button>
+</div>
 
 <!-- ============================================================
      SECCIÓN 1 · MENÚ HAMBURGUESA, CAMPANITA Y PANEL DE NOTIFICACIONES
@@ -4845,9 +4895,9 @@
 
 
  <!-- Ruleta canvas con marco decorativo -->
- <div style="text-align:center; margin-bottom:20px; position:relative;">
+ <div style="text-align:center; margin-bottom:20px; position:relative; touch-action: pan-y;">
  <!-- Anillo exterior decorativo -->
- <div style="position:relative; display:inline-block;">
+ <div style="position:relative; display:inline-block; touch-action: pan-y;">
  <div style="position:absolute; inset:-8px; border-radius:50%; background:conic-gradient(#4f46e5,#7c3aed,#9333ea,#db2777,#f59e0b,#4f46e5); padding:4px; border-radius:50%;">
  <div style="width:100%; height:100%; background:#0f0c29; border-radius:50%;"></div>
  </div>
@@ -4858,7 +4908,7 @@
  <polygon points="12,22 4,4 20,4" fill="#fcd34d"/>
  </svg>
  </div>
- <canvas id="ruleta-canvas" width="260" height="260" style="display:block; position:relative; z-index:1; border-radius:50%;"></canvas>
+ <canvas id="ruleta-canvas" width="260" height="260" style="display:block; position:relative; z-index:1; border-radius:50%; touch-action: pan-y;"></canvas>
  </div>
  </div>
 
@@ -24665,5 +24715,26 @@ window._tiempoRecogidaSeleccionado = { minutos: 0, etiqueta: 'Ya está para reco
 
 </script>
 
+<script>
+// ============================================================
+// SERVICE WORKER + PANTALLA PROPIA DE "SIN CONEXIÓN"
+// ============================================================
+if ('serviceWorker' in navigator) {
+ window.addEventListener('load', function () {
+ navigator.serviceWorker.register('./sw.js').catch(function (errSW) {
+ console.warn('No se pudo registrar el service worker:', errSW);
+ });
+ });
+}
+
+function _mostrarOverlaySinConexion(mostrar) {
+ const overlay = document.getElementById('overlaySinConexion');
+ if (!overlay) return;
+ overlay.classList.toggle('visible', mostrar);
+}
+window.addEventListener('offline', function () { _mostrarOverlaySinConexion(true); });
+window.addEventListener('online', function () { _mostrarOverlaySinConexion(false); });
+if (!navigator.onLine) _mostrarOverlaySinConexion(true);
+</script>
 </body>
 </html>

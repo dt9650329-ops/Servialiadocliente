@@ -15669,6 +15669,8 @@ ${motivo}`;
  abrirHiloChatNegocio(negocioId, clienteUID, 'Negocio', `Chat con ${nombreCliente || 'cliente'}`);
  };
 
+ window.abrirHiloChatNegocio = abrirHiloChatNegocio;
+
  window.cerrarChatNegocio = function() {
  if (_unsubChatNegocio) { _unsubChatNegocio(); _unsubChatNegocio = null; }
  if (_unsubPerfilClienteChat) { _unsubPerfilClienteChat(); _unsubPerfilClienteChat = null; }
@@ -24342,6 +24344,16 @@ window.sbEsperarAceptacionPedido = function (pedidoId, codigo) {
  _panelOpen = false;
  document.getElementById('notif-panel').classList.remove('open');
  if (typeof changeTab === 'function') changeTab('tracking');
+ } else if (n.action === 'chat_negocio' && n.negocioId && n.clienteUID) {
+ _panelOpen = false;
+ document.getElementById('notif-panel').classList.remove('open');
+ const _soyCliente = (n.clienteUID === window.currentUserID);
+ if (typeof window.abrirHiloChatNegocio === 'function') {
+ window.abrirHiloChatNegocio(
+ n.negocioId, n.clienteUID, _soyCliente ? 'Cliente' : 'Negocio',
+ _soyCliente ? `Hablar con ${n.nombreTienda || 'la tienda'}` : `Chat con ${n.nombreCliente || 'cliente'}`
+ );
+ }
  } else if (n.action === 'ver_compras' && n.negocioId) {
  _panelOpen = false;
  document.getElementById('notif-panel').classList.remove('open');
@@ -24369,7 +24381,7 @@ window.agregarNotificacion = function(title, body, type, action, extra) {
  // encima), esto la muestra también en la barra de notificaciones de Android.
  try {
  const esCapacitorPush = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
- if (esCapacitorPush && window.Capacitor.Plugins.LocalNotifications && document.hidden) {
+ if (esCapacitorPush && window.Capacitor.Plugins.LocalNotifications && document.hidden && !(extra && extra.sinPushSistema)) {
  const tonoActual = parseInt(localStorage.getItem('servi_tono_notif') || '1');
  window.Capacitor.Plugins.LocalNotifications.schedule({
  notifications: [{
@@ -24766,7 +24778,15 @@ window.cerrarVisorImg = function() {
  localStorage.setItem(vistasKey, JSON.stringify(vistas));
  const n = child.val();
  const titulo = n.titulo || 'Notificación';
+ if (n.tipo === 'chat_negocio' && n.negocioId && n.clienteUID) {
+ window.agregarNotificacion(titulo, n.mensaje || n.texto || '', 'chat', 'chat_negocio', {
+ negocioId: n.negocioId, clienteUID: n.clienteUID,
+ nombreCliente: n.nombreCliente || '', nombreTienda: n.nombreTienda || '',
+ sinPushSistema: true
+ });
+ } else {
  window.agregarNotificacion('🔔 ' + titulo, n.mensaje || n.texto || '', 'admin', null, {});
+ }
  setTimeout(_refrescarBonosUI, 1500);
  }
 

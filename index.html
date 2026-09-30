@@ -5240,6 +5240,22 @@
      cuando la pestaña ServiBot estaba activa. -->
  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+  <!-- Capa de mapa estilo Mapbox Light (usada por todos los mapas del cliente) -->
+  <script>
+    window.MAPBOX_TOKEN = 'pk.eyJ1IjoiZGllZ29mdG9ycmVzYSIsImEiOiJjbXVvYnZjbjcwMTMxMnpvbXhkMWVlMTFzIn0.omny2SoJ26gFs7XKsbNc5A';
+    (function(){var st=document.createElement('style');st.textContent='.leaflet-tile-pane{filter:saturate(.8)}';document.head.appendChild(st);})(); window.crearCapaMapbox = function () {
+      if (!window.MAPBOX_TOKEN || window.MAPBOX_TOKEN.indexOf('pk.') !== 0) {
+        console.warn('⚠️ Sin token de Mapbox: usando OpenStreetMap de respaldo');
+        return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors', maxZoom: 19
+        });
+      }
+      return L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=' + window.MAPBOX_TOKEN, {
+        tileSize: 512, zoomOffset: -1, maxZoom: 19,
+        attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      });
+    };
+  </script>
  
 <!-- DEBUG: solo se activa si la URL trae ?debug=1, así no molesta a los clientes -->
 <script>
@@ -9135,10 +9151,7 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  }).setView(defaultCoords, 13);
  window._leafletMap = map; // exponer para listener SOS
 
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
- attribution: '© OpenStreetMap contributors',
- maxZoom: 19
- }).addTo(map);
+ window.crearCapaMapbox().addTo(map);
 
  setTimeout(() => {
  if (map) {
@@ -20877,9 +20890,7 @@ window._borrarContactoLocalDesdeDetalle = async function() {
  setTimeout(() => {
  if (!_mapPedidoT) {
  _mapPedidoT = L.map('mapa-mapeador-pedido-tercero').setView([4.5339, -75.6811], 14);
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
- attribution: '© OpenStreetMap', maxZoom: 19
- }).addTo(_mapPedidoT);
+ window.crearCapaMapbox().addTo(_mapPedidoT);
  _mapPedidoT.on('click', function(e) { fijarPinPedidoT(e.latlng.lat, e.latlng.lng); });
  } else {
  _mapPedidoT.invalidateSize();
@@ -21063,9 +21074,7 @@ window._borrarContactoLocalDesdeDetalle = async function() {
  setTimeout(() => {
  if (!_mapUbicPend) {
  _mapUbicPend = L.map('mapa-mapeador-ubicacion-pendiente').setView([4.5339, -75.6811], 14);
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
- attribution: '© OpenStreetMap', maxZoom: 19
- }).addTo(_mapUbicPend);
+ window.crearCapaMapbox().addTo(_mapUbicPend);
  _mapUbicPend.on('click', function(e) { fijarPinUbicPend(e.latlng.lat, e.latlng.lng); });
  } else {
  _mapUbicPend.invalidateSize();
@@ -21263,9 +21272,7 @@ document.getElementById('modal-sugerir-barrio')?.addEventListener('click', e => 
  setTimeout(() => {
  if (!_mapSugerencia) {
  _mapSugerencia = L.map('mapa-mapeador-sugerencia').setView([4.5339, -75.6811], 14);
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
- attribution: '© OpenStreetMap', maxZoom: 19
- }).addTo(_mapSugerencia);
+ window.crearCapaMapbox().addTo(_mapSugerencia);
 
  _mapSugerencia.on('click', function(e) {
  fijarPinSugerencia(e.latlng.lat, e.latlng.lng);
@@ -21849,7 +21856,7 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
 
  // RESPUESTA POR DEFECTO
  ultimoTema = null;
- return `No estoy seguro de haber entendido eso${nombre ? ', ' + nombre : ''}.\n\nPuedo ayudarte con:\n• **Precios** — escribe "precios"\n• **Zonas** — escribe "zonas"\n• **Tiempos** — escribe "cuánto tarda"\n• **Pedir** — escribe "cómo hago un pedido"\n• **Mi pedido** — escribe "seguimiento"\n\nO si prefieres hablar con una persona, usa el **chat de soporte** o escríbenos al WhatsApp.`;
+ return `Mmm, no alcancé a entender bien${nombre ? ', ' + nombre : ''}.\n\nCuéntame con más detalle qué necesitas: ¿qué hay que recoger, dónde y a dónde lo llevamos? Así te ayudo mejor.\n\nTambién puedo ayudarte con:\n• **Precios** — escribe "precios"\n• **Zonas** — escribe "zonas"\n• **Tiempos** — escribe "cuánto tarda"\n• **Pedir** — escribe "cómo hago un pedido"\n• **Mi pedido** — escribe "seguimiento"\n\nO si prefieres hablar con una persona, usa el **chat de soporte** o escríbenos al WhatsApp.`;
  }
 
  // 
@@ -23068,7 +23075,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  doubleClickZoom: false,
  touchZoom: false,
  }).setView([datosUbicacion.lat, datosUbicacion.lng], 15);
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapa);
+ window.crearCapaMapbox().addTo(mapa);
  L.marker([datosUbicacion.lat, datosUbicacion.lng]).addTo(mapa);
  window._sbUbicacionMapa = mapa;
  } catch (e) {
@@ -24114,9 +24121,7 @@ window.sbEsperarAceptacionPedido = function (pedidoId, codigo) {
  setTimeout(() => {
  if (!_mapFavor) {
  _mapFavor = L.map('mapa-mapeador-favor').setView([4.5339, -75.6811], 14);
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
- attribution: '© OpenStreetMap', maxZoom: 19
- }).addTo(_mapFavor);
+ window.crearCapaMapbox().addTo(_mapFavor);
 
  _mapFavor.on('click', function(e) {
  const lat = parseFloat(e.latlng.lat.toFixed(6));

@@ -22040,7 +22040,27 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  // pasa por servibotChat (Gemini). El motor de reglas viejo (TEMAS /
  // obtenerRespuesta) queda solo como red de seguridad si la IA falla.
  // imagenesAdjuntas: arreglo de 0 a 3 { base64, mimeType, previewUrl } (ruteo múltiple).
- async function obtenerRespuestaAsync(msg, imagenesAdjuntas) {
+ // 🔧 FIX: cuando la IA (servibotChat) falla, NO se responde con el motor de
+  // reglas a cualquier mensaje — antes, un pedido como "domicilio para Camila
+  // en Mercedes del norte" caía en la regla de 'zonas' (por la palabra "norte")
+  // y contestaba la lista de zonas en vez de procesar el pedido. Ahora el
+  // motor de reglas solo se usa para los botones rápidos (Precios, Zonas...).
+  // Todo lo demás recibe un aviso claro de reintentar.
+  const _FAQ_BOTONES_RAPIDOS = [
+    '¿Cuánto cuesta un domicilio?',
+    '¿Cuáles son las zonas de entrega?',
+    '¿Cuánto se demora el repartidor?',
+    '¿Cómo hago un pedido?',
+    '¿Cuál es el estado de mi pedido?'
+  ].map(function (t) { return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); });
+
+  function respuestaFalloIA(texto) {
+    const t = String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    if (_FAQ_BOTONES_RAPIDOS.indexOf(t) !== -1) return obtenerRespuesta(texto);
+    return 'ServiBot está con mucha demanda en este momento y no pude procesar tu solicitud. Intenta de nuevo en unos segundos 🙏\n\nSi es urgente, también puedes pedir tu domicilio desde la pestaña **"Servicio"**.';
+  }
+
+  async function obtenerRespuestaAsync(msg, imagenesAdjuntas) {
  const textoParaReglas = msg || '';
  const hayImagenes = Array.isArray(imagenesAdjuntas) && imagenesAdjuntas.length > 0;
  // Si vienen fotos adjuntas, se salta el motor de reglas por palabras clave
@@ -22067,7 +22087,7 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  // (Si venían fotos, el motor de reglas no las puede leer, así que se avisa.)
  return hayImagenes
  ? ' No pude leer la' + (imagenesAdjuntas.length > 1 ? 's fotos' : ' foto') + ' en este momento (sin conexión con el asistente). Intenta de nuevo en un momento o escribe los datos directamente.'
- : obtenerRespuesta(textoParaReglas);
+ : respuestaFalloIA(textoParaReglas);
  }
  }
  return obtenerRespuesta(textoParaReglas);

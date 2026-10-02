@@ -7449,6 +7449,8 @@ const TONOS_NOTIFICACION = [
 
  // Mostrar modal de confirmación antes de enviar
  window.solicitarDomicilio = async function() {
+ if (window._bloqueaServicioCerrado && window._bloqueaServicioCerrado()) return;
+
 
  // 🔒 BLOQUEO REAL — el cliente debe estar activado por el admin para poder pedir
  if (window._puedeUsarServicio === false) {
@@ -11298,6 +11300,44 @@ if (dentroDeHorario) {
    }
  }
  verificarVersionObligatoria();
+ 
+ // 🌙 CIERRE DE SERVICIO (2026-10-02): el admin (por la IA admin) puede cerrar el
+ // servicio fuera de turno. Se escucha config/servicio en vivo: mientras
+ // cerrado === true se muestra un aviso arriba y se bloquean los botones de
+ // pedir (domicilio, compra en tienda). Al reabrir, vuelve todo solo, sin
+ // recargar. Las cuentas siguen exactamente igual (no se toca "activado").
+ window._servicioCerrado = false;
+ window._servicioCerradoMsg = '';
+ window._bloqueaServicioCerrado = function() {
+   if (window._servicioCerrado !== true) return false;
+   alert('🌙 Servicio cerrado por hoy\n\n' + (window._servicioCerradoMsg || 'Volvemos a recibir pedidos cuando inicie el próximo turno.'));
+   return true;
+ };
+ function _aplicarEstadoServicio(v) {
+   const cerrado = !!(v && v.cerrado === true);
+   window._servicioCerrado = cerrado;
+   window._servicioCerradoMsg = cerrado ? (v.mensaje || '') : '';
+   let banner = document.getElementById('banner-servicio-cerrado');
+   if (cerrado) {
+     if (!banner) {
+       banner = document.createElement('div');
+       banner.id = 'banner-servicio-cerrado';
+       banner.style.cssText = 'background:#7f1d1d;color:#fff;text-align:center;font-size:13px;font-weight:700;padding:8px 12px;line-height:1.4;';
+       document.body.insertBefore(banner, document.body.firstChild);
+     }
+     banner.textContent = '🌙 Servicio cerrado por hoy. Volvemos en el próximo turno.';
+   } else if (banner) {
+     banner.remove();
+   }
+ }
+ try {
+   const _ovServicio = (typeof onValue === 'function') ? onValue : window.onValue;
+   _ovServicio(ref(db, 'config/servicio'), (snap) => {
+     _aplicarEstadoServicio(snap.exists() ? snap.val() : null);
+   }, (err) => console.warn('No se pudo escuchar config/servicio:', err && err.message));
+ } catch (e) {
+   console.warn('Cierre de servicio: no se pudo iniciar el listener:', e.message);
+ }
 
  window.db = db;
  window.girarRuletaCallable = girarRuletaCallable;
@@ -16433,6 +16473,8 @@ ${motivo}`;
  // en la app y el repartidor paga la compra en el local al recogerla.
  // ==========================================
  window.iniciarCompraEnTienda = async function() {
+ if (window._bloqueaServicioCerrado && window._bloqueaServicioCerrado()) return;
+
  if (!carritoTienda || carritoTienda.length === 0) {
  alert('Tu carrito está vacío.');
  return;
@@ -18305,6 +18347,8 @@ Detalles técnicos en la consola (F12)`;
  
  // Confirmar que el pedido se realizó
  window.confirmarPedidoRealizado = async function() {
+ if (window._bloqueaServicioCerrado && window._bloqueaServicioCerrado()) return;
+
  console.log(' Usuario confirmó que hizo el pedido');
 
   // \u274c Bloquear si la cuenta no está activada por el admin
@@ -21881,9 +21925,9 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  };
  const ZONA_NOMBRE = { sur: 'Sur', centro: 'Centro', norte: 'Norte', oriente: 'Oriente', occidente: 'Occidente' };
 
- // Recuerda la última zona que el cliente escogió en esta sesión de chat,
- // para no volver a preguntarle si dice "revisa otra vez" / "verifica".
- let _ultimaZonaCola = null;
+ // Recuerda las últimas zonas (recogida y entrega) que el cliente escogió en esta
+ // sesión de chat, para no volver a preguntarle si dice "revisa otra vez" / "verifica".
+ let _ultimaZonasCola = { recogida: null, entrega: null };
 
  function _distanciaKmCola(a, b) {
  if (!a || !b || typeof a.lat !== 'number' || typeof b.lat !== 'number') return null;
@@ -21894,127 +21938,173 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
  }
 
- // Primer paso: antes de dar el tiempo, se le pregunta al cliente la zona de
- // ENTREGA de su pedido (no la de recogida — las rutas y el enrutamiento de
- // esta app siempre se arman por dirección/zona de entrega, la recogida
- // suele ser en el local). Con esa zona se puede mirar qué repartidor
- // conectado le queda más cerca de esa entrega (o cuál va pasando más cerca
- // según su pedido activo) en vez de dar un tiempo genérico para toda la
- // ciudad.
- async function respuestaColaRepartidores() {
- const botones = Object.keys(ZONA_CENTROIDE).map(z =>
- `<button onclick="elegirZonaCola('${z}')" style="padding:6px 14px;border-radius:16px;border:1px solid var(--color-primary,#F59E0B);background:transparent;color:var(--color-primary,#F59E0B);font-size:13px;cursor:pointer;">${ZONA_NOMBRE[z]}</button>`
- ).join('');
- return 'Para darte un tiempo más exacto, cuéntame: ¿cuál es la zona de entrega de tu pedido? Así reviso qué repartidor te queda más cerca.'
- + `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${botones}</div>`;
- }
+  // Primer paso: antes de dar el tiempo, se le pregunta al cliente la zona de
+  // RECOGIDA y luego la de ENTREGA de su pedido. Con las dos zonas se puede
+  // mirar qué repartidor conectado le queda más cerca del punto de recogida
+  // (el primer sitio al que tiene que ir), y cuál de los ocupados ya va
+  // pasando por esa zona (o hacia la misma entrega), en vez de dar un tiempo
+  // genérico para toda la ciudad.
+  function _botonesZonaCola(nombreFuncion) {
+    const botones = Object.keys(ZONA_CENTROIDE).map(z =>
+      `<button onclick="${nombreFuncion}('${z}')" style="padding:6px 14px;border-radius:16px;border:1px solid var(--color-primary,#F59E0B);background:transparent;color:var(--color-primary,#F59E0B);font-size:13px;cursor:pointer;">${ZONA_NOMBRE[z]}</button>`
+    ).join('');
+    return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${botones}</div>`;
+  }
 
- // Se ejecuta cuando el cliente toca uno de los botones de zona (o cuando
- // insiste con "revisa otra vez" y ya sabíamos su zona de antes).
- window.elegirZonaCola = async function(zona) {
- if (window.aiWorking) return;
- _ultimaZonaCola = zona;
- renderMsgEnTab('user', ZONA_NOMBRE[zona] || zona);
- if (typeof aiHistory !== 'undefined') aiHistory.push({ role: 'user', content: ZONA_NOMBRE[zona] || zona });
- window.aiWorking = true;
- const typingDiv = renderMsgEnTab('bot', ' Escribiendo...');
- if (typingDiv) typingDiv.classList.add('typing');
- try {
- const respuesta = await respuestaColaPorZona(zona);
- if (typeof aiHistory !== 'undefined') aiHistory.push({ role: 'assistant', content: respuesta });
- if (typingDiv) {
- typingDiv.classList.remove('typing');
- typingDiv.innerHTML = respuesta.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/\n/g,'<br>');
- const container = document.getElementById('servibot-tab-messages');
- if (container) container.scrollTop = container.scrollHeight;
- }
- } finally {
- window.aiWorking = false;
- }
- };
+  const _TXT_PREGUNTA_RECOGIDA = 'Para darte un tiempo más exacto, cuéntame: ¿en qué zona recogemos tu pedido? Así reviso qué repartidor te queda más cerca.';
+  const _TXT_PREGUNTA_ENTREGA = '¿Y en qué zona lo entregamos?';
 
- async function respuestaColaPorZona(zona) {
- try {
- if (!window.db || !window.ref || !window.get) {
- return 'En este momento no puedo consultar la disponibilidad de repartidores. Intenta de nuevo en un momento, o mira el estado en la pestaña **Seguir**.';
- }
- const centroZona = ZONA_CENTROIDE[zona];
- const nombreZona = ZONA_NOMBRE[zona] || zona;
- const snap = await window.get(window.ref(window.db, 'repartidores_info'));
- if (!snap.exists()) {
- return 'En este momento no tenemos repartidores conectados. Intenta en unos minutos o escríbenos por WhatsApp.';
- }
+  async function respuestaColaRepartidores() {
+    if (window._servicioCerrado === true) {
+      return 'Por hoy ya **cerramos el servicio** 🌙. Volvemos a recibir pedidos cuando inicie el próximo turno.';
+    }
+    _ultimaZonasCola = { recogida: null, entrega: null };
+    return _TXT_PREGUNTA_RECOGIDA + _botonesZonaCola('elegirZonaColaRecogida');
+  }
 
- const enLinea = [];
- snap.forEach(child => {
- const d = child.val();
- if (d && d.online === true) {
- const gps = d.ubicacionActual || d.ubicacion || null;
- enLinea.push({ uid: child.key, pedidosActivos: d.pedidosActivos || 0, gps });
- }
- });
+  // Un "turno" de chat disparado por un botón de zona: pinta el mensaje del
+  // cliente, muestra "Escribiendo..." y reemplaza ese texto con la respuesta.
+  // textoHistorial: versión sin HTML para guardar en aiHistory (los botones
+  // no deben viajar a la IA como parte del historial).
+  async function _turnoColaPorBoton(textoUsuario, generarRespuesta, textoHistorial) {
+    if (window.aiWorking) return;
+    renderMsgEnTab('user', textoUsuario);
+    if (typeof aiHistory !== 'undefined') aiHistory.push({ role: 'user', content: textoUsuario });
+    window.aiWorking = true;
+    const typingDiv = renderMsgEnTab('bot', ' Escribiendo...');
+    if (typingDiv) typingDiv.classList.add('typing');
+    try {
+      const respuesta = await generarRespuesta();
+      if (typeof aiHistory !== 'undefined') aiHistory.push({ role: 'assistant', content: textoHistorial || respuesta });
+      if (typingDiv) {
+        typingDiv.classList.remove('typing');
+        typingDiv.innerHTML = respuesta.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/\n/g,'<br>');
+        const container = document.getElementById('servibot-tab-messages');
+        if (container) container.scrollTop = container.scrollHeight;
+      }
+    } finally {
+      window.aiWorking = false;
+    }
+  }
 
- if (enLinea.length === 0) {
- return 'En este momento no tenemos repartidores conectados. Intenta en unos minutos o escríbenos por WhatsApp.';
- }
+  // Paso 1: el cliente toca la zona de RECOGIDA -> se le pregunta la de ENTREGA.
+  window.elegirZonaColaRecogida = function(zona) {
+    return _turnoColaPorBoton('Recogida: ' + (ZONA_NOMBRE[zona] || zona), async () => {
+      _ultimaZonasCola = { recogida: zona, entrega: null };
+      return _TXT_PREGUNTA_ENTREGA + _botonesZonaCola('elegirZonaColaEntrega');
+    }, _TXT_PREGUNTA_ENTREGA);
+  };
 
- const velocidadKmMin = 25 / 60; // 25 km/h, igual que el resto de la app
+  // Paso 2: el cliente toca la zona de ENTREGA -> ya con las dos zonas se
+  // consulta a los repartidores. Si por algún motivo (botones viejos en
+  // pantalla) no hay recogida guardada, se vuelve a preguntar desde el inicio.
+  window.elegirZonaColaEntrega = function(zona) {
+    return _turnoColaPorBoton('Entrega: ' + (ZONA_NOMBRE[zona] || zona), async () => {
+      if (!_ultimaZonasCola.recogida) return await respuestaColaRepartidores();
+      _ultimaZonasCola.entrega = zona;
+      return await respuestaColaPorZona(_ultimaZonasCola.recogida, zona);
+    }, null);
+  };
 
- // 1) Si hay algún repartidor LIBRE, se manda al más cercano al centro de
- // la zona escogida (no al primero que aparezca).
- const libres = enLinea.filter(r => r.pedidosActivos === 0);
- if (libres.length > 0) {
- const conDistancia = libres
- .map(r => ({ ...r, distKm: _distanciaKmCola(r.gps, centroZona) }))
- .sort((a, b) => (a.distKm ?? 999) - (b.distKm ?? 999));
- const mejor = conDistancia[0];
- if (mejor.distKm !== null) {
- const min = Math.max(3, Math.round(mejor.distKm / velocidadKmMin));
- return `¡Tenemos un repartidor libre! El más cercano a tu zona de entrega (**${nombreZona}**) está a unos **${mejor.distKm.toFixed(1)} km**, así que en aproximadamente **${min}–${min + 5} minutos** ya estaría recogiendo tu pedido para llevarlo. Solicítalo ya en **Servicio**.`;
- }
- return `¡Tenemos un repartidor libre! Irá directo a tomar tu pedido para llevarlo a la zona **${nombreZona}**, no esperes más y solicítalo en **Servicio**.`;
- }
+  async function respuestaColaPorZona(zonaRecogida, zonaEntrega) {
+    try {
+      if (!window.db || !window.ref || !window.get) {
+        return 'En este momento no puedo consultar la disponibilidad de repartidores. Intenta de nuevo en un momento, o mira el estado en la pestaña **Seguir**.';
+      }
+      const centroRec = ZONA_CENTROIDE[zonaRecogida];
+      const nombreRec = ZONA_NOMBRE[zonaRecogida] || zonaRecogida;
+      const nombreEnt = ZONA_NOMBRE[zonaEntrega] || zonaEntrega;
+      const tramo = `de **${nombreRec}** a **${nombreEnt}**`;
+      const snap = await window.get(window.ref(window.db, 'repartidores_info'));
+      if (!snap.exists()) {
+        return 'En este momento no tenemos repartidores conectados. Intenta en unos minutos o escríbenos por WhatsApp.';
+      }
 
- // 2) Todos ocupados: revisar el pedido activo de cada uno para ver cuál
- // va pasando más cerca de la zona pedida (su ruta de entrega actual),
- // en vez de solo mirar quién tiene menos pedidos en cola.
- let mejorOpcion = null;
- for (const r of enLinea) {
- let zonaEntregaActual = null;
- try {
- const snapPed = await window.get(window.ref(window.db, `repartidores_pedidos/${r.uid}`));
- if (snapPed.exists()) {
- const pedidosObj = snapPed.val();
- const activos = Object.values(pedidosObj).filter(p => p.estado === 'aceptado' || p.estado === 'en_camino' || p.estado === 'pendiente');
- if (activos.length) zonaEntregaActual = activos[activos.length - 1].zonaEntrega || null;
- }
- } catch (eP) { /* si falla la consulta de este repartidor, se sigue con los demás */ }
+      const enLinea = [];
+      snap.forEach(child => {
+        const d = child.val();
+        if (d && d.online === true) {
+          const gps = d.ubicacionActual || d.ubicacion || null;
+          enLinea.push({ uid: child.key, pedidosActivos: d.pedidosActivos || 0, gps });
+        }
+      });
 
- const pasaPorLaZona = zonaEntregaActual === zona;
- const distKm = _distanciaKmCola(r.gps, centroZona);
- const candidato = { ...r, pasaPorLaZona, distKm };
- if (!mejorOpcion) { mejorOpcion = candidato; continue; }
- // Prioridad: 1) el que va justo hacia esa zona, 2) menos pedidos en cola, 3) más cerca
- if (candidato.pasaPorLaZona && !mejorOpcion.pasaPorLaZona) { mejorOpcion = candidato; continue; }
- if (candidato.pasaPorLaZona === mejorOpcion.pasaPorLaZona) {
- if (candidato.pedidosActivos < mejorOpcion.pedidosActivos) { mejorOpcion = candidato; continue; }
- if (candidato.pedidosActivos === mejorOpcion.pedidosActivos && (candidato.distKm ?? 999) < (mejorOpcion.distKm ?? 999)) {
- mejorOpcion = candidato;
- }
- }
- }
+      if (enLinea.length === 0) {
+        return 'En este momento no tenemos repartidores conectados. Intenta en unos minutos o escríbenos por WhatsApp.';
+      }
 
- const n = mejorOpcion.pedidosActivos;
- const tMin = 8 * n, tMax = 15 * n;
- if (mejorOpcion.pasaPorLaZona) {
- return `En este momento todos nuestros repartidores están ocupados, pero uno de ellos ya va entregando justo hacia la zona **${nombreZona}** — al terminar esa entrega puede tomar tu pedido casi de una vez, en unos **${tMin}–${tMax} minutos**.`;
- }
- return `En este momento todos nuestros repartidores están ocupados. El que menos pedidos tiene en cola lleva **${n} pedido${n === 1 ? '' : 's'} pendiente${n === 1 ? '' : 's'}**, con un tiempo aproximado de **${tMin} a ${tMax} minutos** antes de poder tomar el tuyo de la zona **${nombreZona}**. Todos están conectados a la misma base, así que apenas uno se desocupe, tomará tu pedido automáticamente.`;
- } catch (e) {
- console.warn('Error consultando disponibilidad de repartidores:', e);
- return 'No pude consultar la disponibilidad de repartidores justo ahora. Intenta de nuevo en unos segundos.';
- }
- }
+      const velocidadKmMin = 25 / 60; // 25 km/h, igual que el resto de la app
+
+      // 1) Si hay algún repartidor LIBRE, se manda al más cercano al centro de
+      // la zona de RECOGIDA (es el primer sitio al que tiene que llegar).
+      const libres = enLinea.filter(r => r.pedidosActivos === 0);
+      if (libres.length > 0) {
+        const conDistancia = libres
+          .map(r => ({ ...r, distKm: _distanciaKmCola(r.gps, centroRec) }))
+          .sort((a, b) => (a.distKm ?? 999) - (b.distKm ?? 999));
+        const mejor = conDistancia[0];
+        if (mejor.distKm !== null) {
+          const min = Math.max(3, Math.round(mejor.distKm / velocidadKmMin));
+          return `¡Tenemos un repartidor libre! El más cercano a tu zona de recogida (**${nombreRec}**) está a unos **${mejor.distKm.toFixed(1)} km**, así que en aproximadamente **${min}–${min + 5} minutos** ya estaría recogiendo tu pedido para llevarlo ${tramo}. Solicítalo ya en **Servicio**.`;
+        }
+        return `¡Tenemos un repartidor libre! Irá directo a tomar tu pedido ${tramo}, no esperes más y solicítalo en **Servicio**.`;
+      }
+
+      // 2) Todos ocupados: se revisan los pedidos activos de cada uno para ver
+      // cuál va "de paso" por tu recorrido. Niveles (de mejor a peor):
+      //   3 = su entrega actual termina justo en tu zona de RECOGIDA
+      //   2 = ya va a recoger en esa misma zona de recogida (puede tomar ambos)
+      //   1 = va entregando hacia tu misma zona de ENTREGA
+      //   0 = ninguna coincidencia (se elige por menos pedidos y cercanía)
+      let mejorOpcion = null;
+      for (const r of enLinea) {
+        let nivel = 0;
+        try {
+          const snapPed = await window.get(window.ref(window.db, `repartidores_pedidos/${r.uid}`));
+          if (snapPed.exists()) {
+            const activos = Object.values(snapPed.val()).filter(p => {
+              const e = String(p.estado || '').toLowerCase();
+              return e === 'aceptado' || e === 'en_camino' || e === 'pendiente' || e === 'asignado';
+            });
+            if (activos.length) {
+              const ultimo = activos[activos.length - 1];
+              if (ultimo.zonaEntrega === zonaRecogida) nivel = 3;
+              else if (activos.some(p => p.zonaRecogida === zonaRecogida)) nivel = 2;
+              else if (activos.some(p => p.zonaEntrega === zonaEntrega)) nivel = 1;
+            }
+          }
+        } catch (eP) { /* si falla la consulta de este repartidor, se sigue con los demás */ }
+
+        const distKm = _distanciaKmCola(r.gps, centroRec);
+        const candidato = { ...r, nivel, distKm };
+        if (!mejorOpcion) { mejorOpcion = candidato; continue; }
+        // Prioridad: 1) mayor nivel de coincidencia de ruta, 2) menos pedidos en cola, 3) más cerca de la recogida
+        if (candidato.nivel > mejorOpcion.nivel) { mejorOpcion = candidato; continue; }
+        if (candidato.nivel === mejorOpcion.nivel) {
+          if (candidato.pedidosActivos < mejorOpcion.pedidosActivos) { mejorOpcion = candidato; continue; }
+          if (candidato.pedidosActivos === mejorOpcion.pedidosActivos && (candidato.distKm ?? 999) < (mejorOpcion.distKm ?? 999)) {
+            mejorOpcion = candidato;
+          }
+        }
+      }
+
+      const n = mejorOpcion.pedidosActivos;
+      const tMin = 8 * n, tMax = 15 * n;
+      if (mejorOpcion.nivel === 3) {
+        return `En este momento todos nuestros repartidores están ocupados, pero uno de ellos ya va entregando justo en la zona **${nombreRec}** — al terminar esa entrega puede tomar tu pedido casi de una vez para llevarlo ${tramo}, en unos **${tMin}–${tMax} minutos**.`;
+      }
+      if (mejorOpcion.nivel === 2) {
+        return `En este momento todos nuestros repartidores están ocupados, pero uno de ellos ya va a recoger en la zona **${nombreRec}**, así que puede tomar tu pedido en esa misma pasada y llevarlo ${tramo}, en unos **${tMin}–${tMax} minutos**.`;
+      }
+      if (mejorOpcion.nivel === 1) {
+        return `En este momento todos nuestros repartidores están ocupados, pero uno de ellos ya va rumbo a la zona **${nombreEnt}** — te queda de paso para llevar tu pedido ${tramo}, en unos **${tMin}–${tMax} minutos**.`;
+      }
+      return `En este momento todos nuestros repartidores están ocupados. El que menos pedidos tiene en cola lleva **${n} pedido${n === 1 ? '' : 's'} pendiente${n === 1 ? '' : 's'}**, con un tiempo aproximado de **${tMin} a ${tMax} minutos** antes de poder tomar el tuyo ${tramo}. Todos están conectados a la misma base, así que apenas uno se desocupe, tomará tu pedido automáticamente.`;
+    } catch (e) {
+      console.warn('Error consultando disponibilidad de repartidores:', e);
+      return 'No pude consultar la disponibilidad de repartidores justo ahora. Intenta de nuevo en unos segundos.';
+    }
+  }
 
  // Seguimiento corto sobre disponibilidad: si la última pregunta fue de
  // tipo "cola" y el cliente insiste con algo como "revisa otra vez",
@@ -22072,9 +22162,9 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  return await respuestaColaRepartidores();
  }
  if (ultimoTema === 'cola' && RE_COLA_SEGUIMIENTO.test(m)) {
- // Si ya sabemos la zona de esta conversación, no se vuelve a preguntar:
- // se repite la consulta directo para esa misma zona.
- return _ultimaZonaCola ? await respuestaColaPorZona(_ultimaZonaCola) : await respuestaColaRepartidores();
+ // Si ya sabemos las zonas de esta conversación, no se vuelve a preguntar:
+ // se repite la consulta directo para esas mismas zonas.
+ return (_ultimaZonasCola.recogida && _ultimaZonasCola.entrega) ? await respuestaColaPorZona(_ultimaZonasCola.recogida, _ultimaZonasCola.entrega) : await respuestaColaRepartidores();
  }
  }
  if (typeof window.consultarServibot === 'function') {

@@ -11157,7 +11157,7 @@ if (dentroDeHorario) {
  storage = getStorage(app);
  functions = getFunctions(app, 'us-central1');
  girarRuletaCallable = httpsCallable(functions, 'girarRuleta');
- servibotChatCallable = httpsCallable(functions, 'servibotChat');
+ servibotChatCallable = httpsCallable(functions, 'servibotChat', { timeout: 120000 }); // FIX 2026-10-02: espera hasta 120s (antes 70s por defecto) para fotos/respaldos de IA
  confirmarAgendaConBarriosCallable = httpsCallable(functions, 'confirmarAgendaConBarrios');
  miAgendaProgramadaCallable = httpsCallable(functions, 'miAgendaProgramada');
  cancelarAgendaDirectoCallable = httpsCallable(functions, 'cancelarAgendaDirecto');

@@ -23414,11 +23414,11 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  div.className = 'ai-msg bot';
  div.style.cssText = 'max-width:100%; padding:12px; background:var(--color-surface2,#161b22); border:1px solid var(--color-border2,#30363d); border-radius:10px;';
  div.innerHTML =
-  '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;">¿Dónde recoges este pedido?</div>' +
+  '<div id="sb-t-pregunta-origen" style="font-size:12px; color:#9ca3af; margin-bottom:6px;">¿Dónde recoges este pedido?</div>' +
  '<div style="display:flex; gap:8px; margin-bottom:8px;">' +
  '<button type="button" id="sb-t-btn-local" onclick="sbSetOrigenRecogidaTercero(\'local\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid var(--color-primary,#F59E0B); background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:12px; cursor:pointer;"> Recoger en el local</button>' +
  '<button type="button" id="sb-t-btn-casa" onclick="sbSetOrigenRecogidaTercero(\'casa\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:bold; font-size:12px; cursor:pointer;">🏠 Recoger en casa</button>' +
- '<button type="button" id="sb-t-btn-otro" onclick="sbSetOrigenRecogidaTercero(\'otro_lugar\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:bold; font-size:12px; cursor:pointer;"> Estoy en otro lugar</button>' +
+ '<button type="button" id="sb-t-btn-otro" onclick="sbSetOrigenRecogidaTercero(\'otro_lugar\')" style="flex:1; padding:9px; border-radius:8px; border:1px solid #374151; background:transparent; color:#9ca3af; font-weight:bold; font-size:12px; cursor:pointer;">📍 Otra dirección</button>' +
  '</div>' +
  // FIX "ESTOY EN OTRO LUGAR": antes, al elegir esta opción, no pasaba nada
  // más — no había forma de decir dónde recoger. Ahora se muestra este aviso
@@ -23426,6 +23426,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // celular no está disponible o desactualizado).
  '<div id="sb-t-recogida-otro-wrap" style="display:none; margin-bottom:10px;">' +
  '<div id="sb-t-recogida-otro-status" style="font-size:11px; color:#9ca3af; margin-bottom:6px;"> Se usará tu ubicación GPS actual. Si no se puede tomar, márcala en el mapa:</div>' +
+'<input type="text" id="sb-t-recogida-dir" placeholder="Dirección o referencia de dónde recoges (opcional)" style="display:none; width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
  '<button type="button" id="sb-t-btn-mapa-recogida" onclick="abrirMapeadorPedidoTercero(\'recogida\')" style="width:100%; padding:9px 12px; border-radius:8px; border:1px dashed #F59E0B; background:rgba(245,158,11,0.08); color:#F59E0B; font-size:12px; font-weight:bold; cursor:pointer; text-align:left;"> Marcar dónde recoges en el mapa</button>' +
  '</div>' +
  '<input type="text" id="sb-t-nombre" placeholder="Nombre" style="width:100%; padding:9px; border-radius:8px; border:1px solid #374151; background:#0d1117; color:#fff; font-size:13px; margin-bottom:8px; box-sizing:border-box;">' +
@@ -23462,7 +23463,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // FOTO CON BARRIO NO RECONOCIDO: en vez de dejar que el local tenga que
  // notar y darle clic al botón de mapa, se abre solo apenas se pinta la
  // tarjeta, con un aviso corto explicando por qué.
- if (datos.abrirMapaAuto) {
+ if (datos.abrirMapaAuto && !datos.fueraCiudad) {
  const avisoMapa = document.createElement('div');
  avisoMapa.style.cssText = 'font-size:11px; color:#F59E0B; margin:-4px 0 8px;';
  avisoMapa.textContent = ' El barrio "' + (datos.barrioNoReconocido || '') + '" (leído de la foto) no está en nuestros registros — marca el punto exacto en el mapa que se acaba de abrir.';
@@ -23476,17 +23477,19 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // preselecciona "Estoy en otro lugar" en vez de dejarlo en "Recoger en
  // el local" por defecto (el local ya no tiene que acordarse de cambiarlo
  // cada vez que pide un domicilio estando fuera).
- if ((datos.origenSugerido === 'otro_lugar' || datos.origenSugerido === 'casa') && !tieneGps) {
+ if ((datos.origenSugerido === 'otro_lugar' || datos.origenSugerido === 'casa') && (!tieneGps || datos.fueraCiudad)) {
  const sugCasa = datos.origenSugerido === 'casa';
  sbSetOrigenRecogidaTercero(sugCasa ? 'casa' : 'otro_lugar');
  const avisoOrigen = document.createElement('div');
  avisoOrigen.style.cssText = 'font-size:11px; color:#9ca3af; margin:-4px 0 8px;';
  avisoOrigen.textContent = sugCasa
   ? ('Veo que no estás en el local ahora mismo' + (datos.distanciaLocalKm ? ' (~' + datos.distanciaLocalKm + ' km)' : '') + '. ¿Recoges en tu casa' + (datos.direccionCasa ? ' (' + datos.direccionCasa + ')' : '') + ' o en el local? Dejé marcado "casa"; cámbialo si vas a recoger en el local.')
-  : ('Veo que no estás en tu local ahora mismo' + (datos.distanciaLocalKm ? ' (~' + datos.distanciaLocalKm + ' km)' : '') + ', así que dejé marcado "Estoy en otro lugar". Cambia el botón si en realidad sí vas a recoger en el local.');
+  : ('Veo que no estás en tu local ahora mismo' + (datos.distanciaLocalKm ? ' (~' + datos.distanciaLocalKm + ' km)' : '') + ', así que dejé marcado "Otra dirección". Cambia el botón si en realidad sí vas a recoger en el local.');
  const btnsWrap = document.getElementById('sb-t-btn-local') && document.getElementById('sb-t-btn-local').closest('div');
  if (btnsWrap && btnsWrap.parentElement) btnsWrap.parentElement.insertBefore(avisoOrigen, btnsWrap.nextSibling);
  }
+  // 🆕 Domicilio fuera de la ciudad (viene de la IA o del botón del menú)
+ if (datos.fueraCiudad) window.sbAdaptarTarjetaFueraCiudad(datos);
  };
 
  // Bloquea dirección/barrio como "Ubicación GPS" cuando ya hay coordenadas
@@ -23571,6 +23574,8 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // se hubiera marcado a mano (para no dejar datos viejos colgando).
  const wrap = document.getElementById('sb-t-recogida-otro-wrap');
  if (wrap) wrap.style.display = esLocal ? 'none' : 'block';
+ const dirRecEl = document.getElementById('sb-t-recogida-dir');
+ if (dirRecEl) { dirRecEl.style.display = (origen === 'otro_lugar') ? 'block' : 'none'; if (origen !== 'otro_lugar') dirRecEl.value = ''; }
  if (esLocal) {
  window._sbTercero.gpsRecogida = null;
  const status = document.getElementById('sb-t-recogida-otro-status');
@@ -23646,6 +23651,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const gpsRecogidaManual = (origenRecogida !== 'local' && window._sbTercero) ? (window._sbTercero.gpsRecogida || null) : null;
  const res = await window.confirmarPedidoTerceroCallable({
  nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega, origenRecogida, gpsRecogidaManual,
+ direccionRecogidaTexto: (origenRecogida === 'otro_lugar') ? ((document.getElementById('sb-t-recogida-dir') || {}).value || '').trim() : '',
  });
  const card = document.getElementById('sb-tercero-card');
  if (card) card.remove();
@@ -23685,22 +23691,38 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (tabMsgs && tabMsgs.offsetParent !== null) { renderMsgEnTab('bot', intro); } else { addBotMessage(intro); }
  try { aiHistory.push({ role: 'assistant', content: intro }); } catch (e) {}
 
+ // mostrarTarjetaTerceroChat ya adapta la tarjeta a "fuera de la ciudad"
+ // (sbAdaptarTarjetaFueraCiudad) cuando recibe fueraCiudad: true.
  window.mostrarTarjetaTerceroChat({ fueraCiudad: true });
+ };
+
+ // Convierte la tarjeta de pedido de tercero en la de "fuera de la ciudad":
+ // pueblo/ciudad + barrio/vereda/finca + referencia. La usan tanto el botón del
+ // menú (sin datos) como ServiBot cuando reconoce el servicio por chat (con
+ // pueblo/vereda/nombre/teléfono ya prellenados). Si ya hay pueblo o vereda y
+ // todavía no hay punto GPS, abre sola el mapeador para marcar la ubicación.
+ window.sbAdaptarTarjetaFueraCiudad = function (datos) {
+ datos = datos || {};
  try {
  const card = document.getElementById('sb-tercero-card');
  const dirEl = document.getElementById('sb-t-direccion');
  const barrioEl = document.getElementById('sb-t-barrio');
  if (!card || !dirEl || !barrioEl) return;
+ if (card.getAttribute('data-fuera-ciudad') === '1') return;
+ card.setAttribute('data-fuera-ciudad', '1');
 
  const aviso = document.createElement('div');
  aviso.style.cssText = 'font-size:12px; color:#F59E0B; margin-bottom:8px;';
  aviso.textContent = 'Domicilio fuera de la ciudad: la tarifa se calcula con la ubicación exacta que marques en el mapa.';
  card.insertBefore(aviso, card.firstChild);
+ const preguntaOrigen = document.getElementById('sb-t-pregunta-origen');
+ if (preguntaOrigen) preguntaOrigen.textContent = '¿Desde dónde se envía el domicilio?';
 
  // Pueblo/ciudad (reusa el campo de barrio, sin la lista de barrios de Armenia)
  barrioEl.placeholder = 'Pueblo o ciudad (ej. Calarcá, Circasia)';
  barrioEl.removeAttribute('oninput');
  barrioEl.removeAttribute('onfocus');
+ barrioEl.value = datos.puebloCiudad || '';
  const dd = document.getElementById('sb-t-dropdown');
  if (dd) dd.style.display = 'none';
  const barrioWrap = barrioEl.parentElement;
@@ -23710,6 +23732,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  vereda.type = 'text';
  vereda.id = 'sb-t-vereda';
  vereda.placeholder = 'Barrio, vereda o finca';
+ vereda.value = datos.veredaBarrio || '';
  vereda.style.cssText = dirEl.style.cssText;
  card.insertBefore(vereda, dirEl);
 
@@ -23719,7 +23742,34 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (btnMapa) btnMapa.textContent = 'Agregar ubicación exacta en el mapa';
  const btnEnviar = document.getElementById('sb-t-btn-enviar');
  if (btnEnviar) btnEnviar.textContent = 'Continuar y marcar en el mapa';
+
+ const tieneGps = !!(datos.gpsEntrega && datos.gpsEntrega.lat && datos.gpsEntrega.lng);
+ if (tieneGps) {
+ window.sbMarcarGpsFueraCiudad();
+ } else if (datos.puebloCiudad || datos.veredaBarrio) {
+ setTimeout(function () { window.sbAbrirMapaFueraCiudad(); }, 350);
+ }
  } catch (e) { console.warn('[Fuera de la ciudad] No se pudo ajustar la tarjeta:', e); }
+ };
+
+ // Abre el mapeador en modo "fuera de la ciudad" y busca el lugar con lo que
+ // escribió el cliente (vereda + pueblo) para que marque el punto exacto.
+ window.sbAbrirMapaFueraCiudad = function () {
+ const pueblo = ((document.getElementById('sb-t-barrio') || {}).value || '').trim();
+ const vereda = ((document.getElementById('sb-t-vereda') || {}).value || '').trim();
+ window.abrirMapeadorPedidoTercero();
+ try {
+ const tEl = document.getElementById('mapeador-pedido-tercero-titulo');
+ const sEl = document.getElementById('mapeador-pedido-tercero-subtitulo');
+ if (tEl) tEl.textContent = 'Ubicación del domicilio fuera de la ciudad';
+ if (sEl) sEl.textContent = 'Agrega la ubicación manualmente para darte un precio más exacto de la tarifa';
+ } catch (e) {}
+ setTimeout(function () {
+ try {
+ const bEl = document.getElementById('mapeador-pedido-tercero-buscar');
+ if (bEl && (pueblo || vereda)) { bEl.value = (vereda ? vereda + ' ' : '') + pueblo; window.buscarEnMapeadorPedidoTercero(); }
+ } catch (e) {}
+ }, 400);
  };
 
  // Cuando el punto del mapa queda fijado en modo fuera de la ciudad:

@@ -5200,6 +5200,7 @@
  <button class="ai-quick-btn" onclick="document.getElementById('servibot-tab-input').value='¿Cómo hago un pedido?'; sendAIMessageTab()"> Pedir</button>
  <button class="ai-quick-btn" onclick="document.getElementById('servibot-tab-input').value='¿Cuál es el estado de mi pedido?'; sendAIMessageTab()"> Mi pedido</button>
  <button class="ai-quick-btn" onclick="document.getElementById('servibot-tab-input').value='¿Hay repartidores disponibles o cuántos pedidos hay en cola?'; sendAIMessageTab()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8Z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Pedidos en cola</button>
+ <button class="ai-quick-btn" onclick="abrirFormularioFueraCiudad()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>Domicilios fuera de la ciudad</button>
  </div>
 
  <!-- Vista previa de la imagen adjunta (foto con datos del destinatario) -->
@@ -21727,6 +21728,7 @@ window.verificarGPSvsDireccion = async function(dirEscrita, callback) {
  <button class="ai-quick-btn" onclick="sendQuick('¿Cómo hago un pedido?')"> Pedir</button>
  <button class="ai-quick-btn" onclick="sendQuick('¿Cuál es el estado de mi pedido?')"> Mi pedido</button>
  <button class="ai-quick-btn" onclick="sendQuick('¿Hay repartidores disponibles o cuántos pedidos hay en cola?')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8Z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Pedidos en cola</button>
+ <button class="ai-quick-btn" onclick="abrirFormularioFueraCiudad()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>Domicilios fuera de la ciudad</button>
  </div>
 
  <div id="ai-chat-input-row">
@@ -23399,7 +23401,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const existente = document.getElementById('sb-tercero-card');
  if (existente) existente.remove();
 
- window._sbTercero = { minutos: null, origenRecogida: 'local', barrioNoReconocido: (datos && datos.barrioNoReconocido) || null };
+ window._sbTercero = { minutos: null, origenRecogida: 'local', barrioNoReconocido: (datos && datos.barrioNoReconocido) || null, fueraCiudad: !!(datos && datos.fueraCiudad) };
 
  const nuevoTxt = datos.esContactoNuevo ? ' (cliente nuevo — se guardará en tu libreta)' : '';
  const minutosBtns = [['Ya está', 0], ['5', 5], ['10', 10], ['15', 15], ['20', 20], ['25', 25], ['30', 30]]
@@ -23493,6 +23495,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  window.sbAplicarGpsATarjetaTercero = function (gps) {
  if (!window._sbTercero) window._sbTercero = {};
  window._sbTercero.gpsEntrega = gps;
+ if (window._sbTercero.fueraCiudad) { window.sbMarcarGpsFueraCiudad(); return; }
  try {
  const dirEl = document.getElementById('sb-t-direccion');
  if (dirEl) { dirEl.value = 'Ubicación GPS'; dirEl.readOnly = true; dirEl.style.opacity = '0.7'; }
@@ -23586,17 +23589,46 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  window.sbConfirmarPedidoTercero = async function () {
  const errEl = document.getElementById('sb-t-error');
- if (errEl) errEl.style.display = 'none';
+ if (errEl) { errEl.style.display = 'none'; errEl.style.color = '#ef4444'; }
 
  const nombreCliente = (document.getElementById('sb-t-nombre').value || '').trim();
  const telefonoCliente = (document.getElementById('sb-t-telefono').value || '').trim();
- const direccionDetalle = (document.getElementById('sb-t-direccion').value || '').trim();
- const barrioEntrega = (document.getElementById('sb-t-barrio').value || '').trim();
+ let direccionDetalle = (document.getElementById('sb-t-direccion').value || '').trim();
+ let barrioEntrega = (document.getElementById('sb-t-barrio').value || '').trim();
  const minutosPreparacion = window._sbTercero ? window._sbTercero.minutos : null;
  const gpsEntrega = window._sbTercero ? window._sbTercero.gpsEntrega : null;
  const tieneGps = !!(gpsEntrega && gpsEntrega.lat && gpsEntrega.lng);
 
- if (!nombreCliente || !telefonoCliente || !direccionDetalle || (!barrioEntrega && !tieneGps)) {
+ // DOMICILIO FUERA DE LA CIUDAD: pueblo/ciudad + barrio/vereda + referencia, y
+ // el punto en el mapa es OBLIGATORIO (sin él se cobraba como si fuera un
+ // barrio de Armenia). Si falta, se abre el mapeador solo.
+ if (window._sbTercero && window._sbTercero.fueraCiudad) {
+ const pueblo = barrioEntrega;
+ const vereda = ((document.getElementById('sb-t-vereda') || {}).value || '').trim();
+ if (!nombreCliente || !telefonoCliente || !pueblo || (!vereda && !direccionDetalle)) {
+ if (errEl) { errEl.textContent = 'Completa nombre, teléfono, pueblo o ciudad, y el barrio, vereda o referencia.'; errEl.style.display = 'block'; }
+ return;
+ }
+ if (!tieneGps) {
+ if (errEl) { errEl.style.color = '#F59E0B'; errEl.textContent = 'Agrega la ubicación manualmente en el mapa para darte un precio más exacto de la tarifa.'; errEl.style.display = 'block'; }
+ window.abrirMapeadorPedidoTercero();
+ try {
+ const tEl = document.getElementById('mapeador-pedido-tercero-titulo');
+ const sEl = document.getElementById('mapeador-pedido-tercero-subtitulo');
+ if (tEl) tEl.textContent = 'Ubicación del domicilio fuera de la ciudad';
+ if (sEl) sEl.textContent = 'Agrega la ubicación manualmente para darte un precio más exacto de la tarifa';
+ } catch (e) {}
+ setTimeout(function () {
+ try {
+ const bEl = document.getElementById('mapeador-pedido-tercero-buscar');
+ if (bEl) { bEl.value = (vereda ? vereda + ' ' : '') + pueblo; window.buscarEnMapeadorPedidoTercero(); }
+ } catch (e) {}
+ }, 400);
+ return;
+ }
+ direccionDetalle = [pueblo, vereda, direccionDetalle].filter(Boolean).join(' · ');
+ barrioEntrega = vereda ? (vereda + ' - ' + pueblo) : pueblo;
+ } else if (!nombreCliente || !telefonoCliente || !direccionDetalle || (!barrioEntrega && !tieneGps)) {
  if (errEl) { errEl.textContent = 'Completa nombre, teléfono, dirección y barrio.'; errEl.style.display = 'block'; }
  return;
  }
@@ -23641,6 +23673,66 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (errEl) { errEl.textContent = (e && e.message) || 'No se pudo enviar el pedido. Intenta de nuevo.'; errEl.style.display = 'block'; }
  if (btn) { btn.disabled = false; btn.textContent = ' Enviar pedido'; }
  }
+ };
+
+ // ── Botón "Domicilios fuera de la ciudad" del menú del chat ──
+ // Reusa la tarjeta de pedido (misma confirmación/precio por GPS del servidor)
+ // pero pidiendo pueblo/ciudad + barrio/vereda + referencia, y obligando a
+ // marcar el punto exacto en el mapa antes de enviar.
+ window.abrirFormularioFueraCiudad = function () {
+ const intro = 'Listo, vamos con un domicilio fuera de la ciudad. Dame el pueblo o ciudad, el barrio o la vereda y la referencia de entrega; después marcas el punto en el mapa para calcular la tarifa lo más exacta posible.';
+ const tabMsgs = document.getElementById('servibot-tab-messages');
+ if (tabMsgs && tabMsgs.offsetParent !== null) { renderMsgEnTab('bot', intro); } else { addBotMessage(intro); }
+ try { aiHistory.push({ role: 'assistant', content: intro }); } catch (e) {}
+
+ window.mostrarTarjetaTerceroChat({ fueraCiudad: true });
+ try {
+ const card = document.getElementById('sb-tercero-card');
+ const dirEl = document.getElementById('sb-t-direccion');
+ const barrioEl = document.getElementById('sb-t-barrio');
+ if (!card || !dirEl || !barrioEl) return;
+
+ const aviso = document.createElement('div');
+ aviso.style.cssText = 'font-size:12px; color:#F59E0B; margin-bottom:8px;';
+ aviso.textContent = 'Domicilio fuera de la ciudad: la tarifa se calcula con la ubicación exacta que marques en el mapa.';
+ card.insertBefore(aviso, card.firstChild);
+
+ // Pueblo/ciudad (reusa el campo de barrio, sin la lista de barrios de Armenia)
+ barrioEl.placeholder = 'Pueblo o ciudad (ej. Calarcá, Circasia)';
+ barrioEl.removeAttribute('oninput');
+ barrioEl.removeAttribute('onfocus');
+ const dd = document.getElementById('sb-t-dropdown');
+ if (dd) dd.style.display = 'none';
+ const barrioWrap = barrioEl.parentElement;
+ card.insertBefore(barrioWrap, dirEl);
+
+ const vereda = document.createElement('input');
+ vereda.type = 'text';
+ vereda.id = 'sb-t-vereda';
+ vereda.placeholder = 'Barrio, vereda o finca';
+ vereda.style.cssText = dirEl.style.cssText;
+ card.insertBefore(vereda, dirEl);
+
+ dirEl.placeholder = 'Dirección o referencia de entrega';
+
+ const btnMapa = document.getElementById('sb-t-btn-mapa');
+ if (btnMapa) btnMapa.textContent = 'Agregar ubicación exacta en el mapa';
+ const btnEnviar = document.getElementById('sb-t-btn-enviar');
+ if (btnEnviar) btnEnviar.textContent = 'Continuar y marcar en el mapa';
+ } catch (e) { console.warn('[Fuera de la ciudad] No se pudo ajustar la tarjeta:', e); }
+ };
+
+ // Cuando el punto del mapa queda fijado en modo fuera de la ciudad:
+ // se conservan los textos escritos y el botón pasa a "Enviar pedido".
+ window.sbMarcarGpsFueraCiudad = function () {
+ try {
+ const btnMapa = document.getElementById('sb-t-btn-mapa');
+ if (btnMapa) { btnMapa.style.display = 'block'; btnMapa.textContent = 'Ubicación marcada ✓ (toca para cambiarla)'; }
+ const btnEnviar = document.getElementById('sb-t-btn-enviar');
+ if (btnEnviar && !btnEnviar.disabled) btnEnviar.textContent = 'Enviar pedido';
+ const errEl = document.getElementById('sb-t-error');
+ if (errEl) errEl.style.display = 'none';
+ } catch (e) { console.warn('[Fuera de la ciudad] sbMarcarGpsFueraCiudad:', e); }
  };
 
 // ── Código de confirmación en el chat cuando un repartidor acepta ──

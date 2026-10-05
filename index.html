@@ -11152,7 +11152,7 @@ if (dentroDeHorario) {
  appId: "1:771819437001:android:28b3fb43d8be9dcfc10618"
  };
 
- let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable, guardarContactoLocalConMapaCallable, cotizarPrecioDomicilioCallable, buscarPedidoPorCorreoCallable;
+ let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, cotizarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable, guardarContactoLocalConMapaCallable, cotizarPrecioDomicilioCallable, buscarPedidoPorCorreoCallable;
  try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
@@ -11167,6 +11167,7 @@ if (dentroDeHorario) {
  editarAgendaProgramadaCallable = httpsCallable(functions, 'editarAgendaProgramada');
  redimirCuponCallable = httpsCallable(functions, 'redimirCupon');
  confirmarPedidoTerceroCallable = httpsCallable(functions, 'confirmarPedidoTerceroDirecto');
+ cotizarPedidoTerceroCallable = httpsCallable(functions, 'cotizarPedidoTerceroDirecto');
  misContactosLocalCallable = httpsCallable(functions, 'misContactosLocal');
  editarContactoLocalCallable = httpsCallable(functions, 'editarContactoLocal');
  borrarContactoLocalUnoCallable = httpsCallable(functions, 'borrarContactoLocalUno');
@@ -11349,6 +11350,7 @@ if (dentroDeHorario) {
  window.editarAgendaProgramadaCallable = editarAgendaProgramadaCallable;
  window.redimirCuponCallable = redimirCuponCallable;
  window.confirmarPedidoTerceroCallable = confirmarPedidoTerceroCallable;
+ window.cotizarPedidoTerceroCallable = cotizarPedidoTerceroCallable;
  window.misContactosLocalCallable = misContactosLocalCallable;
  window.editarContactoLocalCallable = editarContactoLocalCallable;
  window.borrarContactoLocalUnoCallable = borrarContactoLocalUnoCallable;
@@ -23643,6 +23645,73 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  }
 
  const btn = document.getElementById('sb-t-btn-enviar');
+
+ // 🆕 DOMICILIO FUERA DE LA CIUDAD: primero se MUESTRA la tarifa (sin crear el
+ // pedido). Solo si el cliente toca "Confirmar y enviar" con los mismos datos
+ // se crea el pedido; si no le sirve el precio, cancela y no se crea nada.
+ if (window._sbTercero && window._sbTercero.fueraCiudad) {
+ const origenCot = window._sbTercero.origenRecogida || 'local';
+ const gpsRecCot = (origenCot !== 'local') ? (window._sbTercero.gpsRecogida || null) : null;
+ const sigActual = JSON.stringify([nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega,
+ gpsEntrega && gpsEntrega.lat, gpsEntrega && gpsEntrega.lng, origenCot,
+ gpsRecCot && gpsRecCot.lat, gpsRecCot && gpsRecCot.lng, minutosPreparacion]);
+ const yaCotizado = window._sbTercero.cotizadoSig === sigActual;
+ const yaVioReqAdmin = window._sbTercero.cotizadoReqAdmin === true;
+
+ if (!yaCotizado) {
+ if (btn) { btn.disabled = true; btn.textContent = 'Calculando tarifa...'; }
+ try {
+ if (!window.cotizarPedidoTerceroCallable) throw new Error('No se pudo conectar con el servidor.');
+ const rc = await window.cotizarPedidoTerceroCallable({
+ nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega,
+ origenRecogida: origenCot, gpsRecogidaManual: gpsRecCot, fueraCiudad: true,
+ });
+ const d = rc.data || {};
+ const hayPrecio = d.montoDomicilio !== null && d.montoDomicilio !== undefined && !d.requiereMapeador;
+ const prev = document.getElementById('sb-t-cotizacion');
+ if (prev) prev.remove();
+ const caja = document.createElement('div');
+ caja.id = 'sb-t-cotizacion';
+ caja.style.cssText = 'border:1px solid #F59E0B; background:rgba(245,158,11,0.08); border-radius:10px; padding:12px; margin-bottom:10px; text-align:center;';
+ caja.innerHTML = hayPrecio
+ ? '<div style="font-size:12px; color:#9ca3af; margin-bottom:4px;">Tarifa del domicilio' + (d.km ? ' (~' + Number(d.km).toFixed(1) + ' km)' : '') + '</div>' +
+ '<div style="font-size:26px; font-weight:bold; color:#F59E0B;">$' + Number(d.montoDomicilio).toLocaleString('es-CO') + '</div>' +
+ '<div style="font-size:12px; color:#9ca3af; margin-top:6px;">Si te parece bien, confirma y buscamos repartidor. Si no, cancela y no se cobra nada.</div>'
+ : '<div style="font-size:13px; color:#F59E0B; font-weight:bold;">Este destino queda fuera del cálculo automático</div>' +
+ '<div style="font-size:12px; color:#9ca3af; margin-top:6px;">Un administrador debe confirmarte el precio. Puedes enviar el pedido para que lo revise o cancelar.</div>';
+ if (errEl && errEl.parentElement) errEl.parentElement.insertBefore(caja, errEl);
+
+ // Botón de cancelar (junto a confirmar)
+ let btnCancel = document.getElementById('sb-t-btn-cancelar-cot');
+ if (!btnCancel && btn && btn.parentElement) {
+ btnCancel = document.createElement('button');
+ btnCancel.type = 'button';
+ btnCancel.id = 'sb-t-btn-cancelar-cot';
+ btnCancel.textContent = 'Cancelar';
+ btnCancel.style.cssText = 'width:100%; margin-top:8px; padding:10px; border-radius:8px; border:1px solid #ef4444; background:transparent; color:#ef4444; font-weight:bold; font-size:13px; cursor:pointer;';
+ btnCancel.onclick = function () {
+ const card = document.getElementById('sb-tercero-card');
+ if (card) card.remove();
+ window._sbTercero = null;
+ const t = document.getElementById('servibot-tab-messages');
+ const m = 'Listo, cancelé la solicitud. No se creó ningún pedido.';
+ if (t && t.offsetParent !== null) { renderMsgEnTab('bot', m); } else { addBotMessage(m); }
+ };
+ btn.parentElement.appendChild(btnCancel);
+ }
+
+ window._sbTercero.cotizadoSig = sigActual;
+ window._sbTercero.cotizadoReqAdmin = !hayPrecio;
+ if (btn) { btn.disabled = false; btn.textContent = hayPrecio ? 'Confirmar y enviar pedido' : 'Enviar para que el admin confirme precio'; }
+ } catch (eCot) {
+ console.error('[Fuera de la ciudad] Error cotizando:', eCot);
+ if (errEl) { errEl.textContent = (eCot && eCot.message) || 'No se pudo calcular la tarifa. Intenta de nuevo.'; errEl.style.display = 'block'; }
+ if (btn) { btn.disabled = false; btn.textContent = 'Ver precio'; }
+ }
+ return; // todavía NO se crea el pedido: espera la confirmación del cliente
+ }
+ }
+
  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
 
  try {
@@ -23651,6 +23720,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const gpsRecogidaManual = (origenRecogida !== 'local' && window._sbTercero) ? (window._sbTercero.gpsRecogida || null) : null;
  const res = await window.confirmarPedidoTerceroCallable({
  nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega, origenRecogida, gpsRecogidaManual,
+ fueraCiudad: !!(window._sbTercero && window._sbTercero.fueraCiudad),
  direccionRecogidaTexto: (origenRecogida === 'otro_lugar') ? ((document.getElementById('sb-t-recogida-dir') || {}).value || '').trim() : '',
  });
  const card = document.getElementById('sb-tercero-card');
@@ -23779,7 +23849,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const btnMapa = document.getElementById('sb-t-btn-mapa');
  if (btnMapa) { btnMapa.style.display = 'block'; btnMapa.textContent = 'Ubicación marcada ✓ (toca para cambiarla)'; }
  const btnEnviar = document.getElementById('sb-t-btn-enviar');
- if (btnEnviar && !btnEnviar.disabled) btnEnviar.textContent = 'Enviar pedido';
+ if (btnEnviar && !btnEnviar.disabled && !(window._sbTercero && window._sbTercero.cotizadoSig)) btnEnviar.textContent = 'Ver precio';
  const errEl = document.getElementById('sb-t-error');
  if (errEl) errEl.style.display = 'none';
  } catch (e) { console.warn('[Fuera de la ciudad] sbMarcarGpsFueraCiudad:', e); }

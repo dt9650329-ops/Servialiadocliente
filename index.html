@@ -23500,7 +23500,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  window.sbAplicarGpsATarjetaTercero = function (gps) {
  if (!window._sbTercero) window._sbTercero = {};
  window._sbTercero.gpsEntrega = gps;
- if (window._sbTercero.fueraCiudad) { window.sbMarcarGpsFueraCiudad(); return; }
+ if (window._sbTercero.fueraCiudad) { try { const li = document.getElementById('sb-t-link'); if (li) li.value = ''; } catch (e) {} window.sbMarcarGpsFueraCiudad(); return; }
  try {
  const dirEl = document.getElementById('sb-t-direccion');
  if (dirEl) { dirEl.value = 'Ubicación GPS'; dirEl.readOnly = true; dirEl.style.opacity = '0.7'; }
@@ -23605,6 +23605,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const minutosPreparacion = window._sbTercero ? window._sbTercero.minutos : null;
  const gpsEntrega = window._sbTercero ? window._sbTercero.gpsEntrega : null;
  const tieneGps = !!(gpsEntrega && gpsEntrega.lat && gpsEntrega.lng);
+ const linkMaps = ((document.getElementById('sb-t-link') || {}).value || '').trim();
 
  // DOMICILIO FUERA DE LA CIUDAD: pueblo/ciudad + barrio/vereda + referencia, y
  // el punto en el mapa es OBLIGATORIO (sin él se cobraba como si fuera un
@@ -23616,8 +23617,8 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (errEl) { errEl.textContent = 'Completa nombre, teléfono, pueblo o ciudad, y el barrio, vereda o referencia.'; errEl.style.display = 'block'; }
  return;
  }
- if (!tieneGps) {
- if (errEl) { errEl.style.color = '#F59E0B'; errEl.textContent = 'Agrega la ubicación manualmente en el mapa para darte un precio más exacto de la tarifa.'; errEl.style.display = 'block'; }
+ if (!tieneGps && !linkMaps) {
+ if (errEl) { errEl.style.color = '#F59E0B'; errEl.textContent = 'Marca la ubicación en el mapa o pega el link de Google Maps para darte un precio exacto de la tarifa.'; errEl.style.display = 'block'; }
  window.abrirMapeadorPedidoTercero();
  try {
  const tEl = document.getElementById('mapeador-pedido-tercero-titulo');
@@ -23654,7 +23655,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const gpsRecCot = (origenCot !== 'local') ? (window._sbTercero.gpsRecogida || null) : null;
  const sigActual = JSON.stringify([nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega,
  gpsEntrega && gpsEntrega.lat, gpsEntrega && gpsEntrega.lng, origenCot,
- gpsRecCot && gpsRecCot.lat, gpsRecCot && gpsRecCot.lng, minutosPreparacion]);
+ gpsRecCot && gpsRecCot.lat, gpsRecCot && gpsRecCot.lng, minutosPreparacion, linkMaps]);
  const yaCotizado = window._sbTercero.cotizadoSig === sigActual;
  const yaVioReqAdmin = window._sbTercero.cotizadoReqAdmin === true;
 
@@ -23664,9 +23665,17 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (!window.cotizarPedidoTerceroCallable) throw new Error('No se pudo conectar con el servidor.');
  const rc = await window.cotizarPedidoTerceroCallable({
  nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega,
- origenRecogida: origenCot, gpsRecogidaManual: gpsRecCot, fueraCiudad: true,
+ origenRecogida: origenCot, gpsRecogidaManual: gpsRecCot, fueraCiudad: true, linkUbicacion: linkMaps,
  });
  const d = rc.data || {};
+ const gpsFinal = (d.gpsEntrega && d.gpsEntrega.lat && d.gpsEntrega.lng) ? d.gpsEntrega : gpsEntrega;
+ if (gpsFinal && gpsFinal.lat && gpsFinal.lng) {
+ window._sbTercero.gpsEntrega = gpsFinal;
+ if (linkMaps) {
+ const bm = document.getElementById('sb-t-btn-mapa');
+ if (bm) bm.textContent = 'Ubicación tomada del link ✓ (toca para cambiarla en el mapa)';
+ }
+ }
  const hayPrecio = d.montoDomicilio !== null && d.montoDomicilio !== undefined && !d.requiereMapeador;
  const prev = document.getElementById('sb-t-cotizacion');
  if (prev) prev.remove();
@@ -23700,7 +23709,9 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  btn.parentElement.appendChild(btnCancel);
  }
 
- window._sbTercero.cotizadoSig = sigActual;
+ window._sbTercero.cotizadoSig = JSON.stringify([nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega,
+ gpsFinal && gpsFinal.lat, gpsFinal && gpsFinal.lng, origenCot,
+ gpsRecCot && gpsRecCot.lat, gpsRecCot && gpsRecCot.lng, minutosPreparacion, linkMaps]);
  window._sbTercero.cotizadoReqAdmin = !hayPrecio;
  if (btn) { btn.disabled = false; btn.textContent = hayPrecio ? 'Confirmar y enviar pedido' : 'Enviar para que el admin confirme precio'; }
  } catch (eCot) {
@@ -23810,6 +23821,16 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  const btnMapa = document.getElementById('sb-t-btn-mapa');
  if (btnMapa) btnMapa.textContent = 'Agregar ubicación exacta en el mapa';
+ if (btnMapa && !document.getElementById('sb-t-link')) {
+ const linkInp = document.createElement('input');
+ linkInp.type = 'text';
+ linkInp.id = 'sb-t-link';
+ linkInp.placeholder = 'O pega aquí el link de Google Maps';
+ linkInp.autocomplete = 'off';
+ linkInp.style.cssText = dirEl.style.cssText;
+ linkInp.style.marginTop = '8px';
+ btnMapa.parentNode.insertBefore(linkInp, btnMapa.nextSibling);
+ }
  const btnEnviar = document.getElementById('sb-t-btn-enviar');
  if (btnEnviar) btnEnviar.textContent = 'Continuar y marcar en el mapa';
 

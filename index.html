@@ -6510,7 +6510,7 @@ const TONOS_NOTIFICACION = [
  : (typeof tabla.extraBase === 'number') ? tabla.extraBase : window._TARIFAS_DEFAULT[tipo].extraBase;
  const extraPorKm = (typeof tabla.masAllaPorKm === 'number') ? tabla.masAllaPorKm
  : (typeof tabla.extraPorKm === 'number') ? tabla.extraPorKm : window._TARIFAS_DEFAULT[tipo].extraPorKm;
- return Math.round(extraBase + (km - ultimoKm) * extraPorKm);
+ return Math.round(tramos[tramos.length - 1].precio + (km - ultimoKm) * extraPorKm); // sin base fija: precio del último tramo + $/km
  };
 
  // FIX PRECIO GPS: distancia real por carretera (OSRM) entre dos coordenadas, con fallback a línea recta (Haversine)

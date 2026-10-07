@@ -8461,7 +8461,8 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  const fileName = `chat_${window.currentUserID}_${timestamp}.jpg`;
  const fileRef = storageRef(storage, `chats/${fileName}`);
  
- const uploadTask = uploadBytesResumable(fileRef, file);
+ const fileOpt = await optimizarImagenParaSubir(file, 1280, 0.75);
+ const uploadTask = uploadBytesResumable(fileRef, fileOpt);
 
  uploadTask.on('state_changed',
  (snapshot) => {
@@ -11153,7 +11154,99 @@ if (dentroDeHorario) {
  };
 
  let app, db, auth, storage, functions, girarRuletaCallable, servibotChatCallable, confirmarAgendaConBarriosCallable, miAgendaProgramadaCallable, cancelarAgendaDirectoCallable, editarAgendaProgramadaCallable, redimirCuponCallable, confirmarPedidoTerceroCallable, cotizarPedidoTerceroCallable, misContactosLocalCallable, editarContactoLocalCallable, borrarContactoLocalUnoCallable, guardarContactoLocalConMapaCallable, cotizarPrecioDomicilioCallable, buscarPedidoPorCorreoCallable;
+ // ⚡ OPTIMIZACIÓN DE SUBIDAS (2026-10-07)
+// 1) optimizarImagenParaSubir: reescala (máx. lado) y comprime a JPEG antes de subir.
+//    Una foto de cámara pesa 3-10 MB; ya reducida pesa ~150-400 KB (10-30x menos).
+// 2) subirArchivoStorage: subida con timeout por INACTIVIDAD (se reinicia con cada
+//    avance), cancela la subida real si se corta (antes seguía en 2º plano gastando
+//    datos) y reporta el % de progreso.
+function nombreSeguroArchivo(nombre) {
+ return String(nombre || 'archivo').replace(/[^\w.\-]/g, '_');
+}
+
+async function optimizarImagenParaSubir(archivo, maxLado = 1280, calidad = 0.75) {
  try {
+ if (!archivo || !archivo.type || archivo.type.indexOf('image/') !== 0) return archivo;
+ if (archivo.type === 'image/gif' || archivo.type === 'image/svg+xml') return archivo;
+ if (archivo.size <= 250 * 1024) return archivo; // ya es liviana
+ const urlTmp = URL.createObjectURL(archivo);
+ try {
+ const img = await new Promise((resolve, reject) => {
+ const i = new Image();
+ const t = setTimeout(() => reject(new Error('timeout leyendo la imagen')), 15000);
+ i.onload = () => { clearTimeout(t); resolve(i); };
+ i.onerror = () => { clearTimeout(t); reject(new Error('no se pudo leer la imagen')); };
+ i.src = urlTmp;
+ });
+ let ancho = img.naturalWidth || img.width;
+ let alto = img.naturalHeight || img.height;
+ if (!ancho || !alto) return archivo;
+ const escala = Math.min(1, maxLado / Math.max(ancho, alto));
+ ancho = Math.max(1, Math.round(ancho * escala));
+ alto = Math.max(1, Math.round(alto * escala));
+ const canvas = document.createElement('canvas');
+ canvas.width = ancho;
+ canvas.height = alto;
+ const ctx = canvas.getContext('2d');
+ ctx.fillStyle = '#ffffff'; // fondo blanco por si era PNG con transparencia
+ ctx.fillRect(0, 0, ancho, alto);
+ ctx.drawImage(img, 0, 0, ancho, alto);
+ const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', calidad));
+ canvas.width = 0; canvas.height = 0; // libera memoria
+ if (!blob || blob.size >= archivo.size) return archivo;
+ const base = nombreSeguroArchivo((archivo.name || 'foto').replace(/\.[^.]+$/, '')) || 'foto';
+ console.log('[subidas] imagen optimizada: ' + Math.round(archivo.size / 1024) + ' KB → ' + Math.round(blob.size / 1024) + ' KB');
+ return new File([blob], base + '.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+ } finally {
+ URL.revokeObjectURL(urlTmp);
+ }
+ } catch (errOpt) {
+ console.warn('[subidas] no se pudo optimizar la imagen, se sube la original:', errOpt);
+ return archivo;
+ }
+}
+
+function subirArchivoStorage(fileRef, archivo, opciones) {
+ const { onProgress, inactividadMs = 30000, metadata } = opciones || {};
+ const meta = Object.assign({ cacheControl: 'public,max-age=31536000' }, metadata || {});
+ return new Promise((resolve, reject) => {
+ let terminado = false;
+ let timer = null;
+ const task = uploadBytesResumable(fileRef, archivo, meta);
+ const armar = () => {
+ clearTimeout(timer);
+ timer = setTimeout(() => {
+ if (terminado) return;
+ terminado = true;
+ try { task.cancel(); } catch (e) {}
+ reject(new Error('Se cortó la subida: sin avance por ' + Math.round(inactividadMs / 1000) + ' s (revisa tu conexión)'));
+ }, inactividadMs);
+ };
+ armar();
+ task.on('state_changed',
+ (snap) => {
+ armar();
+ if (onProgress && snap.totalBytes) {
+ try { onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)); } catch (e) {}
+ }
+ },
+ (err) => {
+ if (terminado) return;
+ terminado = true;
+ clearTimeout(timer);
+ reject(err);
+ },
+ () => {
+ if (terminado) return;
+ terminado = true;
+ clearTimeout(timer);
+ resolve(task.snapshot);
+ }
+ );
+ });
+}
+
+try {
  app = initializeApp(firebaseConfig);
  db = getDatabase(app);
  auth = getAuth(app); 
@@ -13224,7 +13317,8 @@ ${mensajeEstado}
  const fileName = `admin_chat_${window.currentUserID}_${timestamp}_${file.name}`;
  const fileRef = window.storageRef(window.storage, `chats_admin/${fileName}`);
  
- const uploadTask = window.uploadBytesResumable(fileRef, file);
+ const fileOpt = await optimizarImagenParaSubir(file, 1280, 0.75);
+ const uploadTask = window.uploadBytesResumable(fileRef, fileOpt);
 
  uploadTask.on('state_changed',
  (snapshot) => {
@@ -13727,15 +13821,9 @@ ${motivo}`;
  if (imagenFile) {
  try {
  console.log('[guardarNegocio] Subiendo imagen...');
- const imageRef = storageRef(storage, `negocios/${Date.now()}_${imagenFile.name}`);
- // 🔧 FIX 2026-09-16: timeout de seguridad de 30s para la subida — si la
- // conexión se cae a mitad de camino, uploadBytesResumable puede quedar
- // sin resolver ni rechazar nunca, colgando el guardado completo.
- const subidaConTimeout = Promise.race([
- uploadBytesResumable(imageRef, imagenFile),
- new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado subiendo la imagen (revisa tu conexión)')), 30000))
- ]);
- await subidaConTimeout;
+ const imagenOpt = await optimizarImagenParaSubir(imagenFile, 1280, 0.75);
+ const imageRef = storageRef(storage, `negocios/${Date.now()}_${nombreSeguroArchivo(imagenOpt.name)}`);
+ await subirArchivoStorage(imageRef, imagenOpt, { inactividadMs: 30000 });
  imagenURL = await getDownloadURL(imageRef);
  console.log('[guardarNegocio] Imagen subida:', imagenURL);
  } catch (error) {
@@ -14687,11 +14775,13 @@ ${motivo}`;
  let videoURL = null;
  try {
  if (fotoFile) {
- const imageRef = storageRef(storage, `negocios/${negocioId}/estados/${Date.now()}_${fotoFile.name}`);
- await Promise.race([
- uploadBytesResumable(imageRef, fotoFile),
- new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado subiendo ' + (esVideoEstado ? 'el video' : 'la foto') + ' (revisa tu conexión)')), esVideoEstado ? 180000 : 60000))
- ]);
+ if (!esVideoEstado) btnPublicarEstado.textContent = 'Preparando foto...';
+ const archivoSubir = esVideoEstado ? fotoFile : await optimizarImagenParaSubir(fotoFile, 1280, 0.75);
+ const imageRef = storageRef(storage, `negocios/${negocioId}/estados/${Date.now()}_${nombreSeguroArchivo(archivoSubir.name)}`);
+ await subirArchivoStorage(imageRef, archivoSubir, {
+ inactividadMs: esVideoEstado ? 45000 : 30000,
+ onProgress: (pct) => { btnPublicarEstado.textContent = 'Subiendo ' + pct + '%'; }
+ });
  const urlSubida = await getDownloadURL(imageRef);
  if (esVideoEstado) { videoURL = urlSubida; } else { imagenURL = urlSubida; }
  }
@@ -14855,12 +14945,13 @@ ${motivo}`;
 
  if (btn) { btn.disabled = true; btn.textContent = 'Subiendo...'; }
  try {
- const nombreSeguro = archivo.name.replace(/[^\w.\-]/g, '_');
- const imageRef = storageRef(storage, `negocios/${negocioId}/perfil/${Date.now()}_${nombreSeguro}`);
- await Promise.race([
- uploadBytesResumable(imageRef, archivo),
- new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado subiendo la foto (revisa tu conexión)')), 60000))
- ]);
+ if (btn) btn.textContent = 'Preparando...';
+ const archivoSubir = await optimizarImagenParaSubir(archivo, 1280, 0.75);
+ const imageRef = storageRef(storage, `negocios/${negocioId}/perfil/${Date.now()}_${nombreSeguroArchivo(archivoSubir.name)}`);
+ await subirArchivoStorage(imageRef, archivoSubir, {
+ inactividadMs: 30000,
+ onProgress: (pct) => { if (btn) btn.textContent = 'Subiendo ' + pct + '%'; }
+ });
  const url = await getDownloadURL(imageRef);
  await update(ref(db, `negocios/${negocioId}`), { imagen: url });
 
@@ -15163,14 +15254,12 @@ ${motivo}`;
  let fotoURL = null;
  if (fotoFile) {
  try {
- const imageRef = storageRef(storage, `negocios/${miTiendaIdActual}/secciones/${seccionActualId}/${Date.now()}_${fotoFile.name}`);
- // 🔧 FIX 2026-09-16: mismo timeout de seguridad de 30s que en guardarNegocio —
- // si la conexión se cae a mitad de camino, uploadBytesResumable puede quedar
- // sin resolver ni rechazar nunca, dejando el botón en "Guardando..." para siempre.
- await Promise.race([
- uploadBytesResumable(imageRef, fotoFile),
- new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado subiendo la foto (revisa tu conexión)')), 30000))
- ]);
+ const fotoOpt = await optimizarImagenParaSubir(fotoFile, 1024, 0.75);
+ const imageRef = storageRef(storage, `negocios/${miTiendaIdActual}/secciones/${seccionActualId}/${Date.now()}_${nombreSeguroArchivo(fotoOpt.name)}`);
+ await subirArchivoStorage(imageRef, fotoOpt, {
+ inactividadMs: 30000,
+ onProgress: (pct) => { if (typeof btnGuardar !== 'undefined' && btnGuardar) btnGuardar.textContent = 'Subiendo foto ' + pct + '%'; }
+ });
  fotoURL = await getDownloadURL(imageRef);
  } catch (error) {
  // FIX: se deja visible el código real del error (ej. storage/unauthorized
@@ -15293,13 +15382,12 @@ ${motivo}`;
 
  if (fotoFile) {
  try {
- const imageRef = storageRef(storage, `negocios/${negocioId}/${rutaProducto}/${Date.now()}_${fotoFile.name}`);
- // 🔧 FIX 2026-09-16: mismo timeout de seguridad de 30s — evita que el botón
- // se quede en "Guardando..." para siempre si la subida se cuelga a mitad de camino.
- await Promise.race([
- uploadBytesResumable(imageRef, fotoFile),
- new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado subiendo la foto (revisa tu conexión)')), 30000))
- ]);
+ const fotoOpt = await optimizarImagenParaSubir(fotoFile, 1024, 0.75);
+ const imageRef = storageRef(storage, `negocios/${negocioId}/${rutaProducto}/${Date.now()}_${nombreSeguroArchivo(fotoOpt.name)}`);
+ await subirArchivoStorage(imageRef, fotoOpt, {
+ inactividadMs: 30000,
+ onProgress: (pct) => { if (typeof btnGuardar !== 'undefined' && btnGuardar) btnGuardar.textContent = 'Subiendo foto ' + pct + '%'; }
+ });
  cambios.foto = await getDownloadURL(imageRef);
  } catch (error) {
  console.error('Error al subir la nueva foto del producto:', error.code, error.message, error);
@@ -15761,10 +15849,10 @@ ${motivo}`;
  async function _subirArchivoChatNegocio(archivo, nombre, contentType) {
  const carpeta = `neg_${_chatNegocioActivo.negocioId}_${_chatNegocioActivo.clienteUID}`;
  const fileRef = storageRef(storage, `chat_p2p/${carpeta}/${nombre}`);
- await Promise.race([
- uploadBytesResumable(fileRef, archivo, contentType ? { contentType } : undefined),
- new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado (revisa tu conexión)')), 60000))
- ]);
+ await subirArchivoStorage(fileRef, archivo, {
+ inactividadMs: 30000,
+ metadata: contentType ? { contentType } : undefined
+ });
  return await getDownloadURL(fileRef);
  }
 
@@ -15781,7 +15869,8 @@ ${motivo}`;
  const btn = document.getElementById('btn-foto-chat-negocio');
  if (btn) { btn.disabled = true; btn.textContent = 'Subiendo...'; }
  try {
- const url = await _subirArchivoChatNegocio(archivo, `${Date.now()}.jpg`, archivo.type);
+ const archivoOpt = await optimizarImagenParaSubir(archivo, 1280, 0.75);
+ const url = await _subirArchivoChatNegocio(archivoOpt, `${Date.now()}.jpg`, archivoOpt.type);
  await _enviarObjetoChatNegocio({ tipo: 'imagen', url, mensaje: '📷 Foto' });
  } catch (errFoto) {
  console.error('Error enviando foto al chat de la tienda:', errFoto);

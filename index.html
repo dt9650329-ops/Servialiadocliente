@@ -6513,31 +6513,165 @@ const TONOS_NOTIFICACION = [
  return Math.round(tramos[tramos.length - 1].precio + (km - ultimoKm) * extraPorKm); // sin base fija: precio del último tramo + $/km
  };
 
- // FIX PRECIO GPS: distancia real por carretera (OSRM) entre dos coordenadas, con fallback a línea recta (Haversine)
- // FIX ESTIMADO SIN OSRM: la línea recta siempre da MENOS que la ruta real
- // (calles, curvas, ríos, lomas). Cuando OSRM no responde, se corrige la
- // línea recta con este factor para que el estimado se acerque más a lo
- // que en verdad recorre el repartidor, en vez de quedarse corto.
- window._FACTOR_CORRECCION_RUTA = 1.25; // +25% sobre la línea recta
- window._distanciaRealEntrePuntos = async function(coordsA, coordsB) {
- if (!coordsA || !coordsB) return null;
- try {
- const osrmUrl = `https://router.project-osrm.org/route/v1/driving/`
- + `${coordsA.lng},${coordsA.lat};${coordsB.lng},${coordsB.lat}`
- + `?overview=false`;
- const resp = await fetch(osrmUrl);
- const data = await resp.json();
- if (data.routes && data.routes[0]) return data.routes[0].distance / 1000;
- } catch(e) {
- console.warn('[PRECIO GPS] OSRM no disponible, usando Haversine:', e);
+ // 🛣️ RUTA REAL POR CALLES + PERÍMETRO URBANO (2026-10-08)
+ // Orden de intentos: Mapbox Directions (confiable) → OSRM público (demo, se cae seguido) → línea recta × factor.
+ // Antes solo se usaba OSRM sin timeout: si tardaba o fallaba, el precio salía de una línea recta y quedaba corto.
+ // El perfil es "driving" SIN tráfico a propósito, para que el mismo trayecto cueste lo mismo a toda hora.
+ window._FACTOR_CORRECCION_RUTA = 1.25; // +25% sobre la línea recta (solo cuando no hay ninguna ruta real)
+ window._TOLERANCIA_BORDE_KM = 0.15;    // si la ruta se sale menos de esto del perímetro, se cuenta como dentro
+ window._rutasCache = new Map();
+
+ function _fetchConTimeout(url, ms) {
+ const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+ const t = setTimeout(() => { try { if (ctrl) ctrl.abort(); } catch (e) {} }, ms);
+ return fetch(url, ctrl ? { signal: ctrl.signal } : undefined).finally(() => clearTimeout(t));
  }
- const R = 6371;
- const dLat = (coordsB.lat - coordsA.lat) * Math.PI / 180;
- const dLng = (coordsB.lng - coordsA.lng) * Math.PI / 180;
- const a = Math.sin(dLat/2)**2 + Math.cos(coordsA.lat * Math.PI/180)
- * Math.cos(coordsB.lat * Math.PI/180) * Math.sin(dLng/2)**2;
- const kmLineaRecta = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
- return kmLineaRecta * window._FACTOR_CORRECCION_RUTA;
+ function _metrosEntre(p, q) { // p, q = [lat, lng]
+ const R = 6371000, rad = Math.PI / 180;
+ const dLat = (q[0] - p[0]) * rad, dLng = (q[1] - p[1]) * rad;
+ const a = Math.sin(dLat / 2) ** 2 + Math.cos(p[0] * rad) * Math.cos(q[0] * rad) * Math.sin(dLng / 2) ** 2;
+ return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+ }
+
+ // Devuelve { km, coords: [[lat,lng], ...], fuente: 'mapbox' | 'osrm' | 'estimado' }. Nunca lanza.
+ window._rutaRealEntrePuntos = async function(coordsA, coordsB) {
+ if (!coordsA || !coordsB) return null;
+ const clave = [coordsA.lat, coordsA.lng, coordsB.lat, coordsB.lng].map(v => Number(v).toFixed(5)).join(',');
+ const guardada = window._rutasCache.get(clave);
+ if (guardada) return guardada;
+ let ruta = null;
+ // 1) Mapbox Directions
+ try {
+ const tk = window.MAPBOX_TOKEN;
+ if (tk && String(tk).indexOf('pk.') === 0) {
+ const url = 'https://api.mapbox.com/directions/v5/mapbox/driving/'
+ + coordsA.lng + ',' + coordsA.lat + ';' + coordsB.lng + ',' + coordsB.lat
+ + '?geometries=geojson&overview=full&access_token=' + tk;
+ const resp = await _fetchConTimeout(url, 8000);
+ const data = await resp.json();
+ const r0 = data && data.routes && data.routes[0];
+ if (r0 && typeof r0.distance === 'number' && r0.geometry && r0.geometry.coordinates) {
+ ruta = { km: r0.distance / 1000, coords: r0.geometry.coordinates.map(c => [c[1], c[0]]), fuente: 'mapbox' };
+ }
+ }
+ } catch (e) {
+ console.warn('[RUTA] Mapbox Directions no respondió, probando OSRM:', e);
+ }
+ // 2) OSRM público (respaldo)
+ if (!ruta) {
+ try {
+ const url = 'https://router.project-osrm.org/route/v1/driving/'
+ + coordsA.lng + ',' + coordsA.lat + ';' + coordsB.lng + ',' + coordsB.lat
+ + '?overview=full&geometries=geojson';
+ const resp = await _fetchConTimeout(url, 6000);
+ const data = await resp.json();
+ const r0 = data && data.routes && data.routes[0];
+ if (r0 && typeof r0.distance === 'number' && r0.geometry && r0.geometry.coordinates) {
+ ruta = { km: r0.distance / 1000, coords: r0.geometry.coordinates.map(c => [c[1], c[0]]), fuente: 'osrm' };
+ }
+ } catch (e) {
+ console.warn('[RUTA] OSRM no disponible, usando línea recta corregida:', e);
+ }
+ }
+ // 3) Último recurso: línea recta × factor (nunca debe trabar un pedido)
+ if (!ruta) {
+ const recta = _metrosEntre([coordsA.lat, coordsA.lng], [coordsB.lat, coordsB.lng]) / 1000;
+ ruta = {
+ km: recta * window._FACTOR_CORRECCION_RUTA,
+ coords: [[coordsA.lat, coordsA.lng], [coordsB.lat, coordsB.lng]],
+ fuente: 'estimado'
+ };
+ } else {
+ if (window._rutasCache.size > 60) window._rutasCache.clear();
+ window._rutasCache.set(clave, ruta); // solo se guardan rutas reales
+ }
+ return ruta;
+ };
+
+ // Compatibilidad: devuelve solo los km (lo usan otros lugares del archivo)
+ window._distanciaRealEntrePuntos = async function(coordsA, coordsB) {
+ const r = await window._rutaRealEntrePuntos(coordsA, coordsB);
+ return r ? r.km : null;
+ };
+
+ // Perímetro urbano dibujado en el admin: config_tarifas/armenia/perimetro = { puntos: [{lat,lng}, ...] }
+ // (la tabla de tarifas ya se escucha en vivo en _tarifasDistanciaCache). Devuelve [[lat,lng], ...] o [] si no hay.
+ window._perimetroPuntosCliente = function() {
+ const c = window._tarifasDistanciaCache;
+ let arr = c && c.perimetro;
+ if (!arr) return [];
+ if (arr.puntos !== undefined) arr = arr.puntos;
+ if (!arr) return [];
+ if (!Array.isArray(arr)) arr = Object.values(arr);
+ const pts = arr.map(p => [parseFloat(p && p.lat), parseFloat(p && p.lng)]).filter(p => isFinite(p[0]) && isFinite(p[1]));
+ return pts.length >= 3 ? pts : [];
+ };
+
+ // Reparte la ruta en km DENTRO y FUERA del perímetro, partiendo cada tramo justo donde cruza el borde.
+ window._repartirRutaPerimetro = function(coords, pts, kmTotal) {
+ const dentro = (lat, lng) => {
+ let d = false;
+ for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+ const yi = pts[i][0], xi = pts[i][1], yj = pts[j][0], xj = pts[j][1];
+ if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) d = !d;
+ }
+ return d;
+ };
+ let mDentro = 0, mFuera = 0;
+ for (let i = 0; i < coords.length - 1; i++) {
+ const p = coords[i], q = coords[i + 1];
+ const rx = q[1] - p[1], ry = q[0] - p[0];
+ const ts = [0, 1];
+ for (let k = 0, j = pts.length - 1; k < pts.length; j = k++) {
+ const a = pts[j], b = pts[k];
+ const sx = b[1] - a[1], sy = b[0] - a[0];
+ const den = rx * sy - ry * sx;
+ if (Math.abs(den) < 1e-15) continue;
+ const t = ((a[1] - p[1]) * sy - (a[0] - p[0]) * sx) / den;
+ const u = ((a[1] - p[1]) * ry - (a[0] - p[0]) * rx) / den;
+ if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.push(t);
+ }
+ ts.sort((x, y) => x - y);
+ const largoSeg = _metrosEntre(p, q);
+ for (let m = 0; m < ts.length - 1; m++) {
+ const t0 = ts[m], t1 = ts[m + 1];
+ if (t1 - t0 < 1e-12) continue;
+ const tm = (t0 + t1) / 2;
+ const largo = largoSeg * (t1 - t0);
+ if (dentro(p[0] + (q[0] - p[0]) * tm, p[1] + (q[1] - p[1]) * tm)) mDentro += largo; else mFuera += largo;
+ }
+ }
+ const total = mDentro + mFuera;
+ if (!total) return { kmDentro: kmTotal, kmFuera: 0 };
+ const f = kmTotal / (total / 1000); // ajusta a la distancia oficial de la ruta
+ return { kmDentro: (mDentro / 1000) * f, kmFuera: (mFuera / 1000) * f };
+ };
+
+ // $ por km de AFUERA del perímetro = el mismo "$ por km adicional" de cada tipo de cliente (tabla del admin)
+ window._porKmFueraArmenia = function() {
+ const tipo = (window.currentTipoCliente === 'local') ? 'local' : 'natural';
+ const c = window._tarifasDistanciaCache && window._tarifasDistanciaCache[tipo];
+ const tabla = (c && c.tramos) ? c : window._TARIFAS_DEFAULT[tipo];
+ if (typeof tabla.masAllaPorKm === 'number') return tabla.masAllaPorKm;
+ if (typeof tabla.extraPorKm === 'number') return tabla.extraPorKm;
+ return window._TARIFAS_DEFAULT[tipo].extraPorKm;
+ };
+
+ // COTIZACIÓN ÚNICA: ruta real + perímetro. Nunca lanza.
+ // Con perímetro guardado: tarifa por tramos para los km DENTRO + $/km para los km FUERA.
+ // Sin perímetro guardado: igual que antes (tabla por tramos con el total de km).
+ window._cotizarRutaEntrePuntos = async function(coordsA, coordsB) {
+ const ruta = await window._rutaRealEntrePuntos(coordsA, coordsB);
+ const km = ruta ? ruta.km : 0;
+ const pts = window._perimetroPuntosCliente();
+ if (!ruta || !pts.length) {
+ return { km, precio: window._precioSegunKmArmenia(km), kmDentro: km, kmFuera: 0, fuente: ruta ? ruta.fuente : 'sin_ruta', usoPerimetro: false };
+ }
+ let r = window._repartirRutaPerimetro(ruta.coords, pts, km);
+ if (r.kmFuera < window._TOLERANCIA_BORDE_KM) r = { kmDentro: km, kmFuera: 0 }; // rozar el borde no cuenta
+ const precioDentro = window._precioSegunKmArmenia(r.kmDentro);
+ const extraFuera = Math.round(r.kmFuera * window._porKmFueraArmenia());
+ return { km, precio: precioDentro + extraFuera, kmDentro: r.kmDentro, kmFuera: r.kmFuera, fuente: ruta.fuente, usoPerimetro: true };
  };
 
  // Calcular precio según zonas seleccionadas
@@ -6681,13 +6815,19 @@ const TONOS_NOTIFICACION = [
  let kmRuta = null;
  let precioBackend = null;
  let usadoBackend = false;
+ let cotLocal = null;
 
- // FIX 2026-08-25: el precio real ahora lo calcula el SERVIDOR (misma
- // ruta OSRM + misma tabla de tarifas que valida el pedido justo después
- // de crearse), así el estimado que el cliente ve aquí ya coincide con
- // lo que realmente se termina cobrando — sin depender de si la señal
- // del celular falla justo en este momento.
- if (typeof window.cotizarPrecioDomicilioCallable === 'function') {
+ // 🛣️ 2026-10-08: con perímetro urbano guardado en el admin, el precio sale de AQUÍ:
+ // ruta real por calles (Mapbox → OSRM) → tramos para los km dentro + $/km para los km fuera.
+ // (El servidor todavía no conoce el perímetro, por eso en este caso no se le pregunta.)
+ if (window._perimetroPuntosCliente().length >= 3) {
+ cotLocal = await window._cotizarRutaEntrePuntos(coordsRec, coordsEnt);
+ kmRuta = cotLocal.km;
+ }
+
+ // FIX 2026-08-25: sin perímetro, el precio real lo calcula el SERVIDOR (misma ruta + misma tabla
+ // de tarifas que valida el pedido justo después de crearse).
+ if (kmRuta === null && typeof window.cotizarPrecioDomicilioCallable === 'function') {
  try {
  const respCotiz = await window.cotizarPrecioDomicilioCallable({
  gpsRecogida: { lat: coordsRec.lat, lng: coordsRec.lng },
@@ -6703,40 +6843,19 @@ const TONOS_NOTIFICACION = [
  }
  }
 
- // Respaldo: si el servidor no respondió (función aún no desplegada, o el
- // celular quedó totalmente sin datos), se calcula localmente como antes.
+ // Respaldo: ruta real calculada en el celular (Mapbox → OSRM → línea recta corregida)
  if (kmRuta === null) {
- // Distancia real por carretera via OSRM
- try {
- const osrmUrl = `https://router.project-osrm.org/route/v1/driving/`
- + `${coordsRec.lng},${coordsRec.lat};${coordsEnt.lng},${coordsEnt.lat}`
- + `?overview=false`;
- const resp = await fetch(osrmUrl);
- const data = await resp.json();
- if (data.routes && data.routes[0]) {
- kmRuta = data.routes[0].distance / 1000;
- }
- } catch(e) {
- console.warn('[PRECIO] OSRM local no disponible, usando Haversine:', e);
- }
-
- // Fallback: línea recta (Haversine) si OSRM falla — corregida con el
- // mismo factor de _FACTOR_CORRECCION_RUTA para no quedarse corta.
- if (!kmRuta) {
- const R = 6371;
- const dLat = (coordsEnt.lat - coordsRec.lat) * Math.PI / 180;
- const dLng = (coordsEnt.lng - coordsRec.lng) * Math.PI / 180;
- const a = Math.sin(dLat/2)**2 + Math.cos(coordsRec.lat * Math.PI/180)
- * Math.cos(coordsEnt.lat * Math.PI/180) * Math.sin(dLng/2)**2;
- const kmLineaRecta = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
- kmRuta = kmLineaRecta * (window._FACTOR_CORRECCION_RUTA || 1.25);
- console.warn('[PRECIO] Usando Haversine corregido:', kmRuta.toFixed(2), 'km');
- }
+ cotLocal = await window._cotizarRutaEntrePuntos(coordsRec, coordsEnt);
+ kmRuta = cotLocal.km;
  }
 
  const kmDisplay = Math.round(kmRuta * 10) / 10;
- precio = (usadoBackend && precioBackend !== null && precioBackend !== undefined) ? precioBackend : _precioSegunKm(kmRuta);
+ precio = (usadoBackend && precioBackend !== null && precioBackend !== undefined) ? precioBackend
+ : (cotLocal ? cotLocal.precio : _precioSegunKm(kmRuta));
  razon = ` ${kmDisplay} km · ${gpsRecogidaReal ? 'tu ubicación GPS' : (brRec || zonaRecogida)} → ${gpsDestinoReal ? 'ubicación GPS de entrega' : (brEnt || zonaEntrega)}`;
+ if (cotLocal && cotLocal.usoPerimetro && cotLocal.kmFuera > 0) {
+ razon += ` · ${Math.round(cotLocal.kmFuera * 10) / 10} km fuera del perímetro urbano`;
+ }
  } else {
  // Sin coordenadas: fallback conservador por zonas
  const zonas = { sur:0, centro:1, norte:2, oriente:1, occidente:1 };
@@ -6815,17 +6934,18 @@ const TONOS_NOTIFICACION = [
  if (resultDiv) resultDiv.innerHTML = ' Calculando distancia y precio...';
 
  let distanciaKm, esEstimadoParcial = false;
+ let cotGPS;
  if (otroCoords) {
- distanciaKm = await window._distanciaRealEntrePuntos({ lat, lng }, otroCoords);
+ cotGPS = await window._cotizarRutaEntrePuntos({ lat, lng }, otroCoords);
  } else {
  // Todavía no se conoce el otro punto: estimado provisional desde el
  // centro de Armenia. Se recalcula automáticamente al agregar el otro punto.
  esEstimadoParcial = true;
- distanciaKm = await window._distanciaRealEntrePuntos({ lat, lng }, { lat: 4.5339, lng: -75.6811 });
+ cotGPS = await window._cotizarRutaEntrePuntos({ lat, lng }, { lat: 4.5339, lng: -75.6811 });
  }
- distanciaKm = distanciaKm || 0;
+ distanciaKm = cotGPS.km || 0;
  const distanciaRedondeada = Math.round(distanciaKm * 10) / 10;
- const precioGPS = window._precioSegunKmArmenia(distanciaKm);
+ const precioGPS = cotGPS.precio;
 
  // Llenar el campo de dirección con las coordenadas GPS
  if (tipo === 'destino') {
@@ -16616,8 +16736,9 @@ ${motivo}`;
  return;
  }
 
- const distanciaKm = (await window._distanciaRealEntrePuntos(ubicacionTienda, ubicacionCliente)) || 0;
- const montoDomicilio = window._precioSegunKmArmenia(distanciaKm);
+ const cotTienda = await window._cotizarRutaEntrePuntos(ubicacionTienda, ubicacionCliente);
+ const distanciaKm = cotTienda.km || 0;
+ const montoDomicilio = cotTienda.precio;
  const montoProductos = carritoTienda.reduce((sum, item) => sum + (item.precio || 0), 0);
  const montoTotalSinDescuento = montoProductos + montoDomicilio;
 

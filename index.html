@@ -22959,16 +22959,39 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  function _esperar(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
- function _beepSilenciar() {
+  // DIAGNOSTICO TEMPORAL: muestra un aviso chiquito arriba para saber si el
+  // plugin SilenciadorBeep existe y responde. Quitar cuando ya funcione.
+  function _beepDiag(msg, ok) {
+    try {
+      let d = document.getElementById('beepDiag');
+      if (!d) {
+        d = document.createElement('div');
+        d.id = 'beepDiag';
+        d.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:2147483647;padding:6px 12px;border-radius:8px;font:12px sans-serif;color:#fff;max-width:90%;text-align:center;pointer-events:none;';
+        document.body.appendChild(d);
+      }
+      d.style.background = ok ? '#2e7d32' : '#c62828';
+      d.textContent = msg;
+      d.style.display = 'block';
+      clearTimeout(window._beepDiagT);
+      window._beepDiagT = setTimeout(function(){ d.style.display = 'none'; }, 3500);
+    } catch (e) {}
+  }
+
+  function _beepSilenciar() {
     try {
       const B = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SilenciadorBeep;
-      if (B && B.silenciar) B.silenciar().catch(function(){});
-    } catch (e) {}
+      if (!B || !B.silenciar) { _beepDiag('Silenciador: plugin NO encontrado', false); return; }
+      B.silenciar().then(function(){ _beepDiag('Silenciador: silenciado OK', true); })
+        .catch(function(err){ _beepDiag('Silenciador ERROR: ' + (err && err.message ? err.message : err), false); });
+    } catch (e) { _beepDiag('Silenciador excepcion: ' + e, false); }
   }
   function _beepRestaurar() {
     try {
       const B = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SilenciadorBeep;
-      if (B && B.restaurar) B.restaurar().catch(function(){});
+      if (!B || !B.restaurar) return;
+      B.restaurar().then(function(){ _beepDiag('Silenciador: restaurado OK', true); })
+        .catch(function(err){ _beepDiag('Restaurar ERROR: ' + (err && err.message ? err.message : err), false); });
     } catch (e) {}
   }
 

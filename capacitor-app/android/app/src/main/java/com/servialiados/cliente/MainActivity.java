@@ -25,6 +25,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         SplashScreen.installSplashScreen(this);
+        registerPlugin(SilenciadorBeepPlugin.class);
         super.onCreate(savedInstanceState);
 
         // FIX CACHÉ: el WebView de Capacitor cachea agresivamente el

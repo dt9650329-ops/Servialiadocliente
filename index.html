@@ -4718,6 +4718,9 @@
  <p style="color:#aaa; font-size:13px; margin-bottom:4px;">Valor del domicilio:</p>
  <p id="domi-precio-valor" style="color:#FFD700; font-size:28px; font-weight:bold; margin:0;"></p>
  <p id="domi-precio-razon" style="color:#aaa; font-size:12px; margin-top:4px; margin-bottom:12px;"></p>
+ <!-- 🆕 2026-10-08: desglose "hasta la salida / de ahí en adelante" + mini-mapa con la línea -->
+ <div id="domi-desglose" style="display:none; text-align:left; background:#111827; border:1px solid #2d5a2d; border-radius:8px; padding:10px 12px; margin:0 0 10px 0; font-size:13px; color:#e5e7eb; line-height:1.55;"></div>
+ <div id="domi-desglose-mapa" style="display:none; height:230px; border-radius:10px; overflow:hidden; margin:0 0 12px 0; border:1px solid #2d5a2d;"></div>
  <!-- Tiempo estimado visible desde el formulario -->
  <div style="border-top:1px solid #2d5a2d; padding-top:10px; margin-top:4px;">
  <p style="color:#28a745; font-weight:bold; font-size:13px; margin-bottom:6px;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9.5 3.5h5"/><path d="M12 3.5v2"/><path d="M16.5 4.5l1-1"/></svg>Tiempo estimado</p>
@@ -6660,7 +6663,7 @@ const TONOS_NOTIFICACION = [
  // COTIZACIÓN ÚNICA: ruta real + perímetro. Nunca lanza.
  // Con perímetro guardado: tarifa por tramos para los km DENTRO + $/km para los km FUERA.
  // Sin perímetro guardado: igual que antes (tabla por tramos con el total de km).
- window._cotizarRutaEntrePuntos = async function(coordsA, coordsB) {
+ window._cotizarRutaEntrePuntosLocal = async function(coordsA, coordsB) {
  const ruta = await window._rutaRealEntrePuntos(coordsA, coordsB);
  const km = ruta ? ruta.km : 0;
  const pts = window._perimetroPuntosCliente();
@@ -6672,6 +6675,139 @@ const TONOS_NOTIFICACION = [
  const precioDentro = window._precioSegunKmArmenia(r.kmDentro);
  const extraFuera = Math.round(r.kmFuera * window._porKmFueraArmenia());
  return { km, precio: precioDentro + extraFuera, kmDentro: r.kmDentro, kmFuera: r.kmFuera, fuente: ruta.fuente, usoPerimetro: true };
+ };
+
+ // 🔒 2026-10-08 — UNA SOLA REGLA DE PRECIO: LA DEL SERVIDOR.
+ // Antes cada pantalla calculaba el precio en el celular con su propia fórmula (perímetro dibujado) y el
+ // servidor usaba otra (salidas), por eso el mismo trayecto daba precios distintos según por dónde se pidiera.
+ // Ahora el celular le pregunta al servidor (cotizarPrecioDomicilio) y solo calcula aquí si el servidor no responde.
+ window._cotizacionesCache = new Map();
+ window._cotizarRutaEntrePuntos = async function(coordsA, coordsB) {
+ if (!coordsA || !coordsB || typeof window.cotizarPrecioDomicilioCallable !== 'function') {
+ return window._cotizarRutaEntrePuntosLocal(coordsA, coordsB);
+ }
+ const clave = [coordsA.lat, coordsA.lng, coordsB.lat, coordsB.lng].map(v => Number(v).toFixed(5)).join(',');
+ const guardada = window._cotizacionesCache.get(clave);
+ if (guardada && (Date.now() - guardada.t) < 120000) return guardada.v;
+ try {
+ const resp = await Promise.race([
+ window.cotizarPrecioDomicilioCallable({
+ gpsRecogida: { lat: Number(coordsA.lat), lng: Number(coordsA.lng) },
+ gpsDestino: { lat: Number(coordsB.lat), lng: Number(coordsB.lng) }
+ }),
+ new Promise((_, rej) => setTimeout(() => rej(new Error('tiempo de espera agotado')), 15000))
+ ]);
+ const r = resp && resp.data;
+ if (r && typeof r.km === 'number' && typeof r.precio === 'number' && r.precio > 0) {
+ const cot = {
+ km: r.km,
+ precio: r.precio,
+ kmDentro: (typeof r.kmDentro === 'number') ? r.kmDentro : r.km,
+ kmFuera: (typeof r.kmFuera === 'number') ? r.kmFuera : 0,
+ fuente: 'servidor',
+ usoPerimetro: !!r.salida,
+ salida: r.salida || null,
+ salidaLat: (typeof r.salidaLat === 'number') ? r.salidaLat : null,
+ salidaLng: (typeof r.salidaLng === 'number') ? r.salidaLng : null,
+ precioDentro: (typeof r.precioDentro === 'number') ? r.precioDentro : null,
+ precioFuera: (typeof r.precioFuera === 'number') ? r.precioFuera : null,
+ porKmFuera: (typeof r.porKmFuera === 'number') ? r.porKmFuera : null,
+ origenDentro: (typeof r.origenDentro === 'boolean') ? r.origenDentro : true
+ };
+ if (window._cotizacionesCache.size > 40) window._cotizacionesCache.clear();
+ window._cotizacionesCache.set(clave, { t: Date.now(), v: cot });
+ return cot;
+ }
+ } catch (e) {
+ console.warn('[PRECIO] El servidor no respondió la cotización, calculo en el celular como respaldo:', e);
+ }
+ return window._cotizarRutaEntrePuntosLocal(coordsA, coordsB);
+ };
+
+ // 🆕 2026-10-08 — DESGLOSE + MINI-MAPA: "hasta la salida son X km = $A; de ahí en adelante Y km × $/km = $B".
+ // Dibuja el perímetro, la ruta (verde = dentro de Armenia, roja punteada = fuera) y el punto de salida.
+ window._desgloseToken = 0;
+ window._mapaDesgloseDomi = null;
+ window._mostrarDesgloseDomi = async function(info) {
+ const box = document.getElementById('domi-desglose');
+ const mapaDiv = document.getElementById('domi-desglose-mapa');
+ if (!box || !mapaDiv) return;
+ const token = ++window._desgloseToken;
+ const ocultar = () => {
+ box.style.display = 'none'; box.innerHTML = '';
+ mapaDiv.style.display = 'none';
+ if (window._mapaDesgloseDomi) { try { window._mapaDesgloseDomi.remove(); } catch (e) {} window._mapaDesgloseDomi = null; }
+ };
+ const cot = info && info.cot;
+ if (!cot || cot.fuente !== 'servidor' || !cot.salida || !(cot.kmFuera > 0)) { ocultar(); return; }
+
+ const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+ const money = n => '$' + Math.round(n).toLocaleString('es-CO');
+ const kmTxt = n => (Math.round(n * 10) / 10).toLocaleString('es-CO');
+ const conMontos = (typeof cot.precioDentro === 'number') && (typeof cot.precioFuera === 'number');
+ const salida = esc(cot.salida);
+ const txtDentro = kmTxt(cot.kmDentro) + ' km' + (conMontos ? ' = <b>' + money(cot.precioDentro) + '</b>' : '');
+ const txtFuera = kmTxt(cot.kmFuera) + ' km' + ((typeof cot.porKmFuera === 'number') ? ' × ' + money(cot.porKmFuera) : '') + (conMontos ? ' = <b>' + money(cot.precioFuera) + '</b>' : '');
+ let filas;
+ if (cot.origenDentro === false) {
+ filas = '📍 Desde la recogida hasta <b>' + salida + '</b> (fuera de la ciudad): ' + txtFuera
+ + '<br>🏙️ Desde ' + salida + ' hasta el destino (dentro de Armenia): ' + txtDentro;
+ } else {
+ filas = '📍 Hasta <b>' + salida + '</b> (salida de la ciudad): ' + txtDentro
+ + '<br>🛣️ Desde ahí hasta el destino: ' + txtFuera;
+ }
+ box.innerHTML = filas
+ + '<br><span style="color:#FFD700;">Total del recorrido: <b>' + money(cot.precio) + '</b></span>'
+ + '<br><span style="color:#9ca3af; font-size:11px;">🟢 Dentro de Armenia · 🔴 Fuera (se cobra por km) · 🟠 Punto de salida</span>';
+ box.style.display = 'block';
+
+ // Mini-mapa
+ const a = info.rec, b = info.ent;
+ let ruta = null;
+ try { ruta = await window._rutaRealEntrePuntos(a, b); } catch (e) {}
+ if (token !== window._desgloseToken) return; // llegó una cotización más nueva
+ if (typeof L === 'undefined') { mapaDiv.style.display = 'none'; return; }
+ mapaDiv.style.display = 'block';
+ if (window._mapaDesgloseDomi) { try { window._mapaDesgloseDomi.remove(); } catch (e) {} window._mapaDesgloseDomi = null; }
+ const mapa = L.map(mapaDiv, { attributionControl: false, scrollWheelZoom: false });
+ window._mapaDesgloseDomi = mapa;
+ (typeof window.crearCapaMapbox === 'function' ? window.crearCapaMapbox() : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })).addTo(mapa);
+
+ const pts = window._perimetroPuntosCliente();
+ if (pts.length >= 3) L.polygon(pts, { color: '#F59E0B', weight: 2, dashArray: '4 6', fillColor: '#F59E0B', fillOpacity: 0.07, interactive: false }).addTo(mapa);
+
+ const sal = (typeof cot.salidaLat === 'number' && typeof cot.salidaLng === 'number') ? [cot.salidaLat, cot.salidaLng] : null;
+ const coords = (ruta && ruta.coords && ruta.coords.length > 2) ? ruta.coords : null;
+ const estDentro = { color: '#22c55e', weight: 5, opacity: 0.95 };
+ const estFuera = { color: '#ef4444', weight: 5, opacity: 0.95, dashArray: '10 8' };
+ const est1 = (cot.origenDentro === false) ? estFuera : estDentro;
+ const est2 = (cot.origenDentro === false) ? estDentro : estFuera;
+ if (sal) {
+ let tramo1, tramo2;
+ if (coords) {
+ let idx = 0, mejorD = Infinity;
+ coords.forEach((c, i) => { const d = _metrosEntre(c, sal); if (d < mejorD) { mejorD = d; idx = i; } });
+ tramo1 = coords.slice(0, idx + 1);
+ tramo2 = coords.slice(idx);
+ } else {
+ tramo1 = [[a.lat, a.lng], sal];
+ tramo2 = [sal, [b.lat, b.lng]];
+ }
+ L.polyline(tramo1, est1).addTo(mapa);
+ L.polyline(tramo2, est2).addTo(mapa);
+ } else {
+ L.polyline(coords || [[a.lat, a.lng], [b.lat, b.lng]], estDentro).addTo(mapa);
+ }
+ const punto = (ll, color, texto) => L.circleMarker(ll, { radius: 8, color: '#ffffff', weight: 2, fillColor: color, fillOpacity: 1 })
+ .addTo(mapa).bindTooltip(texto, { permanent: true, direction: 'top', offset: [0, -6] });
+ punto([a.lat, a.lng], '#22c55e', 'Recogida');
+ punto([b.lat, b.lng], '#3b82f6', 'Entrega');
+ if (sal) punto(sal, '#F59E0B', 'Salida: ' + salida);
+
+ const todos = (coords || [[a.lat, a.lng], [b.lat, b.lng]]).concat(sal ? [sal] : []);
+ const ajustar = () => { try { mapa.invalidateSize(); mapa.fitBounds(L.latLngBounds(todos), { padding: [28, 28] }); } catch (e) {} };
+ ajustar();
+ setTimeout(ajustar, 150);
  };
 
  // Calcular precio según zonas seleccionadas
@@ -6695,6 +6831,8 @@ const TONOS_NOTIFICACION = [
  tamanoNota.style.display = 'none';
  }
 
+ window._ultimaCotDomi = null; window._coordsPrecioRec = null; window._coordsPrecioEnt = null;
+ if (typeof window._mostrarDesgloseDomi === 'function') window._mostrarDesgloseDomi(null);
  const municipioIdCalc = document.getElementById('domi-municipio-id')?.value || '';
  const esFueraCalc = zonaEntrega === 'fuera' || municipioIdCalc !== '';
  if (!zonaRecogida || (!zonaEntrega && !esFueraCalc)) {
@@ -6812,42 +6950,16 @@ const TONOS_NOTIFICACION = [
  const coordsEnt = gpsDestinoReal || coordsEntGeo;
 
  if (coordsRec && coordsEnt) {
- let kmRuta = null;
  let precioBackend = null;
  let usadoBackend = false;
- let cotLocal = null;
 
- // 🛣️ 2026-10-08: con perímetro urbano guardado en el admin, el precio sale de AQUÍ:
- // ruta real por calles (Mapbox → OSRM) → tramos para los km dentro + $/km para los km fuera.
- // (El servidor todavía no conoce el perímetro, por eso en este caso no se le pregunta.)
- if (window._perimetroPuntosCliente().length >= 3) {
- cotLocal = await window._cotizarRutaEntrePuntos(coordsRec, coordsEnt);
- kmRuta = cotLocal.km;
- }
-
- // FIX 2026-08-25: sin perímetro, el precio real lo calcula el SERVIDOR (misma ruta + misma tabla
- // de tarifas que valida el pedido justo después de crearse).
- if (kmRuta === null && typeof window.cotizarPrecioDomicilioCallable === 'function') {
- try {
- const respCotiz = await window.cotizarPrecioDomicilioCallable({
- gpsRecogida: { lat: coordsRec.lat, lng: coordsRec.lng },
- gpsDestino: { lat: coordsEnt.lat, lng: coordsEnt.lng },
- });
- if (respCotiz && respCotiz.data && typeof respCotiz.data.km === 'number') {
- kmRuta = respCotiz.data.km;
- precioBackend = respCotiz.data.precio;
- usadoBackend = true;
- }
- } catch (e) {
- console.warn('[PRECIO] cotizarPrecioDomicilio (servidor) falló, calculando en el celular como respaldo:', e);
- }
- }
-
- // Respaldo: ruta real calculada en el celular (Mapbox → OSRM → línea recta corregida)
- if (kmRuta === null) {
- cotLocal = await window._cotizarRutaEntrePuntos(coordsRec, coordsEnt);
- kmRuta = cotLocal.km;
- }
+ // 🔒 2026-10-08: ya no hay atajo local cuando existe el perímetro. El servidor (que ya conoce el
+ // perímetro y las salidas) es el único que pone el precio; si no responde, se calcula aquí de respaldo.
+ const cotLocal = await window._cotizarRutaEntrePuntos(coordsRec, coordsEnt);
+ const kmRuta = cotLocal.km;
+ window._ultimaCotDomi = { cot: cotLocal, rec: { lat: coordsRec.lat, lng: coordsRec.lng }, ent: { lat: coordsEnt.lat, lng: coordsEnt.lng } };
+ window._coordsPrecioRec = { lat: coordsRec.lat, lng: coordsRec.lng };
+ window._coordsPrecioEnt = { lat: coordsEnt.lat, lng: coordsEnt.lng };
 
  const kmDisplay = Math.round(kmRuta * 10) / 10;
  precio = (usadoBackend && precioBackend !== null && precioBackend !== undefined) ? precioBackend
@@ -6887,6 +6999,9 @@ const TONOS_NOTIFICACION = [
  precioRazon.textContent = razon;
  precioBox.style.display = 'block';
 
+ if (typeof window._mostrarDesgloseDomi === 'function') {
+ window._mostrarDesgloseDomi(window._ultimaCotDomi).catch(e => console.warn('[DESGLOSE]', e));
+ }
  // FIX PRECIO: guardar precio GPS para que solicitarDomicilio lo reutilice
  window._precioCalculadoArmenia = precio;
  window._razonPrecioCalculado = razon;
@@ -6940,8 +7055,21 @@ const TONOS_NOTIFICACION = [
  } else {
  // Todavía no se conoce el otro punto: estimado provisional desde el
  // centro de Armenia. Se recalcula automáticamente al agregar el otro punto.
+ // 🔒 2026-10-08: antes se cotizaba desde el centro de Armenia aunque el otro extremo ya estuviera elegido
+ // por barrio (por eso el precio no coincidía con la recogida real). Ahora se usa ese barrio.
+ let coordsBarrioOtro = null;
+ try {
+ const idBarrioOtro = tipo === 'destino' ? 'domi-barrio-recogida' : 'domi-barrio-entrega';
+ const idZonaOtra = tipo === 'destino' ? 'domi-zona-recogida' : 'domi-zona-entrega';
+ const nomOtro = (document.getElementById(idBarrioOtro)?.value || '').trim() || (document.getElementById(idZonaOtra)?.value || '').trim();
+ if (nomOtro && nomOtro !== 'fuera' && typeof _geocodificarBarrioCliente === 'function') coordsBarrioOtro = await _geocodificarBarrioCliente(nomOtro);
+ } catch (eBarrioOtro) { console.warn('[PRECIO GPS] No se pudo ubicar el otro barrio:', eBarrioOtro); }
+ if (coordsBarrioOtro && isFinite(coordsBarrioOtro.lat) && isFinite(coordsBarrioOtro.lng)) {
+ cotGPS = await window._cotizarRutaEntrePuntos({ lat, lng }, coordsBarrioOtro);
+ } else {
  esEstimadoParcial = true;
  cotGPS = await window._cotizarRutaEntrePuntos({ lat, lng }, { lat: 4.5339, lng: -75.6811 });
+ }
  }
  distanciaKm = cotGPS.km || 0;
  const distanciaRedondeada = Math.round(distanciaKm * 10) / 10;
@@ -7250,6 +7378,8 @@ const TONOS_NOTIFICACION = [
  precioValor.textContent = `$${(precioEstimado||0).toLocaleString('es-CO')}`;
  precioRazon.textContent = ` GPS (${nombre}): ${distanciaKm} km desde Armenia · $10.000 base + $1.000/km`;
  }
+  // 🔒 2026-10-08: ese precio guardado es viejo (calculado desde el centro de Armenia): se recotiza ya con el servidor
+ if (document.getElementById('domi-zona-entrega')?.value && typeof window.calcularPrecioDomi === 'function') { window.calcularPrecioDomi(); }
  } else {
  window._gpsCoordsRecogida = { lat, lng };
  window._gpsDistanciaRecogida = distanciaKm;
@@ -7719,7 +7849,23 @@ const TONOS_NOTIFICACION = [
 
  // Si se usó GPS para calcular precio fuera de Armenia, usar ese valor
  if (esFuera && !municipioId && window._gpsPrecioDestino) {
+ // Ese precio GPS puede ser provisional (cotizado desde el centro de Armenia) o de una ubicación guardada
+ // vieja. 🔒 2026-10-08: se usa solo de respaldo; el precio real sale de recotizar con la recogida de verdad.
  precio = window._gpsPrecioDestino + extraVolumen;
+ try {
+ const brRecSol = (document.getElementById('domi-barrio-recogida')?.value || '').trim();
+ const cRecSol = window._gpsCoordsRecogida
+ || (typeof _geocodificarBarrioCliente === 'function' ? await _geocodificarBarrioCliente(brRecSol || zonaRecogida) : null);
+ const cEntSol = window._gpsCoordsDestino;
+ if (cRecSol && isFinite(cRecSol.lat) && isFinite(cRecSol.lng) && cEntSol && isFinite(cEntSol.lat) && isFinite(cEntSol.lng)) {
+ const cotSol = await window._cotizarRutaEntrePuntos(cRecSol, cEntSol);
+ if (cotSol && typeof cotSol.precio === 'number' && cotSol.precio > 0) {
+ precio = cotSol.precio + extraVolumen;
+ window._coordsPrecioRec = { lat: Number(cRecSol.lat), lng: Number(cRecSol.lng) };
+ window._coordsPrecioEnt = { lat: Number(cEntSol.lat), lng: Number(cEntSol.lng) };
+ }
+ }
+ } catch (eRecot) { console.warn('[PRECIO] No se pudo recotizar con el servidor, queda el precio GPS:', eRecot); }
  }
  const nombres = { sur:'Sur', centro:'Centro', norte:'Norte', oriente:'Oriente', occidente:'Occidente' };
  const tamanoLabels = { normal: 'Normal (sin extra)', grande: 'Grande (+$1.000)', muy_grande: 'Muy grande (+$2.000)' };
@@ -8235,6 +8381,8 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  gpsDestino : window._gpsCoordsDestino || null,
  gpsRecogida : window._gpsCoordsRecogida || null,
  gpsPrecioDestino : window._gpsPrecioDestino || null,
+ coordsPrecioRecogida : (esFueraPedido && window._coordsPrecioRec) ? window._coordsPrecioRec : null,
+ coordsPrecioDestino : (esFueraPedido && window._coordsPrecioEnt) ? window._coordsPrecioEnt : null,
  gpsDistanciaKm : window._gpsDistanciaDestino || null,
  gpsNombreDestino : window._gpsNombreDestino || '',
  gpsReferenciaDestino: window._gpsReferenciaDestino || '',
@@ -8318,6 +8466,8 @@ esFueraRecogida : d.municipioRecogidaId ? true : false,
  const gpsDestArmeniaStatus = document.getElementById('gps-destino-armenia-status');
  if (gpsDestArmeniaStatus) gpsDestArmeniaStatus.style.display = 'none';
  window._precioCalculadoArmenia = null; // limpiar precio cacheado
+ window._coordsPrecioRec = null; window._coordsPrecioEnt = null; window._ultimaCotDomi = null;
+ if (typeof window._mostrarDesgloseDomi === 'function') window._mostrarDesgloseDomi(null);
  const ocrPreview = document.getElementById('ocr-preview'); if(ocrPreview) ocrPreview.style.display='none';
  const ocrStatus = document.getElementById('ocr-status'); if(ocrStatus) ocrStatus.style.display='none';
  const gpsDestRes = document.getElementById('gps-destino-result'); if(gpsDestRes) gpsDestRes.style.display='none';

@@ -1,6 +1,4 @@
-package CAMBIAR.POR.TU.APPID; // <-- pon aqui el MISMO package que tu MainActivity.java
-
-import android.content.Context;
+package com.servialiados.cliente;
 import android.media.AudioManager;
 
 import com.getcapacitor.JSObject;

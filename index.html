@@ -22959,7 +22959,57 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
 
  function _esperar(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
- async function _iniciarDictadoGenerico(input, micBtn, onFinal) {
+ function _beepSilenciar() {
+    try {
+      const B = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SilenciadorBeep;
+      if (B && B.silenciar) B.silenciar().catch(function(){});
+    } catch (e) {}
+  }
+  function _beepRestaurar() {
+    try {
+      const B = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SilenciadorBeep;
+      if (B && B.restaurar) B.restaurar().catch(function(){});
+    } catch (e) {}
+  }
+
+  function _srRegistrarListener(SR) {
+    // UN solo oyente global (se registra una vez y se reutiliza siempre)
+    if (!window._srListenerP) {
+      window._srListenerP = (async () => {
+        try { await SR.removeAllListeners(); } catch (e) {}
+        await SR.addListener('partialResults', (data) => {
+          const ctx = window._dictadoCtx;
+          if (!ctx) return;
+          if (data && data.matches && data.matches[0] && !window._dictadoIgnorarSalida) {
+            const previo = _separarDigitosPegados((ctx.ref.valor || '').trim());
+            const parcial = _separarDigitosPegados(data.matches[0].trim());
+            ctx.input.value = (previo ? previo + ' ' : '') + parcial;
+          }
+        });
+      })().catch(e => { window._srListenerP = null; throw e; });
+    }
+    return window._srListenerP;
+  }
+
+  // Precalienta el reconocedor al abrir la app para que al tocar el micro
+  // empiece al instante (sin esperar available/permisos/oyentes).
+  window._dictadoCtx = null;
+  window.precalentarDictado = async function() {
+    try {
+      const SR = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition;
+      if (!SR || window._srPrecalentado) return;
+      const disp = await SR.available();
+      if (!disp || disp.available === false) return;
+      const permiso = await SR.checkPermissions();
+      if (permiso.speechRecognition !== 'granted') return; // no pide permiso en frio
+      await _srRegistrarListener(SR);
+      window._srPrecalentado = true;
+    } catch (e) {}
+  };
+  setTimeout(window.precalentarDictado, 3000);
+  setTimeout(window.precalentarDictado, 10000);
+
+  async function _iniciarDictadoGenerico(input, micBtn, onFinal) {
  if (!input || !micBtn) return;
 
  // Si ya está escuchando, este toque actúa como botón de "detener".
@@ -22983,41 +23033,36 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  try {
  if (SR) {
  // --- Plugin nativo (APK Android) ---
- const disponible = await SR.available();
- if (!disponible || disponible.available === false) {
- alert('El reconocimiento de voz no está disponible en este dispositivo.');
- return;
- }
- const permiso = await SR.checkPermissions();
- if (permiso.speechRecognition !== 'granted') {
- const solicitado = await SR.requestPermissions();
- if (solicitado.speechRecognition !== 'granted') {
- alert('Necesitas darle permiso de micrófono a la app para usar el dictado por voz.');
- return;
- }
- }
+ // Feedback inmediato: el boton se pone rojo apenas se toca
+        marcarEscuchando(true);
+        input.placeholder = ' Escuchando... (toca el micrófono para terminar)';
+        window._dictadoStopFn = () => { try { SR.stop(); } catch (e) {} };
+        _beepSilenciar();
 
- marcarEscuchando(true);
- input.placeholder = ' Escuchando... (toca el micrófono para terminar)';
- window._dictadoStopFn = () => { try { SR.stop(); } catch (e) {} };
+        if (!window._srPrecalentado) {
+          const disponible = await SR.available();
+          if (!disponible || disponible.available === false) {
+            _beepRestaurar(); marcarEscuchando(false); input.placeholder = placeholderOriginal;
+            alert('El reconocimiento de voz no est\u00e1 disponible en este dispositivo.');
+            return;
+          }
+          const permiso = await SR.checkPermissions();
+          if (permiso.speechRecognition !== 'granted') {
+            const solicitado = await SR.requestPermissions();
+            if (solicitado.speechRecognition !== 'granted') {
+              _beepRestaurar(); marcarEscuchando(false); input.placeholder = placeholderOriginal;
+              alert('Necesitas darle permiso de micr\u00f3fono a la app para usar el dictado por voz.');
+              return;
+            }
+          }
+          window._srPrecalentado = true;
+        }
 
- // Por seguridad, limpia cualquier oyente que haya quedado pegado de una
- // sesión anterior (algunos dispositivos no limpian bien con .remove()).
- try { await SR.removeAllListeners(); } catch (e) {}
+        const refTexto = { valor: textoAcumulado };
+        window._dictadoCtx = { input: input, ref: refTexto };
+        await _srRegistrarListener(SR);
 
- // Se registra UN SOLO oyente para toda la sesión de dictado (no uno por
- // cada reinicio del ciclo): así nunca quedan oyentes viejos acumulados
- // reescribiendo el texto con datos desactualizados.
- const refTexto = { valor: textoAcumulado };
- await SR.addListener('partialResults', (data) => {
- if (data && data.matches && data.matches[0] && !window._dictadoIgnorarSalida) {
- const previo = _separarDigitosPegados((refTexto.valor || '').trim());
- const parcial = _separarDigitosPegados(data.matches[0].trim());
- input.value = (previo ? previo + ' ' : '') + parcial;
- }
- });
-
- while (!window._dictadoDebeParar) {
+        while (!window._dictadoDebeParar) {
  try {
  const resultado = await SR.start({ language: 'es-CO', maxResults: 1, partialResults: true, popup: false });
  if (resultado && resultado.matches && resultado.matches[0] && !window._dictadoIgnorarSalida) {
@@ -23032,10 +23077,11 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  }
  // Pausa breve para que el micrófono se libere antes de reiniciar;
  // evita que vuelva a captar el final de lo que ya se transcribió.
- if (!window._dictadoDebeParar) await _esperar(550);
+ if (!window._dictadoDebeParar) await _esperar(150);
  }
 
- try { await SR.removeAllListeners(); } catch (e) {}
+ window._dictadoCtx = null;
+ _beepRestaurar();
  marcarEscuchando(false);
  input.placeholder = placeholderOriginal;
  input.focus();
@@ -23078,7 +23124,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (!window._dictadoDebeParar) {
  // El navegador cortó la sesión por pausa larga: reiniciar automáticamente
  textoAcumulado = input.value ? input.value.trim() + ' ' : textoAcumulado;
- _esperar(550).then(() => { try { rec.start(); } catch (e) {} });
+ _esperar(150).then(() => { try { rec.start(); } catch (e) {} });
  return;
  }
  marcarEscuchando(false);
@@ -23093,7 +23139,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  }
  } catch (e) {
  console.warn(' Error en dictado por voz:', e);
- try { if (SR) await SR.removeAllListeners(); } catch (e2) {}
+ try { if (SR) await SR.removeAllListeners(); } catch (e2) {} window._srListenerP = null; window._dictadoCtx = null; _beepRestaurar();
  marcarEscuchando(false);
  input.placeholder = placeholderOriginal;
  }

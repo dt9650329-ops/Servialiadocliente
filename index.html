@@ -23871,7 +23871,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  '<div style="font-size:12px; color:#9ca3af; margin-bottom:6px;">¿En cuánto está listo el pedido?</div>' +
  '<div id="sb-t-minutos" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">' + minutosBtns + '</div>' +
  '<div id="sb-t-error" style="display:none; color:#ef4444; font-size:12px; margin-bottom:8px;"></div>' +
- '<button type="button" id="sb-t-btn-enviar" onclick="sbConfirmarPedidoTercero()" style="width:100%; padding:11px; border-radius:8px; border:none; background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:14px;"> Enviar pedido</button>';
+ '<button type="button" id="sb-t-btn-enviar" onclick="sbConfirmarPedidoTercero()" style="width:100%; padding:11px; border-radius:8px; border:none; background:var(--color-primary,#F59E0B); color:#000; font-weight:bold; font-size:14px;">Ver precio</button>';
 
  container.appendChild(div);
  container.scrollTop = container.scrollHeight;
@@ -24079,7 +24079,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  // 🆕 DOMICILIO FUERA DE LA CIUDAD: primero se MUESTRA la tarifa (sin crear el
  // pedido). Solo si el cliente toca "Confirmar y enviar" con los mismos datos
  // se crea el pedido; si no le sirve el precio, cancela y no se crea nada.
- if (window._sbTercero && window._sbTercero.fueraCiudad) {
+ { // 🆕 2026-10-09: ahora también dentro de la ciudad (antes solo fuera): primero precio, luego confirmar
  const origenCot = window._sbTercero.origenRecogida || 'local';
  const gpsRecCot = (origenCot !== 'local') ? (window._sbTercero.gpsRecogida || null) : null;
  const sigActual = JSON.stringify([nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega,
@@ -24094,7 +24094,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (!window.cotizarPedidoTerceroCallable) throw new Error('No se pudo conectar con el servidor.');
  const rc = await window.cotizarPedidoTerceroCallable({
  nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega,
- origenRecogida: origenCot, gpsRecogidaManual: gpsRecCot, fueraCiudad: true, linkUbicacion: linkMaps,
+ origenRecogida: origenCot, gpsRecogidaManual: gpsRecCot, fueraCiudad: !!(window._sbTercero && window._sbTercero.fueraCiudad), linkUbicacion: linkMaps,
  });
  const d = rc.data || {};
  const gpsFinal = (d.gpsEntrega && d.gpsEntrega.lat && d.gpsEntrega.lng) ? d.gpsEntrega : gpsEntrega;
@@ -24144,7 +24144,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  window._sbTercero.cotizadoReqAdmin = !hayPrecio;
  if (btn) { btn.disabled = false; btn.textContent = hayPrecio ? 'Confirmar y enviar pedido' : 'Enviar para que el admin confirme precio'; }
  } catch (eCot) {
- console.error('[Fuera de la ciudad] Error cotizando:', eCot);
+ console.error('[Pedido tercero] Error cotizando:', eCot);
  if (errEl) { errEl.textContent = (eCot && eCot.message) || 'No se pudo calcular la tarifa. Intenta de nuevo.'; errEl.style.display = 'block'; }
  if (btn) { btn.disabled = false; btn.textContent = 'Ver precio'; }
  }
@@ -24187,7 +24187,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  } catch (e) {
  console.error('[Pedido tercero] Error:', e);
  if (errEl) { errEl.textContent = (e && e.message) || 'No se pudo enviar el pedido. Intenta de nuevo.'; errEl.style.display = 'block'; }
- if (btn) { btn.disabled = false; btn.textContent = ' Enviar pedido'; }
+ if (btn) { btn.disabled = false; btn.textContent = (window._sbTercero && window._sbTercero.cotizadoSig) ? 'Confirmar y enviar pedido' : 'Ver precio'; }
  }
  };
 

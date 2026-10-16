@@ -604,6 +604,14 @@
  .tab-button:not(.active-tab) { background-color: #555; color: var(--color-text-light); }
  .tab-content { display: none; padding-top: 70px; }
  .tab-content.active-content { display: block; }
+ /* FIX ruleta: el "* { overscroll-behavior: contain }" global bloqueaba el deslizar
+    la pantalla al tocar sobre tarjetas con overflow:hidden (la ruleta y su info).
+    En Premios dejamos el scroll normal para que la pagina se pueda arrastrar en todo el ancho. */
+ #content-premios, #content-premios * { overscroll-behavior: auto !important; }
+ #content-premios { touch-action: pan-y; padding-bottom: 110px; }
+ /* FIX: body tiene height:100% y es flex-column; el .container se encogia hasta min-height:90vh
+    y el contenido se desbordaba por debajo (el scroll terminaba cortando el final de la pagina). */
+ .container { flex-shrink: 0; }
  /* ServiBot: pantalla completa, sale del container padre */
  #content-servibot.active-content {
    position: fixed !important;
@@ -3642,7 +3650,7 @@
  <span class="menu-item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
  <div class="menu-item-text">
  <strong>Versión</strong>
- <small>Versión 1.3.9</small>
+ <small>Versión 1.4.0</small>
  </div>
  </div>
  </div>
@@ -4934,7 +4942,7 @@
  <!-- 
  SECCIÓN B: RULETA DE DESCUENTOS
  -->
- <div style="background:linear-gradient(160deg,#0f0c29,#302b63,#24243e); border:1px solid rgba(99,102,241,0.3); border-radius:20px; padding:20px 16px 24px; margin:16px 0 24px; position:relative; overflow:hidden;">
+ <div style="background:linear-gradient(160deg,#0f0c29,#302b63,#24243e); border:1px solid rgba(99,102,241,0.3); border-radius:20px; padding:20px 16px 24px; margin:16px 0 24px; position:relative; overflow:visible;">
  
  <!-- Fondo decorativo de estrellas -->
  <div style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;">
@@ -11353,7 +11361,7 @@ if (dentroDeHorario) {
  // === LOG DE INICIALIZACIÓN ===
  // ======================================================================
  
- console.log(' Sistema del cliente inicializado v1.3.9');
+ console.log(' Sistema del cliente inicializado v1.4.0');
  console.log(' Envío automático de ubicación del cliente: HABILITADO');
  console.log(' Compatible con seguimiento en tiempo real del repartidor');
  console.log(' Ubicación del cliente se envía a Firebase cada 5 segundos');
@@ -11546,7 +11554,7 @@ try {
  // ============================================================
  // CONTROL DE VERSIÓN OBLIGATORIA (fuerza actualización del APK)
  // ============================================================
- const APP_VERSION = "1.3.9";
+ const APP_VERSION = "1.4.0";
 
  function compararVersiones(a, b) {
    const pa = a.split('.').map(Number);
@@ -14185,7 +14193,7 @@ ${motivo}`;
  
  console.log('');
  console.log('');
- console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.3.9');
+ console.log(' SISTEMA CLIENTE SERVI ALIADOS - v1.4.0');
  console.log('');
  console.log('');
  console.log(' CARACTERÍSTICAS ACTIVAS:');
@@ -14230,7 +14238,7 @@ ${motivo}`;
  console.log(' Mapa permanecía visible tras entrega → SOLUCIONADO');
  console.log(' Mapa se reactivaba al buscar pedido completado → SOLUCIONADO');
  console.log('');
- console.log(' VERSIÓN: 1.3.9  -  (Con tipo de cliente + tarifas por distancia)');
+ console.log(' VERSIÓN: 1.4.0  -  (Con tipo de cliente + tarifas por distancia)');
  console.log(' Fecha: ' + new Date().toLocaleString('es-ES'));
  console.log('');
  
@@ -19535,13 +19543,13 @@ if (window.db) {
 
  const btnGirar = document.getElementById('btn-girar-ruleta');
  if (btnGirar) {
- btnGirar.disabled = giros <= 0;
+ btnGirar.disabled = giros <= 0 || !!window._ruletaGirando;
  btnGirar.style.opacity = giros > 0 ? '1' : '0.45';
  btnGirar.textContent = giros > 0 ? ' ¡Girar Ruleta!' : ' Sin giros disponibles';
  }
 
- // Dibujar ruleta
- _dibujarRuleta(0);
+ // Dibujar ruleta (no mientras esta girando, para no reiniciar la animacion)
+ if (!window._ruletaGirando) _dibujarRuleta(0);
  _actualizarBonosUI();
  };
 
@@ -19644,8 +19652,13 @@ if (window.db) {
  return;
  }
 
+ // FIX: candado anti doble toque (el listener en vivo re-habilitaba el boton
+ // apenas el servidor descontaba el 1er giro, y un 2do toque gastaba otro giro)
+ if (window._ruletaGirando) return;
+ window._ruletaGirando = true;
+
  const btnGirar = document.getElementById('btn-girar-ruleta');
- if (btnGirar) btnGirar.disabled = true;
+ if (btnGirar) { btnGirar.disabled = true; btnGirar.textContent = 'Girando...'; btnGirar.style.opacity = '0.6'; }
 
  // ✅ El premio ya NO se decide en el navegador. Se lo pedimos al
  // servidor (Cloud Function girarRuleta) para que nadie pueda
@@ -19657,6 +19670,7 @@ if (window.db) {
  } catch (e) {
  console.warn(' Error llamando a girarRuleta:', e);
  alert(e && e.message ? e.message : 'No se pudo girar la ruleta. Intenta de nuevo.');
+ window._ruletaGirando = false;
  if (btnGirar) btnGirar.disabled = false;
  return;
  }
@@ -19706,9 +19720,9 @@ if (window.db) {
  resCod.style.display = codigo ? 'inline-block' : 'none';
  resDiv.style.display = 'block';
  }
+ window._ruletaGirando = false;
  _actualizarBonosUI();
  window.initPremiosUI();
- if (btnGirar) btnGirar.disabled = false;
  }
  }
  requestAnimationFrame(step);
@@ -19837,6 +19851,12 @@ if (window.db) {
  }
  }
  window._marcarBonoUsado = _marcarBonoUsado;
+ // Cupones que ServiBot puede ofrecer: sin usar, del sistema seguro (el servidor los valida) y con monto en pesos
+ window._sbBonosDisponibles = function() {
+ try {
+ return _bonosCombinados().filter(function(b){ return !b.usado && b._fuente === 'otorgado' && Number(b.monto) > 0 && b.codigo; });
+ } catch (e) { return []; }
+ };
 
  // 
  // SISTEMA DE CUPONES EN EL FORMULARIO DE DOMICILIO
@@ -24023,6 +24043,38 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  if (status) status.innerHTML = ' Ubicación de recogida marcada en el mapa.';
  };
 
+ // 🎟️ 2026-10-16: pregunta "¿Quieres usar un cupón de descuento?" junto a la tarifa
+ window.sbRenderCuponCotizacion = function (caja, montoDomicilio) {
+ if (window._sbTercero) window._sbTercero.cuponCodigo = null;
+ const bonos = (typeof window._sbBonosDisponibles === 'function') ? window._sbBonosDisponibles() : [];
+ if (!caja || !bonos.length || !(montoDomicilio > 0)) return;
+ const wrap = document.createElement('div');
+ wrap.style.cssText = 'margin-top:10px; padding-top:10px; border-top:1px dashed rgba(245,158,11,0.4); text-align:left;';
+ const lbl = document.createElement('div');
+ lbl.style.cssText = 'font-size:13px; color:#e0d7ff; font-weight:bold; margin-bottom:6px;';
+ lbl.textContent = '¿Quieres usar un cupón de descuento?';
+ const sel = document.createElement('select');
+ sel.style.cssText = 'width:100%; padding:10px; border:1px solid rgba(167,139,250,0.4); border-radius:8px; background:#1A2845; color:#e0d7ff; font-size:13px;';
+ const op0 = document.createElement('option'); op0.value = ''; op0.textContent = 'No, gracias';
+ sel.appendChild(op0);
+ bonos.forEach(function (b) {
+ const o = document.createElement('option'); o.value = b.codigo; o.textContent = b.label + ' · ' + b.codigo;
+ sel.appendChild(o);
+ });
+ const info = document.createElement('div');
+ info.style.cssText = 'font-size:12px; color:#10B981; margin-top:6px; display:none;';
+ sel.onchange = function () {
+ const b = bonos.find(function (x) { return x.codigo === sel.value; });
+ if (!b) { if (window._sbTercero) window._sbTercero.cuponCodigo = null; info.style.display = 'none'; return; }
+ const desc = Math.min(Number(b.monto) || 0, montoDomicilio);
+ if (window._sbTercero) window._sbTercero.cuponCodigo = b.codigo;
+ info.textContent = 'Descuento −$' + desc.toLocaleString('es-CO') + ' → pagas $' + Math.max(0, montoDomicilio - desc).toLocaleString('es-CO') + ' de domicilio';
+ info.style.display = 'block';
+ };
+ wrap.appendChild(lbl); wrap.appendChild(sel); wrap.appendChild(info);
+ caja.appendChild(wrap);
+ };
+
  window.sbConfirmarPedidoTercero = async function () {
  const errEl = document.getElementById('sb-t-error');
  if (errEl) { errEl.style.display = 'none'; errEl.style.color = '#ef4444'; }
@@ -24117,6 +24169,8 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  '<div style="font-size:12px; color:#9ca3af; margin-top:6px;">Si te parece bien, confirma y buscamos repartidor. Si no, cancela y no se cobra nada.</div>'
  : '<div style="font-size:13px; color:#F59E0B; font-weight:bold;">Este destino queda fuera del cálculo automático</div>' +
  '<div style="font-size:12px; color:#9ca3af; margin-top:6px;">Un administrador debe confirmarte el precio. Puedes enviar el pedido para que lo revise o cancelar.</div>';
+ if (hayPrecio) { try { window.sbRenderCuponCotizacion(caja, Number(d.montoDomicilio)); } catch (eCup) { console.warn('[Cupón ServiBot]', eCup); } }
+ else if (window._sbTercero) { window._sbTercero.cuponCodigo = null; }
  if (errEl && errEl.parentElement) errEl.parentElement.insertBefore(caja, errEl);
 
  // Botón de cancelar (junto a confirmar)
@@ -24161,6 +24215,7 @@ Las recompensas se otorgan al alcanzar cada nivel. Los puntos nunca se pierden.
  const res = await window.confirmarPedidoTerceroCallable({
  nombreCliente, telefonoCliente, direccionDetalle, barrioEntrega, minutosPreparacion, gpsEntrega, origenRecogida, gpsRecogidaManual,
  fueraCiudad: !!(window._sbTercero && window._sbTercero.fueraCiudad),
+ cuponCodigo: (window._sbTercero && window._sbTercero.cuponCodigo) || '',
  direccionRecogidaTexto: (origenRecogida === 'otro_lugar') ? ((document.getElementById('sb-t-recogida-dir') || {}).value || '').trim() : '',
  });
  const card = document.getElementById('sb-tercero-card');

@@ -1,0 +1,36 @@
+================================================================================
+  ÍNDICE DE SECCIONES — index.html (Cliente) · Servi Aliados — Actualizado 2026-09-13
+================================================================================
+
+  BLOQUE CSS (dentro de <head>)
+  ─────────────────────────────
+  Línea    59  │ INICIO DEL BLOQUE CSS
+  Línea  3263  │ FIN DEL BLOQUE CSS
+
+  CUERPO HTML (<body>)
+  ─────────────────────────────────────────────────────────────────────────────
+  Línea  3270  │ SECCIÓN  1 · MENÚ HAMBURGUESA, CAMPANITA Y PANEL DE NOTIFICACIONES
+  Línea  3507  │ SECCIÓN  2 · PANTALLAS DE AUTENTICACIÓN, SPLASH Y LOADING
+  Línea  3651  │ SECCIÓN  3 · VISTA CLIENTE (navegación tabs + TAB TIENDA)
+  Línea  3673  │ SECCIÓN  4 · TAB PERFIL
+  Línea  3894  │ SECCIÓN  5 · TAB SERVICIO (formulario de pedido)
+  Línea  4633  │ SECCIÓN  6 · TAB SEGUIMIENTO (TRACKING)
+  Línea  4686  │ SECCIÓN  7 · TAB PREMIOS
+  Línea  4995  │ SECCIÓN  8 · TAB SERVIBOT
+  Línea  5060  │ SECCIÓN  9 · CONFIGURACIÓN, UTILIDADES Y LÓGICA DE INTERFAZ (script vanilla)
+  Línea 10833  │ SECCIÓN 10 · LÓGICA PRINCIPAL (Firebase module: auth, pedidos, mapa, tienda, tracking)
+  Línea 17056  │ SECCIÓN 11 · MODALES DE TIENDA (agregar producto, ver/editar tienda, catálogo clientes, personalizar menú)
+  Línea 17234  │ SECCIÓN 12 · BARRIOS, BUSCADOR, LOCALSTORAGE, CHAT P2P, UBICACIÓN GPS
+  Línea 19548  │ SECCIÓN 13 · MODAL SUGERIR NUEVO LUGAR
+  Línea 19636  │ SECCIÓN 13B · MAPEADOR DE UBICACIÓN PARA SUGERENCIAS (pin en mapa)
+  Línea 19756  │ SECCIÓN 14 · SELECTOR DE DESTINO (Armenia / Municipio fuera)
+  Línea 19946  │ SECCIÓN 15 · GEOCODIFICACIÓN Y GPS (Nominatim + ubicación)
+  Línea 20082  │ SECCIÓN 16 · SERVIBOT CHATBOT (motor de respuestas por reglas)
+  Línea 22161  │ SECCIÓN 17 · MAPEADOR DE FAVOR (selección de pin en mapa)
+  Línea 22372  │ SECCIÓN 18 · SISTEMA DE NOTIFICACIONES GLOBALES (Firebase listeners)
+  Línea 22895  │ SECCIÓN 18B · LISTENER SOS DEL REPARTIDOR ASIGNADO
+  Línea 23056  │ SECCIÓN 19 · MODAL HOJA DE RUTA DE NIVELES
+  Línea 23205  │ SECCIÓN 20 · MODAL VISOR DE IMAGEN
+  Línea 23213  │ SECCIÓN 21 · INICIALIZACIÓN FINAL (lucide icons + auto-cierre de sesión)
+
+================================================================================
